@@ -58,11 +58,11 @@ class ResPartner(models.Model):
         partner_name = (self.name or "").strip().lower()
 
         exact_matches = {}
-        for customer in customers:
+        for index, customer in enumerate(customers):
             customer_phone = self._normalize_phone(customer.get("phoneNumber"))
             customer_email = (customer.get("email") or "").strip().lower()
             customer_name = (customer.get("name") or "").strip().lower()
-            customer_key = customer.get("id") or customer.get("recruitmentCode")
+            customer_key = customer.get("id") or customer.get("recruitmentCode") or index
             if partner_phone and customer_phone and partner_phone == customer_phone:
                 exact_matches[customer_key] = customer
                 continue
