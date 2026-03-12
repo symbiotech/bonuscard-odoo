@@ -117,10 +117,12 @@ class ResPartner(models.Model):
                         "No active Bonuscard connection is configured for this company."
                     )
                 )
-            partner._write_bonuscard_status(
+            values = partner._write_bonuscard_status(
                 "error",
                 note=self.env._("No active Bonuscard connection is configured."),
             )
+            if self != partner:
+                self.write(values)
             return {
                 "status": partner.bonuscard_status,
                 "note": partner.bonuscard_last_lookup_note,
