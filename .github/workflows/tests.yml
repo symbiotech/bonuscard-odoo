@@ -27,4 +27,4 @@ jobs:
       - name: Install module
         run: oca_install_addons
       - name: Run tests
-        run: oca_run_tests
+        run: oca_run_tests --test-tags bonuscard_odoo
