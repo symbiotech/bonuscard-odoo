@@ -1,0 +1,78 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <record id="bonuscard_odoo_instance_view_form" model="ir.ui.view">
+        <field name="name">bonuscard.connector.instance.view.form</field>
+        <field name="model">bonuscard.connector.instance</field>
+        <field name="arch" type="xml">
+            <form string="Bonuscard Connection">
+                <header>
+                    <button name="action_test_connection" string="Test Connection" type="object" class="btn-primary"/>
+                    <field name="connection_status" widget="statusbar" statusbar_visible="unknown,ok,error"/>
+                </header>
+                <sheet>
+                    <div class="oe_title">
+                        <h1>
+                            <field name="name" placeholder="Production Bonuscard"/>
+                        </h1>
+                    </div>
+                    <group>
+                        <group>
+                            <field name="active"/>
+                            <field name="company_id"/>
+                            <field name="api_base_url"/>
+                        </group>
+                        <group>
+                            <field name="api_username"/>
+                            <field name="api_password" password="True"/>
+                            <field name="api_culture"/>
+                            <field name="request_timeout"/>
+                            <field name="last_test_at"/>
+                        </group>
+                    </group>
+                    <group string="Diagnostics">
+                        <field name="last_error" nolabel="1" readonly="1"/>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="bonuscard_odoo_instance_view_list" model="ir.ui.view">
+        <field name="name">bonuscard.connector.instance.view.list</field>
+        <field name="model">bonuscard.connector.instance</field>
+        <field name="arch" type="xml">
+            <list string="Bonuscard Connections">
+                <field name="name"/>
+                <field name="company_id"/>
+                <field name="connection_status"/>
+                <field name="last_test_at"/>
+                <field name="active"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="bonuscard_odoo_instance_view_search" model="ir.ui.view">
+        <field name="name">bonuscard.connector.instance.view.search</field>
+        <field name="model">bonuscard.connector.instance</field>
+        <field name="arch" type="xml">
+            <search string="Search Bonuscard Connections">
+                <field name="name"/>
+                <field name="company_id"/>
+                <filter string="OK" name="ok" domain="[('connection_status', '=', 'ok')]"/>
+                <filter string="Error" name="error" domain="[('connection_status', '=', 'error')]"/>
+                <separator/>
+                <filter string="Company" name="group_by_company" context="{'group_by': 'company_id'}"/>
+                <filter string="Status" name="group_by_status" context="{'group_by': 'connection_status'}"/>
+            </search>
+        </field>
+    </record>
+
+    <record id="action_bonuscard_odoo_instance" model="ir.actions.act_window">
+        <field name="name">Connections</field>
+        <field name="res_model">bonuscard.connector.instance</field>
+        <field name="view_mode">list,form</field>
+        <field name="search_view_id" ref="bonuscard_odoo_instance_view_search"/>
+    </record>
+
+</odoo>

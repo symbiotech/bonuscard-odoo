@@ -44,6 +44,14 @@
 - Use JSON for request and response handling.
 - When language-sensitive responses matter, support the `BC-Culture` header.
 
+## Test Account Usage
+
+- A Bonuscard test account exists for integration testing against `https://test.bonuscard.com/`.
+- Treat all received account credentials and test consumer identifiers as secrets.
+- Never write real credentials into repository files, tests, fixtures, commits, or pull request text.
+- Use runtime configuration only (local Odoo records, CI/deployment secrets, or secure parameter stores).
+- Manual integration tests may read `.env` values locally, but `.env` must keep placeholders by default in git-tracked content.
+
 ## Odoo Coding Guidance
 
 - Follow Odoo model and view conventions already used in this repository.
@@ -51,7 +59,37 @@
 - Add fields, views, security rules, and tests together when introducing a new capability.
 - Avoid hardcoding credentials, stores, or customer data.
 - Do not call the live Bonuscard API from automated tests.
+- Do not call the Bonuscard test API from automated tests.
 - Mock HTTP interactions in tests and cover both success and failure paths.
+- If integration tests are added, mark them with a dedicated manual tag (for example `bonuscard_integration`) and keep them out of CI defaults.
+
+## Coding Style and Linting
+
+This repository uses pre-commit hooks that enforce Odoo 19 and OCA coding standards.
+The following rules apply when writing or modifying Python code:
+
+- **Formatting**: Use [ruff](https://docs.astral.sh/ruff/) for formatting and linting
+  (replaces black, isort, flake8). Line length is 88. Import blocks must be sorted.
+- **Imports**: Standard library imports first, then third-party, then Odoo, then relative.
+  Combine `from . import X` statements on a single line when possible.
+- **Translations**: Use `self.env._("text")` instead of `_("text")` for all user-facing
+  strings in model methods (Odoo 18+ practice). Use the lazy form
+  `self.env._("text %s", value)` instead of `_("text %s") % value`.
+- **Pylint**: All code must pass `.pylintrc-mandatory` without warnings. The `.pylintrc`
+  file (loaded by IDEs) also includes optional checks that are non-blocking.
+- **OCA hooks**: XML files are validated by `oca-checks-odoo-module`. Avoid deprecated
+  XML nodes and ensure all `<record>` tags have an `id` attribute.
+- **No `# noqa` unless justified**: Fix the root cause instead of silencing warnings.
+  The `# pylint: disable=broad-except` in `action_test_connection` is a documented
+  exception for UI-safe error handling.
+
+To run all checks locally:
+
+```bash
+pip install pre-commit
+pre-commit install      # install hooks once
+pre-commit run --all-files   # run everything now
+```
 
 ## Suggested Delivery Order
 

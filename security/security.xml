@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <record id="bonuscard_odoo_group_user" model="res.groups">
+        <field name="name">Bonuscard User</field>
+        <field name="implied_ids" eval="[(4, ref('base.group_user'))]"/>
+    </record>
+
+    <record id="bonuscard_odoo_group_manager" model="res.groups">
+        <field name="name">Bonuscard Manager</field>
+        <field name="implied_ids" eval="[(4, ref('bonuscard_odoo.bonuscard_odoo_group_user'))]"/>
+    </record>
+
+</odoo>
