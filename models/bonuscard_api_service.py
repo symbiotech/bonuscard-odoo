@@ -6,6 +6,20 @@ from odoo import _, models
 from odoo.exceptions import UserError
 
 
+class BonuscardHttpError(UserError):
+    """Raised when the Bonuscard API returns an HTTP error response.
+
+    Extends :class:`~odoo.exceptions.UserError` so that existing code paths
+    that catch ``UserError`` continue to work, while also exposing the raw
+    HTTP *status_code* so that callers can branch on the numeric code rather
+    than parsing the human-readable message string.
+    """
+
+    def __init__(self, message, status_code):
+        super().__init__(message)
+        self.status_code = status_code
+
+
 class BonuscardApiService(models.AbstractModel):
     _name = "bonuscard.api.service"
     _description = "Bonuscard API Service"
@@ -76,8 +90,9 @@ class BonuscardApiService(models.AbstractModel):
                         "Bonuscard authentication failed. Check the API username and password."
                     )
                 ) from err
-            raise UserError(
-                _("Bonuscard API HTTP error: %s") % (message or err.reason)
+            raise BonuscardHttpError(
+                _("Bonuscard API HTTP error: %s") % (message or err.reason),
+                status_code=err.code,
             ) from err
         except URLError as err:
             raise UserError(
@@ -92,10 +107,7 @@ class BonuscardApiService(models.AbstractModel):
 
         try:
             return self.request(instance, endpoint="", method="GET")
-        except UserError as err:
-            error_message = str(err)
-            if "HTTP error" in error_message and (
-                "404" in error_message or "405" in error_message
-            ):
+        except BonuscardHttpError as err:
+            if err.status_code in (404, 405):
                 return {"reachable": True}
             raise
