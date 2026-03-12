@@ -7,7 +7,7 @@
         <field name="inherit_id" ref="base.view_partner_form"/>
         <field name="arch" type="xml">
             <div name="button_box" position="inside">
-                <button class="oe_stat_button" type="object" name="action_refresh_bonuscard_status" icon="fa-id-card-o" groups="base.group_user">
+                <button class="oe_stat_button" type="object" name="action_refresh_bonuscard_status" icon="fa-id-card-o" groups="bonuscard_odoo.bonuscard_odoo_group_user">
                     <div class="o_field_widget o_stat_info">
                         <span class="o_stat_text">Bonuscard</span>
                         <span class="o_stat_text" invisible="bonuscard_status != 'linked'">Linked</span>
@@ -19,7 +19,7 @@
                 </button>
             </div>
             <xpath expr="//sheet/group" position="after">
-                <group string="Bonuscard" groups="base.group_user">
+                <group string="Bonuscard" groups="bonuscard_odoo.bonuscard_odoo_group_user">
                     <group>
                         <field name="bonuscard_status" widget="badge" readonly="1"/>
                         <field name="bonuscard_recruitment_code" readonly="1"/>
