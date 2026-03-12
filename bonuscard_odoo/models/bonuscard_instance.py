@@ -14,7 +14,6 @@ class BonuscardConnectorInstance(models.Model):
     active = fields.Boolean(default=True)
     company_id = fields.Many2one(
         "res.company",
-        string="Company",
         required=True,
         default=lambda self: self.env.company,
     )
@@ -45,13 +44,12 @@ class BonuscardConnectorInstance(models.Model):
             ("ok", "OK"),
             ("error", "Error"),
         ],
-        string="Connection Status",
         default="unknown",
         readonly=True,
         copy=False,
     )
-    last_test_at = fields.Datetime(string="Last Test At", readonly=True, copy=False)
-    last_error = fields.Text(string="Last Error", readonly=True, copy=False)
+    last_test_at = fields.Datetime(readonly=True, copy=False)
+    last_error = fields.Text(readonly=True, copy=False)
 
     @api.constrains("api_base_url")
     def _check_api_base_url(self):

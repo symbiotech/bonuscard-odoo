@@ -13,3 +13,7 @@ keywords = ["odoo", "addon", "bonuscard", "pos", "loyalty"]
 [project.urls]
 Repository = "https://github.com/symbiotech/bonuscard-odoo"
 Homepage = "https://github.com/symbiotech/bonuscard-odoo"
+
+[build-system]
+requires = ["whool"]
+build-backend = "whool.buildapi"
