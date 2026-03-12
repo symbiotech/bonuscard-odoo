@@ -44,6 +44,14 @@
 - Use JSON for request and response handling.
 - When language-sensitive responses matter, support the `BC-Culture` header.
 
+## Test Account Usage
+
+- A Bonuscard test account exists for integration testing against `https://test.bonuscard.com/`.
+- Treat all received account credentials and test consumer identifiers as secrets.
+- Never write real credentials into repository files, tests, fixtures, commits, or pull request text.
+- Use runtime configuration only (local Odoo records, CI/deployment secrets, or secure parameter stores).
+- Manual integration tests may read `.env` values locally, but `.env` must keep placeholders by default in git-tracked content.
+
 ## Odoo Coding Guidance
 
 - Follow Odoo model and view conventions already used in this repository.
@@ -51,7 +59,9 @@
 - Add fields, views, security rules, and tests together when introducing a new capability.
 - Avoid hardcoding credentials, stores, or customer data.
 - Do not call the live Bonuscard API from automated tests.
+- Do not call the Bonuscard test API from automated tests.
 - Mock HTTP interactions in tests and cover both success and failure paths.
+- If integration tests are added, mark them with a dedicated manual tag (for example `bonuscard_integration`) and keep them out of CI defaults.
 
 ## Suggested Delivery Order
 
