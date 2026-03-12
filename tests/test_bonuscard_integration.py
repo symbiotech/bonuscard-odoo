@@ -47,8 +47,7 @@ class TestBonuscardIntegration(TransactionCase):
         ]
         if missing_vars:
             raise SkipTest(
-                "Integration test skipped. Missing variables: %s"
-                % ", ".join(missing_vars)
+                f"Integration test skipped. Missing variables: {', '.join(missing_vars)}"
             )
 
     def test_live_test_connection_with_env_credentials(self):
