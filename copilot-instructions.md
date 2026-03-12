@@ -11,6 +11,7 @@
 - Primary Odoo surface: Point of Sale.
 - First release goal: purchase validation flow.
 - Authentication: Basic auth.
+- **Implemented**: SearchCustomers lookup triggered from POS partner selection, Bonuscard status fields on `res.partner`, smart button on partner form, OWL badge in POS partner list.
 
 ## Immediate Planning Constraints
 
@@ -25,6 +26,10 @@
 - Keep transport concerns, Bonuscard payload mapping, and Odoo business logic separated.
 - Normalize Bonuscard API errors into predictable Odoo exceptions and store useful diagnostics on connector records.
 - Support the Bonuscard test environment when configuration allows it.
+- `BonuscardApiService._get_company_instance(company)` resolves the active connector for a given company, falling back to any active instance.
+- `BonuscardApiService.search_customers(instance, query)` wraps the `SearchCustomers` endpoint using URL query params.
+- Bonuscard status is written to the **commercial partner** (`partner.commercial_partner_id`) and propagated to child contacts.
+- Partner lookup uses phone (normalised digits-only), email, and name as search terms in priority order. Exact deduplication is keyed on Bonuscard customer `id` or `recruitmentCode` to avoid counting the same record twice.
 
 ## POS Flow Rules
 
@@ -36,6 +41,8 @@
 - FinalizePurchase must use the same products and pricing context as ValidatePurchase unless the API documentation explicitly permits a difference.
 - If payment is aborted or the sale is rolled back, ensure the flow can call CancelPurchase.
 - Design for idempotency and retry safety where possible.
+- The `setPartnerToCurrentOrder` hook in `PosStore` is already patched by `bonuscard_pos.js`; extend or refine that patch for purchase lifecycle hooks rather than adding a second patch on the same method.
+- POS data fields for `res.partner` are extended via `_load_pos_data_fields`; add any new fields needed in POS there.
 
 ## API Details to Respect
 
@@ -62,6 +69,8 @@
 - Do not call the Bonuscard test API from automated tests.
 - Mock HTTP interactions in tests and cover both success and failure paths.
 - If integration tests are added, mark them with a dedicated manual tag (for example `bonuscard_integration`) and keep them out of CI defaults.
+- `patch.object(model_instance, "method", ...)` does **not** work for Odoo model methods (attributes are read-only). Always patch by full import path string: `patch("odoo.addons.bonuscard_odoo.models.ClassName.method_name", ...)`.
+- `res.partner.mobile` may not exist in all Odoo 19 builds. Always guard field access with `self._fields.get("mobile")` before reading `self.mobile`.
 
 ## Coding Style and Linting
 
@@ -93,13 +102,13 @@ pre-commit run --all-files   # run everything now
 
 ## Suggested Delivery Order
 
-1. Correct authentication and connection settings for Basic auth.
-2. Introduce a reusable Bonuscard API client/service layer.
-3. Implement POS-oriented ValidatePurchase support.
-4. Implement FinalizePurchase and CancelPurchase lifecycle handling.
-5. Add logging, diagnostics, and retry-safe error handling.
-6. Add follow-up features only after the purchase flow is stable:
-   - SearchCustomers
+1. ~~Correct authentication and connection settings for Basic auth.~~ ✅
+2. ~~Introduce a reusable Bonuscard API client/service layer.~~ ✅
+3. ~~Implement SearchCustomers with POS partner selection hook and status badges.~~ ✅
+4. Implement POS-oriented ValidatePurchase support.
+5. Implement FinalizePurchase and CancelPurchase lifecycle handling.
+6. Add logging, diagnostics, and retry-safe error handling.
+7. Add follow-up features only after the purchase flow is stable:
    - RegisterCustomer
    - ActivateDiscountCode
    - Sales report import

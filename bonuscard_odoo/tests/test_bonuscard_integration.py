@@ -7,8 +7,12 @@ from odoo.tests import TransactionCase, tagged
 
 def _load_dotenv_if_present():
     """Load simple KEY=VALUE pairs from .env if env vars are not already set."""
-    dotenv_path = Path(__file__).resolve().parents[1] / ".env"
-    if not dotenv_path.exists():
+    candidate_paths = [
+        Path(__file__).resolve().parents[1] / ".env",
+        Path(__file__).resolve().parents[2] / ".env",
+    ]
+    dotenv_path = next((path for path in candidate_paths if path.exists()), None)
+    if not dotenv_path:
         return
 
     for line in dotenv_path.read_text(encoding="utf-8").splitlines():

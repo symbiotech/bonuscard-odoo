@@ -22,6 +22,10 @@ This module is designed as an independent, production-ready Odoo 19 addon.
 - Reusable service layer for Bonuscard HTTP requests and response error handling
 - Test Connection server action from the form view
 - Security groups and ACLs for user and manager roles
+- **Customer lookup**: automatically search Bonuscard by phone, email, and name when a customer is selected in POS
+- **Partner integration**: Bonuscard status fields and sync controls on the `res.partner` form (`linked`, `not_found`, `ambiguous`, `error`)
+- **POS badge**: status indicators on the partner-selection screen in Point of Sale
+- **Smart button**: one-click Bonuscard status check directly from the partner form
 
 ## Installation
 
@@ -40,6 +44,10 @@ This module is designed as an independent, production-ready Odoo 19 addon.
 2. Create a connection record and set API URL, username, password, and culture.
 3. Set the test-site base URL manually if you want to work against `https://test.bonuscard.com/`.
 4. Click `Test Connection`.
+
+Once a connection is active, the POS will automatically attempt to look up the Bonuscard
+status of any customer selected at checkout. The lookup searches by phone, email, and name
+and writes the result back to the partner record.
 
 ## Test Environment Setup
 
@@ -77,6 +85,27 @@ Notes:
 
 ## Usage
 
+### Customer Lookup in POS
+
+When a cashier selects a customer in Point of Sale, the module automatically calls
+`SearchCustomers` on the Bonuscard API using the partner's phone, email, and name.
+The result is stored on the partner record and displayed as a status badge in the
+partner list:
+
+| Status | Meaning |
+|---|---|
+| Not Checked | Lookup has not been run yet |
+| Linked | A single Bonuscard customer was matched |
+| Not Found | No Bonuscard customer matched the partner details |
+| Multiple Matches | More than one customer matched — manual review required |
+| Error | No active Bonuscard connection is configured |
+
+You can also check or reset the status directly from the partner form view using the
+**Bonuscard** smart button or the **Check Bonuscard** / **Reset Bonuscard Status** buttons
+in the Bonuscard section.
+
+### Purchase Lifecycle (Foundation)
+
 Use this module as the integration foundation for the POS purchase lifecycle:
 
 - ValidatePurchase before payment
@@ -88,6 +117,9 @@ Use this module as the integration foundation for the POS purchase lifecycle:
 - Add endpoint-specific POS service wrappers for purchase validation and finalization
 - Add transaction identifier persistence and retry-safe lifecycle handling
 - Add follow-up features for customers, discount codes, and sales reports
+- Add customer registration (RegisterCustomer) from POS when no match is found
+- Add discount code activation (ActivateDiscountCode)
+- Persist `recruitment_code` alongside each sale for purchase reporting
 
 ## Credits
 
@@ -136,7 +168,11 @@ python -m odoo \
   --stop-after-init
 ```
 
-Ensure `odoo.conf` includes this addon's parent directory in `addons_path`.
+Ensure `odoo.conf` includes this addon's **parent directory** (the repo root, not the addon folder itself) in `addons_path`. Example:
+
+```
+addons_path = e:\lucru\odoo\19.0\odoo\addons,e:\lucru\idealskog\odoo_dev\bonuscard_odoo
+```
 
 ### Code Quality
 
