@@ -88,7 +88,6 @@ class BonuscardConnectorInstance(models.Model):
     def action_test_connection(self):
         service = self.env["bonuscard.api.service"]
         for rec in self:
-            rec.ensure_one()
             try:
                 service.test_connection(rec)
                 rec.write(
