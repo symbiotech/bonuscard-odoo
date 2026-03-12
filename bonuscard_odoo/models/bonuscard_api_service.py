@@ -1,5 +1,6 @@
 import json
 from urllib.error import HTTPError, URLError
+from urllib.parse import urlencode
 from urllib.request import Request, urlopen
 
 from odoo import models
@@ -23,6 +24,15 @@ class BonuscardHttpError(UserError):
 class BonuscardApiService(models.AbstractModel):
     _name = "bonuscard.api.service"
     _description = "Bonuscard API Service"
+
+    def _get_company_instance(self, company):
+        domain = [("active", "=", True)]
+        if company:
+            domain.append(("company_id", "=", company.id))
+        instance = (
+            self.env["bonuscard.connector.instance"].sudo().search(domain, limit=1)
+        )
+        return instance
 
     def _decode_response(self, response):
         raw_data = response.read().decode("utf-8")
@@ -64,10 +74,18 @@ class BonuscardApiService(models.AbstractModel):
         raise UserError(self.env._("Bonuscard API error (%s).", error_code))
 
     def request(
-        self, instance, endpoint="", method="GET", payload=None, authenticated=True
+        self,
+        instance,
+        endpoint="",
+        method="GET",
+        payload=None,
+        authenticated=True,
+        params=None,
     ):
         instance.ensure_one()
         url = instance._build_url(endpoint)
+        if params:
+            url = f"{url}?{urlencode(params)}"
         body = None
         headers = {}
 
@@ -115,3 +133,15 @@ class BonuscardApiService(models.AbstractModel):
             if err.status_code in (404, 405):
                 return {"reachable": True}
             raise
+
+    def search_customers(self, instance, query):
+        instance.ensure_one()
+        if not query:
+            return []
+        payload = self.request(
+            instance,
+            endpoint="SearchCustomers",
+            method="GET",
+            params={"query": query},
+        )
+        return payload.get("customers") or []

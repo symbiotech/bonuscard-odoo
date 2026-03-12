@@ -212,3 +212,28 @@ class TestBonuscardInstance(TransactionCase):
                 service.test_connection(record)
 
         self.assertEqual(ctx.exception.status_code, 500)
+
+    def test_search_customers_uses_query_params(self):
+        record = self.instance_model.create(
+            {
+                "name": "Search Customers",
+                "api_base_url": "https://web.bonuscard.com/api/",
+                "api_username": "demo-user",
+                "api_password": "demo-pass",
+            }
+        )
+        service = self.env["bonuscard.api.service"]
+
+        with patch(
+            "odoo.addons.bonuscard_odoo.models.bonuscard_api_service.BonuscardApiService.request",
+            return_value={"customers": [{"id": 1, "recruitmentCode": "WLKT6"}]},
+        ) as request_mock:
+            customers = service.search_customers(record, "0707654321")
+
+        self.assertEqual(customers, [{"id": 1, "recruitmentCode": "WLKT6"}])
+        request_mock.assert_called_once_with(
+            record,
+            endpoint="SearchCustomers",
+            method="GET",
+            params={"query": "0707654321"},
+        )
