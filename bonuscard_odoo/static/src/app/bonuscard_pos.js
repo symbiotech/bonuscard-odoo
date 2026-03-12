@@ -10,7 +10,7 @@ patch(PosStore.prototype, {
         if (!partner) {
             return;
         }
-        if (partner.bonuscard_status && partner.bonuscard_status !== "not_checked") {
+        if (partner.bonuscard_status === "linked" || partner.bonuscard_status === "not_found") {
             return;
         }
         try {
