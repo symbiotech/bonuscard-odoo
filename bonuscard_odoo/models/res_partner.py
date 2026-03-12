@@ -159,20 +159,6 @@ class ResPartner(models.Model):
                     "status": "ambiguous",
                     "note": partner.bonuscard_last_lookup_note,
                 }
-            customer = customers[0]
-            values = partner._write_bonuscard_status(
-                "linked",
-                customer=customer,
-                note=self.env._("Matched Bonuscard customer using %s.", term),
-            )
-            if self != partner:
-                self.write(values)
-            return {
-                "status": "linked",
-                "recruitment_code": customer.get("recruitmentCode"),
-                "name": customer.get("name"),
-                "note": partner.bonuscard_last_lookup_note,
-            }
 
         values = partner._write_bonuscard_status(
             "not_found",
