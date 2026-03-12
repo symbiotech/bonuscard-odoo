@@ -6,7 +6,7 @@ import { PosStore } from "@point_of_sale/app/services/pos_store";
 
 patch(PosStore.prototype, {
     async setPartnerToCurrentOrder(partner) {
-        super.setPartnerToCurrentOrder(...arguments);
+        await super.setPartnerToCurrentOrder(...arguments);
         if (!partner) {
             return;
         }
