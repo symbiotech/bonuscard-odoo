@@ -191,10 +191,13 @@ class ResPartner(models.Model):
 
     def action_clear_bonuscard_link(self):
         for partner in self:
-            partner._write_bonuscard_status(
+            commercial_partner = partner.commercial_partner_id
+            values = commercial_partner._write_bonuscard_status(
                 "not_checked",
-                note=self.env._("Bonuscard status reset manually."),
+                note=partner.env._("Bonuscard status reset manually."),
             )
+            if partner != commercial_partner:
+                partner.write(values)
         return True
 
     @api.model
