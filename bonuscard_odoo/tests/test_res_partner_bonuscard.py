@@ -105,6 +105,35 @@ class TestResPartnerBonuscard(TransactionCase):
         self.assertEqual(result["status"], "linked")
         self.assertEqual(result["recruitment_code"], "POS123")
 
+    def test_refresh_bonuscard_status_links_by_mobile_when_both_phone_and_mobile_set(
+        self,
+    ):
+        partner = self.partner_model.create(
+            {
+                "name": "Mobile Customer",
+                "phone": "+46701111111",
+                "mobile": "+46709876543",
+                "email": "mobile@example.com",
+            }
+        )
+
+        with patch(
+            "odoo.addons.bonuscard_odoo.models.bonuscard_api_service.BonuscardApiService.search_customers",
+            return_value=[
+                {
+                    "id": 42,
+                    "name": "Mobile Customer",
+                    "phoneNumber": "+46709876543",
+                    "email": "mobile@example.com",
+                    "recruitmentCode": "MOB123",
+                }
+            ],
+        ):
+            partner.action_refresh_bonuscard_status()
+
+        self.assertEqual(partner.bonuscard_status, "linked")
+        self.assertEqual(partner.bonuscard_recruitment_code, "MOB123")
+
     def test_refresh_bonuscard_status_raises_if_no_instance(self):
         self.instance.active = False
         partner = self.partner_model.create(

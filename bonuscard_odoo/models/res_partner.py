@@ -53,7 +53,8 @@ class ResPartner(models.Model):
     def _filter_exact_bonuscard_matches(self, customers):
         self.ensure_one()
         mobile_value = self._fields.get("mobile") and self.mobile or False
-        partner_phone = self._normalize_phone(self.phone or mobile_value)
+        partner_phone = self._normalize_phone(self.phone)
+        partner_mobile = self._normalize_phone(mobile_value)
         partner_email = (self.email or "").strip().lower()
         partner_name = (self.name or "").strip().lower()
 
@@ -63,7 +64,10 @@ class ResPartner(models.Model):
             customer_email = (customer.get("email") or "").strip().lower()
             customer_name = (customer.get("name") or "").strip().lower()
             customer_key = customer.get("id") or customer.get("recruitmentCode")
-            if partner_phone and customer_phone and partner_phone == customer_phone:
+            if customer_phone and (
+                (partner_phone and partner_phone == customer_phone)
+                or (partner_mobile and partner_mobile == customer_phone)
+            ):
                 exact_matches[customer_key] = customer
                 continue
             if partner_email and customer_email and partner_email == customer_email:
