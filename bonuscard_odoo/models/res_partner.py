@@ -63,7 +63,9 @@ class ResPartner(models.Model):
             customer_phone = self._normalize_phone(customer.get("phoneNumber"))
             customer_email = (customer.get("email") or "").strip().lower()
             customer_name = (customer.get("name") or "").strip().lower()
-            customer_key = customer.get("id") or customer.get("recruitmentCode") or index
+            customer_key = (
+                customer.get("id") or customer.get("recruitmentCode") or index
+            )
             if customer_phone and (
                 (partner_phone and partner_phone == customer_phone)
                 or (partner_mobile and partner_mobile == customer_phone)
