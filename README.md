@@ -110,8 +110,13 @@ This repository follows Odoo 19 and OCA coding standards enforced by
 
 ### Local setup
 
+See [CONTRIBUTING.md](CONTRIBUTING.md) for the full developer setup guide,
+including alternative installation methods.
+
+Quick start (recommended):
+
 ```bash
-pip install pre-commit
+pipx install pre-commit   # or: pip install pre-commit
 pre-commit install
 ```
 
