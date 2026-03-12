@@ -94,8 +94,9 @@ class BonuscardApiService(models.AbstractModel):
                         "Bonuscard authentication failed. Check the API username and password."
                     )
                 ) from err
-            raise UserError(
-                self.env._("Bonuscard API HTTP error: %s", message or err.reason)
+            raise BonuscardHttpError(
+                self.env._("Bonuscard API HTTP error: %s", message or err.reason),
+                status_code=err.code,
             ) from err
         except URLError as err:
             raise UserError(

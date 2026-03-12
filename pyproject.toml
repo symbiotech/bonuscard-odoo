@@ -1,5 +1,5 @@
 [project]
-name = "bonuscard-odoo"
+name = "odoo-addon-bonuscard-odoo"
 version = "19.0.1.0.0"
 description = "Bonuscard integration foundation for Odoo 19 POS"
 readme = "README.md"
