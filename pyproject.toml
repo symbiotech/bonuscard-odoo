@@ -1,0 +1,15 @@
+[project]
+name = "bonuscard-odoo"
+version = "19.0.1.0.0"
+description = "Bonuscard integration foundation for Odoo 19 POS"
+readme = "README.md"
+requires-python = ">=3.10"
+license = {text = "LGPL-3"}
+authors = [
+    {name = "symbiotech", email = "symbiotech3@gmail.com"}
+]
+keywords = ["odoo", "addon", "bonuscard", "pos", "loyalty"]
+
+[project.urls]
+Repository = "https://github.com/symbiotech/bonuscard-odoo"
+Homepage = "https://github.com/symbiotech/bonuscard-odoo"

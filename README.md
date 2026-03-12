@@ -91,15 +91,58 @@ Use this module as the integration foundation for the POS purchase lifecycle:
 
 ## Credits
 
-**Author:** Idealskog  
+**Author:** Idealskog
 **Website:** [https://github.com/symbiotech/bonuscard-odoo](https://github.com/symbiotech/bonuscard-odoo)
 
-## Code Quality
+## Development Setup
 
-This repository follows Odoo 19 and OCA coding standards enforced by
-[pre-commit](https://pre-commit.com) hooks.
+This addon is an Odoo 19 module that runs against your main Odoo installation.
 
-### Tools
+### Prerequisites
+
+- Odoo 19.0 source code with a configured Python environment
+- Pre-commit installed globally: `pip install pre-commit`
+
+### One-Time Setup
+
+Install pre-commit hooks in this repository:
+
+```bash
+pre-commit install
+```
+
+After installation, hooks run automatically on every `git commit`.
+
+### Running Tests
+
+Activate your Odoo virtual environment and run tests:
+
+```bash
+# From your Odoo source directory
+source .venv/bin/activate  # or .\.venv\Scripts\activate on Windows
+
+# Run addon tests
+python -m odoo -c odoo.conf -d your_db --test-tags bonuscard_odoo --stop-after-init
+```
+
+Or for a fresh installation test:
+
+```bash
+python -m odoo \
+  -c odoo.conf \
+  -d your_db \
+  -i bonuscard_odoo \
+  --without-demo=all \
+  --stop-after-init
+```
+
+Ensure `odoo.conf` includes this addon's parent directory in `addons_path`.
+
+### Code Quality
+
+This repository follows Odoo 19 and OCA coding standards enforced by pre-commit hooks.
+
+**Tools:**
 
 | Tool | Purpose |
 |---|---|
@@ -108,15 +151,19 @@ This repository follows Odoo 19 and OCA coding standards enforced by
 | [oca-odoo-pre-commit-hooks](https://github.com/OCA/odoo-pre-commit-hooks) | XML and PO file validation |
 | [pre-commit-hooks](https://github.com/pre-commit/pre-commit-hooks) | General file hygiene |
 
-### Local setup
+**Configuration files:**
 
-```bash
-pip install pre-commit
-pre-commit install
-```
+| File | Purpose |
+|---|---|
+| `.pre-commit-config.yaml` | Hook definitions and pinned revisions |
+| `ruff.toml` | Ruff linter and formatter settings |
+| `.pylintrc` | All Odoo pylint checks (optional + mandatory; for IDEs) |
+| `.pylintrc-mandatory` | Blocking subset used in the pre-commit pipeline |
+| `.oca_hooks.cfg` | OCA hook overrides for this non-OCA repository |
 
-After installation, hooks run automatically on every `git commit`.
-Run all checks manually at any time:
+**Manual checks:**
+
+Run all checks without committing:
 
 ```bash
 pre-commit run --all-files
@@ -127,15 +174,7 @@ pre-commit run --all-files
 The **Lint** GitHub Actions workflow runs `pre-commit run --all-files` on every
 push and pull request to the `19.0` branch.
 
-### Configuration files
-
-| File | Purpose |
-|---|---|
-| `.pre-commit-config.yaml` | Hook definitions and pinned revisions |
-| `ruff.toml` | Ruff linter and formatter settings |
-| `.pylintrc` | All Odoo pylint checks (optional + mandatory; for IDEs) |
-| `.pylintrc-mandatory` | Blocking subset used in the pre-commit pipeline |
-| `.oca_hooks.cfg` | OCA hook overrides for this non-OCA repository |
+The **Tests** workflow runs unit tests in an OCA-provided Docker image with PostgreSQL.
 
 ## License
 

@@ -1,10 +1,9 @@
 from unittest.mock import MagicMock, patch
 from urllib.error import HTTPError
 
+from odoo.addons.bonuscard_odoo.models.bonuscard_api_service import BonuscardHttpError
 from odoo.exceptions import UserError, ValidationError
 from odoo.tests import TransactionCase, tagged
-
-from odoo.addons.bonuscard_odoo.models.bonuscard_api_service import BonuscardHttpError
 
 
 @tagged("post_install", "-at_install")
