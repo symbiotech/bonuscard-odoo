@@ -10,6 +10,18 @@ jobs:
     runs-on: ubuntu-latest
     container:
       image: ghcr.io/oca/oca-ci/py3.10-odoo19.0:latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: odoo
+          POSTGRES_PASSWORD: odoo
+          POSTGRES_DB: odoo
+        options: >-
+          --health-cmd "pg_isready -U odoo -d odoo"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 10
     steps:
       - uses: actions/checkout@v4
       - name: Install module
