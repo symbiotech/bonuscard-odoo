@@ -35,14 +35,14 @@ class ResPartner(models.Model):
     def _get_bonuscard_search_terms(self):
         self.ensure_one()
         mobile_value = self._fields.get("mobile") and self.mobile or False
-        values = [self.phone, mobile_value, self.email, self.name]
+        candidates = [
+            self._normalize_phone(self.phone),
+            self._normalize_phone(mobile_value),
+        ] + [v.strip() for v in [self.email, self.name] if v]
         terms = []
-        for value in values:
-            if not value:
-                continue
-            normalized = value.strip()
-            if normalized and normalized not in terms:
-                terms.append(normalized)
+        for value in candidates:
+            if value and value not in terms:
+                terms.append(value)
         return terms
 
     def _normalize_phone(self, phone_number):
@@ -59,11 +59,11 @@ class ResPartner(models.Model):
         partner_name = (self.name or "").strip().lower()
 
         exact_matches = {}
-        for customer in customers:
+        for index, customer in enumerate(customers):
             customer_phone = self._normalize_phone(customer.get("phoneNumber"))
             customer_email = (customer.get("email") or "").strip().lower()
             customer_name = (customer.get("name") or "").strip().lower()
-            customer_key = customer.get("id") or customer.get("recruitmentCode")
+            customer_key = customer.get("id") or customer.get("recruitmentCode") or index
             if customer_phone and (
                 (partner_phone and partner_phone == customer_phone)
                 or (partner_mobile and partner_mobile == customer_phone)

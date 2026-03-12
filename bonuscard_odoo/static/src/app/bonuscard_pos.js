@@ -2,6 +2,7 @@
 
 import { patch } from "@web/core/utils/patch";
 import { _t } from "@web/core/l10n/translation";
+import { sprintf } from "@web/core/utils/strings";
 import { PosStore } from "@point_of_sale/app/services/pos_store";
 
 patch(PosStore.prototype, {
@@ -22,7 +23,7 @@ patch(PosStore.prototype, {
             partner.bonuscard_last_lookup_note = result.note;
             if (result.status === "linked") {
                 this.notification.add(
-                    _t("Bonuscard member detected: %s", result.recruitment_code),
+                    sprintf(_t("Bonuscard member detected: %s"), result.recruitment_code),
                     { type: "success" }
                 );
             } else if (result.status === "not_found") {
