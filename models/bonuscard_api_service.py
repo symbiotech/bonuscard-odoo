@@ -51,12 +51,12 @@ class BonuscardApiService(models.AbstractModel):
         instance.ensure_one()
         url = instance._build_url(endpoint)
         body = None
-        headers = {
-            "Accept": "application/json",
-        }
+        headers = {}
 
         if authenticated:
             headers.update(instance._build_headers())
+        else:
+            headers["Accept"] = "application/json"
 
         if payload is not None:
             body = json.dumps(payload).encode("utf-8")
