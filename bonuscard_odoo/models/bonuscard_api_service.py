@@ -32,12 +32,6 @@ class BonuscardApiService(models.AbstractModel):
         instance = (
             self.env["bonuscard.connector.instance"].sudo().search(domain, limit=1)
         )
-        if not instance and company:
-            instance = (
-                self.env["bonuscard.connector.instance"]
-                .sudo()
-                .search([("active", "=", True)], limit=1)
-            )
         return instance
 
     def _decode_response(self, response):
