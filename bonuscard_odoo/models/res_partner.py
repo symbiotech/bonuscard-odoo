@@ -102,7 +102,8 @@ class ResPartner(models.Model):
         self.ensure_one()
         service = self.env["bonuscard.api.service"]
         partner = self.commercial_partner_id
-        instance = service._get_company_instance(partner.company_id)
+        company = self.env.company or partner.company_id
+        instance = service._get_company_instance(company)
         if not instance:
             if raise_if_missing_instance:
                 raise UserError(
