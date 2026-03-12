@@ -1,2 +1,1 @@
-from . import bonuscard_api_service
-from . import bonuscard_instance
+from . import bonuscard_api_service, bonuscard_instance

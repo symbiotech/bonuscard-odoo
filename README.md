@@ -94,6 +94,49 @@ Use this module as the integration foundation for the POS purchase lifecycle:
 **Author:** Idealskog  
 **Website:** [https://github.com/symbiotech/bonuscard-odoo](https://github.com/symbiotech/bonuscard-odoo)
 
+## Code Quality
+
+This repository follows Odoo 19 and OCA coding standards enforced by
+[pre-commit](https://pre-commit.com) hooks.
+
+### Tools
+
+| Tool | Purpose |
+|---|---|
+| [ruff](https://docs.astral.sh/ruff/) | Python linting and formatting (replaces flake8, black, isort) |
+| [pylint-odoo](https://github.com/OCA/pylint-odoo) | Odoo-specific pylint checks |
+| [oca-odoo-pre-commit-hooks](https://github.com/OCA/odoo-pre-commit-hooks) | XML and PO file validation |
+| [pre-commit-hooks](https://github.com/pre-commit/pre-commit-hooks) | General file hygiene |
+
+### Local setup
+
+```bash
+pip install pre-commit
+pre-commit install
+```
+
+After installation, hooks run automatically on every `git commit`.
+Run all checks manually at any time:
+
+```bash
+pre-commit run --all-files
+```
+
+### CI
+
+The **Lint** GitHub Actions workflow runs `pre-commit run --all-files` on every
+push and pull request to the `19.0` branch.
+
+### Configuration files
+
+| File | Purpose |
+|---|---|
+| `.pre-commit-config.yaml` | Hook definitions and pinned revisions |
+| `ruff.toml` | Ruff linter and formatter settings |
+| `.pylintrc` | All Odoo pylint checks (optional + mandatory; for IDEs) |
+| `.pylintrc-mandatory` | Blocking subset used in the pre-commit pipeline |
+| `.oca_hooks.cfg` | OCA hook overrides for this non-OCA repository |
+
 ## License
 
 [LGPL-3](https://www.gnu.org/licenses/lgpl-3.0) © Idealskog

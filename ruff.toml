@@ -1,0 +1,18 @@
+target-version = "py310"
+line-length = 88
+
+[lint]
+select = ["E", "W", "F", "I", "UP", "B"]
+ignore = [
+    "E501", # line too long – ruff formatter handles wrapping; long strings are allowed
+]
+
+[lint.per-file-ignores]
+"**/__init__.py" = ["F401"] # Odoo modules use side-effect imports intentionally
+"**/__manifest__.py" = ["B018"] # Odoo manifest is a standalone dict literal
+
+[lint.isort]
+known-first-party = ["odoo"]
+
+[format]
+quote-style = "double"

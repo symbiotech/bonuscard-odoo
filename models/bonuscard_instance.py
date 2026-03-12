@@ -1,7 +1,7 @@
-from urllib.parse import urljoin
 import base64
+from urllib.parse import urljoin
 
-from odoo import _, api, fields, models
+from odoo import api, fields, models
 from odoo.exceptions import ValidationError
 
 
@@ -60,18 +60,20 @@ class BonuscardConnectorInstance(models.Model):
                 ("http://", "https://")
             ):
                 raise ValidationError(
-                    _("API Base URL must start with http:// or https://")
+                    self.env._("API Base URL must start with http:// or https://")
                 )
 
     @api.constrains("request_timeout")
     def _check_timeout(self):
         for rec in self:
             if rec.request_timeout < 1:
-                raise ValidationError(_("Request timeout must be at least 1 second."))
+                raise ValidationError(
+                    self.env._("Request timeout must be at least 1 second.")
+                )
 
     def _build_headers(self):
         self.ensure_one()
-        credentials = f"{self.api_username}:{self.api_password}".encode("utf-8")
+        credentials = f"{self.api_username}:{self.api_password}".encode()
         authorization = base64.b64encode(credentials).decode("ascii")
         return {
             "Accept": "application/json",

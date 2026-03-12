@@ -2,7 +2,7 @@ import json
 from urllib.error import HTTPError, URLError
 from urllib.request import Request, urlopen
 
-from odoo import _, models
+from odoo import models
 from odoo.exceptions import UserError
 
 
@@ -50,14 +50,18 @@ class BonuscardApiService(models.AbstractModel):
         if not isinstance(payload, dict) or not payload.get("error"):
             return
 
-        error_code = payload.get("errorCode") or payload.get("code") or _("unknown")
+        error_code = (
+            payload.get("errorCode") or payload.get("code") or self.env._("unknown")
+        )
         messages = self._extract_error_messages(payload)
         if messages:
             raise UserError(
-                _("Bonuscard API error (%s): %s") % (error_code, " | ".join(messages))
+                self.env._(
+                    "Bonuscard API error (%s): %s", error_code, " | ".join(messages)
+                )
             )
 
-        raise UserError(_("Bonuscard API error (%s).") % error_code)
+        raise UserError(self.env._("Bonuscard API error (%s).", error_code))
 
     def request(
         self, instance, endpoint="", method="GET", payload=None, authenticated=True
@@ -86,17 +90,16 @@ class BonuscardApiService(models.AbstractModel):
             message = err.read().decode("utf-8", errors="ignore")
             if err.code in (401, 403):
                 raise UserError(
-                    _(
+                    self.env._(
                         "Bonuscard authentication failed. Check the API username and password."
                     )
                 ) from err
-            raise BonuscardHttpError(
-                _("Bonuscard API HTTP error: %s") % (message or err.reason),
-                status_code=err.code,
+            raise UserError(
+                self.env._("Bonuscard API HTTP error: %s", message or err.reason)
             ) from err
         except URLError as err:
             raise UserError(
-                _("Bonuscard API connection error: %s") % err.reason
+                self.env._("Bonuscard API connection error: %s", err.reason)
             ) from err
 
         self._raise_on_api_error(decoded_response)

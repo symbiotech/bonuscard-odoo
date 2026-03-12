@@ -1,2 +1,1 @@
-from . import test_bonuscard_instance
-from . import test_bonuscard_integration
+from . import test_bonuscard_instance, test_bonuscard_integration
