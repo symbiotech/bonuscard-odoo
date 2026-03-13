@@ -108,15 +108,18 @@ class TestResPartnerBonuscard(TransactionCase):
     def test_refresh_bonuscard_status_links_by_mobile_when_both_phone_and_mobile_set(
         self,
     ):
+        # Ensure this test only runs when the `mobile` field is available so it
+        # truly verifies mobile-based matching rather than falling back to phone.
+        if not self.partner_model._fields.get("mobile"):
+            self.skipTest("res.partner has no 'mobile' field; cannot test mobile-specific behavior.")
+
         partner_values = {
             "name": "Mobile Customer",
             "phone": "+46701111111",
+            "mobile": "+46709876543",
             "email": "mobile@example.com",
         }
-        matched_phone = partner_values["phone"]
-        if self.partner_model._fields.get("mobile"):
-            partner_values["mobile"] = "+46709876543"
-            matched_phone = partner_values["mobile"]
+        matched_phone = partner_values["mobile"]
 
         partner = self.partner_model.create(partner_values)
 
