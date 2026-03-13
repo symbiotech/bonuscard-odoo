@@ -2,9 +2,12 @@ import json
 from urllib.error import HTTPError, URLError
 from urllib.parse import urlencode
 from urllib.request import Request, urlopen
+import logging
 
 from odoo import api, models
 from odoo.exceptions import UserError
+
+_logger = logging.getLogger(__name__)
 
 
 class BonuscardHttpError(UserError):
@@ -255,7 +258,18 @@ class BonuscardApiService(models.AbstractModel):
         except Exception as exc:  # pylint: disable=broad-except
             # POS flow must remain non-blocking: return an error payload instead
             # of raising and let the frontend continue with normal payment.
+            if isinstance(exc, UserError):
+                # Surface only the user-safe message from UserError subclasses.
+                message = getattr(exc, "name", None) or str(exc)
+            else:
+                # Log unexpected errors server-side and return a generic message
+                # to avoid leaking internal details to the POS frontend.
+                _logger.exception(
+                    "Unexpected error during Bonuscard validation for partner %s",
+                    partner.id if partner else None,
+                )
+                message = self.env._("Bonuscard validation failed.")
             return {
                 "error": True,
-                "messages": [str(exc) or self.env._("Bonuscard validation failed.")],
+                "messages": [message],
             }
