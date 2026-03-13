@@ -84,8 +84,8 @@ patch(PosStore.prototype, {
                         if (totalDiscount > 0) {
                             const discountLines = (result.resultItems || [])
                                 .map((item) =>
-                                    _t(
-                                        "%s: -%s",
+                                    sprintf(
+                                        _t("%s: -%s"),
                                         item.description,
                                         Math.abs(
                                             (item.pricePerItem || 0) * (item.quantity || 1)
@@ -95,8 +95,8 @@ patch(PosStore.prototype, {
                                 .join("\n");
                             const confirmed = await ask(this.env.services.dialog, {
                                 title: _t("Bonuscard Discounts Applied"),
-                                body: _t(
-                                    "Total discount: %s\n\n%s\n\nProceed to payment?",
+                                body: sprintf(
+                                    _t("Total discount: %s\n\n%s\n\nProceed to payment?"),
                                     totalDiscount.toFixed(2),
                                     discountLines
                                 ),
