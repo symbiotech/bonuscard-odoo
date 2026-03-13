@@ -198,7 +198,8 @@ class BonuscardApiService(models.AbstractModel):
                 ],
             }
 
-        instance = self._get_company_instance(commercial_partner.company_id)
+        company = commercial_partner.company_id or self.env.company
+        instance = self._get_company_instance(company)
         if not instance:
             return {
                 "error": True,
