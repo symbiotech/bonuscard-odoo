@@ -108,14 +108,17 @@ class TestResPartnerBonuscard(TransactionCase):
     def test_refresh_bonuscard_status_links_by_mobile_when_both_phone_and_mobile_set(
         self,
     ):
-        partner = self.partner_model.create(
-            {
-                "name": "Mobile Customer",
-                "phone": "+46701111111",
-                "mobile": "+46709876543",
-                "email": "mobile@example.com",
-            }
-        )
+        partner_values = {
+            "name": "Mobile Customer",
+            "phone": "+46701111111",
+            "email": "mobile@example.com",
+        }
+        matched_phone = partner_values["phone"]
+        if self.partner_model._fields.get("mobile"):
+            partner_values["mobile"] = "+46709876543"
+            matched_phone = partner_values["mobile"]
+
+        partner = self.partner_model.create(partner_values)
 
         with patch(
             "odoo.addons.bonuscard_odoo.models.bonuscard_api_service.BonuscardApiService.search_customers",
@@ -123,7 +126,7 @@ class TestResPartnerBonuscard(TransactionCase):
                 {
                     "id": 42,
                     "name": "Mobile Customer",
-                    "phoneNumber": "+46709876543",
+                    "phoneNumber": matched_phone,
                     "email": "mobile@example.com",
                     "recruitmentCode": "MOB123",
                 }

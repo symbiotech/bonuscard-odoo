@@ -3,11 +3,17 @@
 import { patch } from "@web/core/utils/patch";
 import { _t } from "@web/core/l10n/translation";
 import { sprintf } from "@web/core/utils/strings";
+import { ask } from "@point_of_sale/app/utils/make_awaitable_dialog";
 import { PosStore } from "@point_of_sale/app/services/pos_store";
 
 patch(PosStore.prototype, {
     async setPartnerToCurrentOrder(partner) {
         await super.setPartnerToCurrentOrder(...arguments);
+        const order = this.getOrder();
+        if (order && order.bonuscard_partner_id !== (partner?.id || false)) {
+            order.bonuscard_transaction_id = null;
+            order.bonuscard_partner_id = partner?.id || false;
+        }
         if (!partner) {
             return;
         }
@@ -42,5 +48,75 @@ patch(PosStore.prototype, {
         } catch {
             this.notification.add(_t("Bonuscard lookup failed."), { type: "danger" });
         }
+    },
+
+    async pay() {
+        const order = this.getOrder();
+        const partner = order?.getPartner();
+
+        if (order && order.bonuscard_partner_id !== (partner?.id || false)) {
+            order.bonuscard_transaction_id = null;
+            order.bonuscard_partner_id = partner?.id || false;
+        }
+
+        if (partner?.bonuscard_recruitment_code) {
+            const orderLines = order.lines
+                .filter((l) => l.qty > 0 && (l.product_id?.barcode || l.product_id?.default_code))
+                .map((l) => ({
+                    product_id: l.product_id.id,
+                    qty: l.qty,
+                    price_unit: l.price_unit,
+                }));
+
+            if (orderLines.length > 0) {
+                try {
+                    const result = await this.data.call(
+                        "bonuscard.api.service",
+                        "validate_purchase_for_pos",
+                        [partner.id, orderLines, order.bonuscard_transaction_id || null]
+                    );
+
+                    if (!result.error) {
+                        order.bonuscard_transaction_id = result.transactionIdentifier;
+                        order.bonuscard_partner_id = partner.id;
+
+                        const totalDiscount = result.totalDiscount || 0;
+                        if (totalDiscount > 0) {
+                            const discountLines = (result.resultItems || [])
+                                .map((item) =>
+                                    _t(
+                                        "%s: -%s",
+                                        item.description,
+                                        Math.abs(
+                                            (item.pricePerItem || 0) * (item.quantity || 1)
+                                        ).toFixed(2)
+                                    )
+                                )
+                                .join("\n");
+                            const confirmed = await ask(this.env.services.dialog, {
+                                title: _t("Bonuscard Discounts Applied"),
+                                body: _t(
+                                    "Total discount: %s\n\n%s\n\nProceed to payment?",
+                                    totalDiscount.toFixed(2),
+                                    discountLines
+                                ),
+                            });
+                            if (!confirmed) {
+                                return;
+                            }
+                        }
+                    } else {
+                        const msg = result.messages?.[0] || _t("Bonuscard validation failed.");
+                        this.notification.add(msg, { type: "warning" });
+                    }
+                } catch {
+                    this.notification.add(_t("Bonuscard validation failed."), {
+                        type: "warning",
+                    });
+                }
+            }
+        }
+
+        return super.pay(...arguments);
     },
 });
