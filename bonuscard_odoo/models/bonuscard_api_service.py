@@ -1,10 +1,13 @@
 import json
+import logging
 from urllib.error import HTTPError, URLError
 from urllib.parse import urlencode
 from urllib.request import Request, urlopen
 
-from odoo import models
+from odoo import SUPERUSER_ID, api, models
 from odoo.exceptions import UserError
+
+_logger = logging.getLogger(__name__)
 
 
 class BonuscardHttpError(UserError):
@@ -73,7 +76,7 @@ class BonuscardApiService(models.AbstractModel):
 
         raise UserError(self.env._("Bonuscard API error (%s).", error_code))
 
-    def request(
+    def _request(
         self,
         instance,
         endpoint="",
@@ -124,24 +127,187 @@ class BonuscardApiService(models.AbstractModel):
         self._raise_on_api_error(decoded_response)
         return decoded_response
 
-    def test_connection(self, instance):
+    def check_access_rights(self, operation, raise_exception=True):
+        """Grant read access on this abstract service model for RPC calls.
+
+        POS invokes :meth:`validate_purchase_for_pos` via ``call_kw``, which
+        enforces model access rights (typically requiring ``read`` on the
+        model). Since this is an abstract service model without an
+        ``ir.model.access`` entry, we explicitly allow ``read`` while
+        delegating other operations to the superclass.
+        """
+        if operation == "read" and (
+            self.env.user.id == SUPERUSER_ID
+            or self.env.user.has_group("point_of_sale.group_pos_user")
+            or self.env.user.has_group("bonuscard_odoo.bonuscard_odoo_group_user")
+        ):
+            return True
+        return super().check_access_rights(operation, raise_exception=raise_exception)
+
+    def _test_connection(self, instance):
         instance.ensure_one()
 
         try:
-            return self.request(instance, endpoint="", method="GET")
+            return self._request(instance, endpoint="", method="GET")
         except BonuscardHttpError as err:
             if err.status_code in (404, 405):
                 return {"reachable": True}
             raise
 
-    def search_customers(self, instance, query):
+    def _search_customers(self, instance, query):
         instance.ensure_one()
         if not query:
             return []
-        payload = self.request(
+        payload = self._request(
             instance,
             endpoint="SearchCustomers",
             method="GET",
             params={"query": query},
         )
         return payload.get("customers") or []
+
+    def _validate_purchase(
+        self,
+        instance,
+        customer_identifier,
+        checkout_items,
+        transaction_identifier=None,
+        codes=None,
+    ):
+        instance.ensure_one()
+        body = {
+            "customerIdentifier": customer_identifier,
+            "checkoutItems": checkout_items,
+        }
+        if transaction_identifier:
+            body["transactionIdentifier"] = transaction_identifier
+        if codes:
+            body["codes"] = codes
+        return self._request(
+            instance, endpoint="ValidatePurchase", method="POST", payload=body
+        )
+
+    @api.model
+    def validate_purchase_for_pos(
+        self, partner_id, order_lines, transaction_identifier=None
+    ):
+        """Called from POS JS before payment to apply Bonuscard discounts.
+
+        Args:
+            partner_id: int – the POS partner's id
+            order_lines: list of {product_id, qty, price_unit}
+            transaction_identifier: str or None – preserved across calls
+
+        Returns a dict with keys: error, messages, transactionIdentifier,
+        totalDiscount, resultItems (or error keys on failure).
+        """
+        partner = self.env["res.partner"].browse(partner_id).exists()
+        if not partner:
+            return {
+                "error": True,
+                "messages": [self.env._("Partner not found.")],
+            }
+
+        commercial_partner = partner.commercial_partner_id
+        customer_identifier = commercial_partner.bonuscard_recruitment_code
+        if not customer_identifier:
+            return {
+                "error": True,
+                "messages": [
+                    self.env._("Customer does not have a Bonuscard recruitment code.")
+                ],
+            }
+
+        company = commercial_partner.company_id or self.env.company
+        instance = self._get_company_instance(company)
+        if not instance:
+            return {
+                "error": True,
+                "messages": [
+                    self.env._("No active Bonuscard connection is configured.")
+                ],
+            }
+
+        if not isinstance(order_lines, list):
+            return {
+                "error": True,
+                "messages": [self.env._("Invalid order payload from POS.")],
+            }
+
+        sanitized_lines = [line for line in order_lines if isinstance(line, dict)]
+        product_ids = [
+            line["product_id"] for line in sanitized_lines if line.get("product_id")
+        ]
+        products = {
+            p.id: p for p in self.env["product.product"].browse(product_ids).exists()
+        }
+        checkout_items = []
+        for line in sanitized_lines:
+            product = products.get(line.get("product_id"))
+            if not product:
+                continue
+            ean = product.barcode or product.default_code
+            if not ean:
+                continue
+
+            qty = line.get("qty", 1)
+            price_unit = line.get("price_unit", 0)
+            try:
+                qty = float(qty)
+                price_unit = float(price_unit)
+            except (TypeError, ValueError):
+                continue
+            if qty <= 0:
+                continue
+
+            checkout_items.append(
+                {
+                    "ean": ean,
+                    "quantity": qty,
+                    "pricePerItem": price_unit,
+                }
+            )
+
+        if not checkout_items:
+            return {
+                "error": True,
+                "messages": [
+                    self.env._(
+                        "No products with a barcode or article number found in the order."
+                    )
+                ],
+            }
+
+        try:
+            return self._validate_purchase(
+                instance,
+                customer_identifier,
+                checkout_items,
+                transaction_identifier=transaction_identifier,
+            )
+        except Exception as exc:  # pylint: disable=broad-except
+            # POS flow must remain non-blocking: return an error payload instead
+            # of raising and let the frontend continue with normal payment.
+            if isinstance(exc, BonuscardHttpError):
+                # Avoid sending raw HTTP response bodies to the POS frontend.
+                _logger.warning(
+                    "Bonuscard HTTP error during POS validation (HTTP %s) for partner %s",
+                    exc.status_code,
+                    partner.id,
+                )
+                message = self.env._("Bonuscard service is temporarily unavailable.")
+            elif isinstance(exc, UserError):
+                # Surface only the user-safe message from UserError subclasses.
+                message = getattr(exc, "name", None) or str(exc)
+            else:
+                # Log unexpected errors server-side and return a generic message
+                # to avoid leaking internal details to the POS frontend.
+                _logger.exception(
+                    "Unexpected error during Bonuscard validation for partner %s",
+                    partner.id,
+                )
+                message = self.env._("Bonuscard validation failed.")
+            return {
+                "error": True,
+                "messages": [message],
+            }

@@ -29,7 +29,7 @@ class TestResPartnerBonuscard(TransactionCase):
         )
 
         with patch(
-            "odoo.addons.bonuscard_odoo.models.bonuscard_api_service.BonuscardApiService.search_customers",
+            "odoo.addons.bonuscard_odoo.models.bonuscard_api_service.BonuscardApiService._search_customers",
             return_value=[
                 {
                     "id": 1,
@@ -54,7 +54,7 @@ class TestResPartnerBonuscard(TransactionCase):
         )
 
         with patch(
-            "odoo.addons.bonuscard_odoo.models.bonuscard_api_service.BonuscardApiService.search_customers",
+            "odoo.addons.bonuscard_odoo.models.bonuscard_api_service.BonuscardApiService._search_customers",
             return_value=[],
         ):
             partner.action_refresh_bonuscard_status()
@@ -71,7 +71,7 @@ class TestResPartnerBonuscard(TransactionCase):
         )
 
         with patch(
-            "odoo.addons.bonuscard_odoo.models.bonuscard_api_service.BonuscardApiService.search_customers",
+            "odoo.addons.bonuscard_odoo.models.bonuscard_api_service.BonuscardApiService._search_customers",
             return_value=[
                 {"id": 1, "name": "Test Testsson", "phoneNumber": "+46707654321"},
                 {"id": 2, "name": "Test Testsson", "phoneNumber": "+46707654321"},
@@ -90,7 +90,7 @@ class TestResPartnerBonuscard(TransactionCase):
         )
 
         with patch(
-            "odoo.addons.bonuscard_odoo.models.bonuscard_api_service.BonuscardApiService.search_customers",
+            "odoo.addons.bonuscard_odoo.models.bonuscard_api_service.BonuscardApiService._search_customers",
             return_value=[
                 {
                     "id": 8,
@@ -108,22 +108,30 @@ class TestResPartnerBonuscard(TransactionCase):
     def test_refresh_bonuscard_status_links_by_mobile_when_both_phone_and_mobile_set(
         self,
     ):
-        partner = self.partner_model.create(
-            {
-                "name": "Mobile Customer",
-                "phone": "+46701111111",
-                "mobile": "+46709876543",
-                "email": "mobile@example.com",
-            }
-        )
+        # Ensure this test only runs when the `mobile` field is available so it
+        # truly verifies mobile-based matching rather than falling back to phone.
+        if not self.partner_model._fields.get("mobile"):
+            self.skipTest(
+                "res.partner has no 'mobile' field; cannot test mobile-specific behavior."
+            )
+
+        partner_values = {
+            "name": "Mobile Customer",
+            "phone": "+46701111111",
+            "mobile": "+46709876543",
+            "email": "mobile@example.com",
+        }
+        matched_phone = partner_values["mobile"]
+
+        partner = self.partner_model.create(partner_values)
 
         with patch(
-            "odoo.addons.bonuscard_odoo.models.bonuscard_api_service.BonuscardApiService.search_customers",
+            "odoo.addons.bonuscard_odoo.models.bonuscard_api_service.BonuscardApiService._search_customers",
             return_value=[
                 {
                     "id": 42,
                     "name": "Mobile Customer",
-                    "phoneNumber": "+46709876543",
+                    "phoneNumber": matched_phone,
                     "email": "mobile@example.com",
                     "recruitmentCode": "MOB123",
                 }

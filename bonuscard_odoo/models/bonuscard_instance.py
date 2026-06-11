@@ -89,7 +89,7 @@ class BonuscardConnectorInstance(models.Model):
         service = self.env["bonuscard.api.service"]
         for rec in self:
             try:
-                service.test_connection(rec)
+                service._test_connection(rec)
                 rec.write(
                     {
                         "connection_status": "ok",
