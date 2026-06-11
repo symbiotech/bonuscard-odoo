@@ -152,7 +152,7 @@ class TestBonuscardValidatePurchase(TransactionCase):
             {
                 "name": "POS User",
                 "login": "pos_user@example.com",
-                "groups_id": [(6, 0, [pos_group.id])],
+                "group_ids": [(6, 0, [pos_group.id])],
             }
         )
         self.assertTrue(self.service.with_user(user).check_access_rights("read"))
