@@ -329,12 +329,17 @@ class BonuscardApiService(models.AbstractModel):
 
         formatted_items = []
         for item in sanitized_items:
-            if (
-                item.get("ean")
-                and item.get("quantity") is not None
-                and item.get("pricePerItem") is not None
-            ):
-                formatted_items.append(item)
+            if item.get("ean") and item.get("quantity") is not None and item.get("pricePerItem") is not None:
+                try:
+                    quantity = float(item.get("quantity"))
+                    price_per_item = float(item.get("pricePerItem"))
+                except (TypeError, ValueError):
+                    continue
+                if quantity <= 0:
+                    continue
+                formatted_items.append(
+                    {"ean": item.get("ean"), "quantity": quantity, "pricePerItem": price_per_item}
+                )
                 continue
 
             product = products.get(item.get("product_id"))
