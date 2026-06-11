@@ -111,7 +111,9 @@ class TestResPartnerBonuscard(TransactionCase):
         # Ensure this test only runs when the `mobile` field is available so it
         # truly verifies mobile-based matching rather than falling back to phone.
         if not self.partner_model._fields.get("mobile"):
-            self.skipTest("res.partner has no 'mobile' field; cannot test mobile-specific behavior.")
+            self.skipTest(
+                "res.partner has no 'mobile' field; cannot test mobile-specific behavior."
+            )
 
         partner_values = {
             "name": "Mobile Customer",

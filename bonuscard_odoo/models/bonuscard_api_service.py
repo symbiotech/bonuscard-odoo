@@ -1,8 +1,8 @@
 import json
+import logging
 from urllib.error import HTTPError, URLError
 from urllib.parse import urlencode
 from urllib.request import Request, urlopen
-import logging
 
 from odoo import api, models
 from odoo.exceptions import UserError
