@@ -409,6 +409,35 @@ class TestBonuscardValidatePurchase(TransactionCase):
         self.assertFalse(result.get("error"))
         mock_cancel.assert_called_once_with(self.instance, "TX001")
 
+    def test_cancel_purchase_for_pos_resolves_partner_company_instance(self):
+        company = self.env["res.company"].create({"name": "Other Company"})
+        partner = self.env["res.partner"].create(
+            {
+                "name": "Other Customer",
+                "company_id": company.id,
+                "bonuscard_recruitment_code": "WLKT6",
+                "bonuscard_status": "linked",
+            }
+        )
+        other_instance = self.env["bonuscard.connector.instance"].create(
+            {
+                "name": "Other Company Instance",
+                "api_base_url": "https://example.invalid/api/",
+                "api_username": "demo-user",
+                "api_password": "demo-pass",
+                "company_id": company.id,
+            }
+        )
+
+        with patch(
+            "odoo.addons.bonuscard_odoo.models.bonuscard_api_service.BonuscardApiService._cancel_purchase",
+            return_value={"error": False},
+        ) as mock_cancel:
+            result = self.service.cancel_purchase_for_pos("TX001", partner.id)
+
+        self.assertFalse(result.get("error"))
+        mock_cancel.assert_called_once_with(other_instance, "TX001")
+
     def test_cancel_purchase_for_pos_returns_error_when_missing_transaction_identifier(
         self,
     ):

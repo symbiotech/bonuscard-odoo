@@ -497,15 +497,26 @@ class BonuscardApiService(models.AbstractModel):
         )
 
     @api.model
-    def cancel_purchase_for_pos(self, transaction_identifier):
-        """Called from POS JS when a pending Bonuscard purchase is canceled."""
+    def cancel_purchase_for_pos(self, transaction_identifier, partner_id=None):
+        """Called from POS JS when a pending Bonuscard purchase is canceled.
+
+        Args:
+            transaction_identifier: str – transaction ID from ValidatePurchase
+            partner_id: int or None – optional POS partner id to resolve the correct company
+        """
         if not transaction_identifier:
             return {
                 "error": True,
                 "messages": [self.env._("Missing Bonuscard transaction identifier.")],
             }
 
-        instance = self._get_company_instance(self.env.company)
+        partner = (
+            self.env["res.partner"].browse(partner_id).exists() if partner_id else None
+        )
+        company = (
+            partner.commercial_partner_id.company_id if partner else self.env.company
+        ) or self.env.company
+        instance = self._get_company_instance(company)
         if not instance:
             return {
                 "error": True,

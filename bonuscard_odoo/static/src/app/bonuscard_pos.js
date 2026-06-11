@@ -138,8 +138,9 @@ patch(PosStore.prototype, {
             await this.data
                 .call("bonuscard.api.service", "cancel_purchase_for_pos", [
                     order.bonuscard_transaction_id,
+                    order.bonuscard_partner_id || null,
                 ])
-                .catch(() => {});
+                .catch(() => { });
             order.bonuscard_transaction_id = null;
             order.bonuscard_checkout_items = null;
             order.bonuscard_partner_id = false;
@@ -153,8 +154,9 @@ patch(PosStore.prototype, {
             await this.data
                 .call("bonuscard.api.service", "cancel_purchase_for_pos", [
                     order.bonuscard_transaction_id,
+                    order.bonuscard_partner_id || null,
                 ])
-                .catch(() => {});
+                .catch(() => { });
         }
         return super.deleteCurrentOrder(...arguments);
     },
@@ -167,7 +169,7 @@ patch(PosStore.prototype, {
                     const result = await this.data.call(
                         "bonuscard.api.service",
                         "cancel_purchase_for_pos",
-                        [order.bonuscard_transaction_id]
+                        [order.bonuscard_transaction_id, order.bonuscard_partner_id || null]
                     );
                     if (!result?.error) {
                         order.bonuscard_transaction_id = null;
