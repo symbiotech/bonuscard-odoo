@@ -143,6 +143,9 @@ class TestBonuscardValidatePurchase(TransactionCase):
             transaction_identifier=None,
         )
 
+    def test_bonuscard_api_service_allows_read_access_for_rpc(self):
+        self.assertTrue(self.service.check_access_rights("read"))
+
     def test_validate_purchase_for_pos_uses_default_code_when_no_barcode(self):
         partner = self._make_partner_with_code()
         product = self.env["product.product"].create(
