@@ -234,7 +234,9 @@ class BonuscardApiService(models.AbstractModel):
         product_ids = [
             line["product_id"] for line in sanitized_lines if line.get("product_id")
         ]
-        products = {p.id: p for p in self.env["product.product"].browse(product_ids)}
+        products = {
+            p.id: p for p in self.env["product.product"].browse(product_ids).exists()
+        }
         checkout_items = []
         for line in sanitized_lines:
             product = products.get(line.get("product_id"))
