@@ -131,6 +131,63 @@ patch(PosStore.prototype, {
 
         return super.pay(...arguments);
     },
+
+    async closePos() {
+        const order = this.getOrder();
+        if (order?.bonuscard_transaction_id) {
+            await this.data
+                .call("bonuscard.api.service", "cancel_purchase_for_pos", [
+                    order.bonuscard_transaction_id,
+                    order.bonuscard_partner_id || null,
+                ])
+                .catch(() => { });
+            order.bonuscard_transaction_id = null;
+            order.bonuscard_checkout_items = null;
+            order.bonuscard_partner_id = false;
+        }
+        return super.closePos(...arguments);
+    },
+
+    async deleteCurrentOrder() {
+        const order = this.getOrder();
+        if (order?.bonuscard_transaction_id) {
+            await this.data
+                .call("bonuscard.api.service", "cancel_purchase_for_pos", [
+                    order.bonuscard_transaction_id,
+                    order.bonuscard_partner_id || null,
+                ])
+                .catch(() => { });
+        }
+        return super.deleteCurrentOrder(...arguments);
+    },
+
+    async onClickBackButton() {
+        if (this.router.state.current === "PaymentScreen") {
+            const order = this.getOrder();
+            if (order?.bonuscard_transaction_id) {
+                try {
+                    const result = await this.data.call(
+                        "bonuscard.api.service",
+                        "cancel_purchase_for_pos",
+                        [order.bonuscard_transaction_id, order.bonuscard_partner_id || null]
+                    );
+                    if (!result?.error) {
+                        order.bonuscard_transaction_id = null;
+                        order.bonuscard_checkout_items = null;
+                        order.bonuscard_partner_id = false;
+                    } else {
+                        this.notification.add(
+                            result.messages?.[0] || _t("Bonuscard cancel failed."),
+                            { type: "warning" }
+                        );
+                    }
+                } catch {
+                    this.notification.add(_t("Bonuscard cancel failed."), { type: "warning" });
+                }
+            }
+        }
+        return super.onClickBackButton(...arguments);
+    },
 });
 
 patch(OrderPaymentValidation.prototype, {
@@ -157,6 +214,9 @@ patch(OrderPaymentValidation.prototype, {
                     result.messages?.[0] || _t("Bonuscard finalization failed."),
                     { type: "warning" }
                 );
+            } else {
+                order.bonuscard_transaction_id = null;
+                order.bonuscard_checkout_items = null;
             }
         } catch {
             // Do not interrupt the POS payment flow if Bonuscard finalization fails.

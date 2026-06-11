@@ -1,5 +1,6 @@
 from unittest.mock import patch
 
+from odoo.addons.bonuscard_odoo.models.bonuscard_api_service import BonuscardHttpError
 from odoo.exceptions import UserError
 from odoo.tests import TransactionCase, tagged
 
@@ -383,6 +384,116 @@ class TestBonuscardValidatePurchase(TransactionCase):
             "TX001",
             [{"ean": "8710255122465", "quantity": 1.0, "pricePerItem": 100.0}],
         )
+
+    def test_cancel_purchase_sends_correct_payload(self):
+        with patch(
+            "odoo.addons.bonuscard_odoo.models.bonuscard_api_service.BonuscardApiService._request",
+            return_value={"error": False},
+        ) as mock_request:
+            self.service._cancel_purchase(self.instance, "TX001")
+
+        mock_request.assert_called_once_with(
+            self.instance,
+            endpoint="CancelPurchase",
+            method="POST",
+            payload={"transactionIdentifier": "TX001"},
+        )
+
+    def test_cancel_purchase_for_pos_returns_result(self):
+        with patch(
+            "odoo.addons.bonuscard_odoo.models.bonuscard_api_service.BonuscardApiService._cancel_purchase",
+            return_value={"error": False},
+        ) as mock_cancel:
+            result = self.service.cancel_purchase_for_pos("TX001")
+
+        self.assertFalse(result.get("error"))
+        mock_cancel.assert_called_once_with(self.instance, "TX001")
+
+    def test_cancel_purchase_for_pos_resolves_partner_company_instance(self):
+        company = self.env["res.company"].create({"name": "Other Company"})
+        partner = self.env["res.partner"].create(
+            {
+                "name": "Other Customer",
+                "company_id": company.id,
+                "bonuscard_recruitment_code": "WLKT6",
+                "bonuscard_status": "linked",
+            }
+        )
+        other_instance = self.env["bonuscard.connector.instance"].create(
+            {
+                "name": "Other Company Instance",
+                "api_base_url": "https://example.invalid/api/",
+                "api_username": "demo-user",
+                "api_password": "demo-pass",
+                "company_id": company.id,
+            }
+        )
+
+        with patch(
+            "odoo.addons.bonuscard_odoo.models.bonuscard_api_service.BonuscardApiService._cancel_purchase",
+            return_value={"error": False},
+        ) as mock_cancel:
+            result = self.service.cancel_purchase_for_pos("TX001", partner.id)
+
+        self.assertFalse(result.get("error"))
+        mock_cancel.assert_called_once_with(other_instance, "TX001")
+
+    def test_cancel_purchase_for_pos_returns_error_when_missing_transaction_identifier(
+        self,
+    ):
+        result = self.service.cancel_purchase_for_pos(None)
+
+        self.assertTrue(result.get("error"))
+        self.assertEqual(
+            result.get("messages"),
+            ["Missing Bonuscard transaction identifier."],
+        )
+
+    def test_cancel_purchase_for_pos_returns_error_when_no_instance(self):
+        self.instance.active = False
+        result = self.service.cancel_purchase_for_pos("TX001")
+
+        self.assertTrue(result.get("error"))
+        self.assertEqual(
+            result.get("messages"),
+            ["No active Bonuscard connection is configured."],
+        )
+        self.instance.active = True
+
+    def test_cancel_purchase_for_pos_returns_error_when_cancel_raises(self):
+        with patch(
+            "odoo.addons.bonuscard_odoo.models.bonuscard_api_service.BonuscardApiService._cancel_purchase",
+            side_effect=UserError("Bonuscard cancel failed"),
+        ):
+            result = self.service.cancel_purchase_for_pos("TX001")
+
+        self.assertTrue(result.get("error"))
+        self.assertEqual(result.get("messages"), ["Bonuscard cancel failed"])
+
+    def test_cancel_purchase_for_pos_returns_service_unavailable_on_http_error(self):
+        with patch(
+            "odoo.addons.bonuscard_odoo.models.bonuscard_api_service.BonuscardApiService._cancel_purchase",
+            side_effect=BonuscardHttpError("HTTP error", status_code=503),
+        ):
+            result = self.service.cancel_purchase_for_pos("TX001")
+
+        self.assertTrue(result.get("error"))
+        self.assertEqual(
+            result.get("messages"),
+            ["Bonuscard service is temporarily unavailable."],
+        )
+
+    def test_cancel_purchase_for_pos_returns_generic_error_on_unexpected_exception(
+        self,
+    ):
+        with patch(
+            "odoo.addons.bonuscard_odoo.models.bonuscard_api_service.BonuscardApiService._cancel_purchase",
+            side_effect=RuntimeError("Unexpected error"),
+        ):
+            result = self.service.cancel_purchase_for_pos("TX001")
+
+        self.assertTrue(result.get("error"))
+        self.assertEqual(result.get("messages"), ["Bonuscard cancel failed."])
 
     def test_finalize_purchase_for_pos_returns_error_when_missing_transaction_identifier(
         self,
