@@ -71,6 +71,11 @@ patch(PosStore.prototype, {
                     price_unit: l.price_unit,
                 }));
 
+            // Clear any previously stored checkout payload before a new validation
+            // attempt. This prevents stale validation state from causing a later
+            // FinalizePurchase call if the current validation fails.
+            order.bonuscard_checkout_items = null;
+
             if (orderLines.length > 0) {
                 try {
                     const result = await this.data.call(
