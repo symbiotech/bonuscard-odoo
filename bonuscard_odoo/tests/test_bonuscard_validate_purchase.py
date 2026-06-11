@@ -27,14 +27,14 @@ class TestBonuscardValidatePurchase(TransactionCase):
         checkout_items = [{"ean": "8710255122465", "quantity": 2, "pricePerItem": 299}]
 
         with patch(
-            "odoo.addons.bonuscard_odoo.models.bonuscard_api_service.BonuscardApiService.request",
+            "odoo.addons.bonuscard_odoo.models.bonuscard_api_service.BonuscardApiService._request",
             return_value={
                 "error": False,
                 "transactionIdentifier": "TX001",
                 "totalDiscount": 0,
             },
         ) as mock_request:
-            self.service.validate_purchase(self.instance, "WLKT6", checkout_items)
+            self.service._validate_purchase(self.instance, "WLKT6", checkout_items)
 
         mock_request.assert_called_once_with(
             self.instance,
@@ -50,14 +50,14 @@ class TestBonuscardValidatePurchase(TransactionCase):
         checkout_items = [{"ean": "8710255122465", "quantity": 1, "pricePerItem": 100}]
 
         with patch(
-            "odoo.addons.bonuscard_odoo.models.bonuscard_api_service.BonuscardApiService.request",
+            "odoo.addons.bonuscard_odoo.models.bonuscard_api_service.BonuscardApiService._request",
             return_value={
                 "error": False,
                 "transactionIdentifier": "TX001",
                 "totalDiscount": 0,
             },
         ) as mock_request:
-            self.service.validate_purchase(
+            self.service._validate_purchase(
                 self.instance, "WLKT6", checkout_items, transaction_identifier="TX001"
             )
 
@@ -68,14 +68,14 @@ class TestBonuscardValidatePurchase(TransactionCase):
         checkout_items = [{"ean": "8710255122465", "quantity": 1, "pricePerItem": 100}]
 
         with patch(
-            "odoo.addons.bonuscard_odoo.models.bonuscard_api_service.BonuscardApiService.request",
+            "odoo.addons.bonuscard_odoo.models.bonuscard_api_service.BonuscardApiService._request",
             return_value={
                 "error": False,
                 "transactionIdentifier": "TX001",
                 "totalDiscount": 0,
             },
         ) as mock_request:
-            self.service.validate_purchase(
+            self.service._validate_purchase(
                 self.instance, "WLKT6", checkout_items, codes=["SOMMAR2019"]
             )
 
@@ -86,11 +86,13 @@ class TestBonuscardValidatePurchase(TransactionCase):
         checkout_items = [{"ean": "bad", "quantity": 1, "pricePerItem": 1}]
 
         with patch(
-            "odoo.addons.bonuscard_odoo.models.bonuscard_api_service.BonuscardApiService.request",
+            "odoo.addons.bonuscard_odoo.models.bonuscard_api_service.BonuscardApiService._request",
             side_effect=UserError("Bonuscard API error (1): Customer not found."),
         ):
             with self.assertRaises(UserError):
-                self.service.validate_purchase(self.instance, "UNKNOWN", checkout_items)
+                self.service._validate_purchase(
+                    self.instance, "UNKNOWN", checkout_items
+                )
 
     # ------------------------------------------------------------------
     # High-level: validate_purchase_for_pos()
@@ -129,7 +131,7 @@ class TestBonuscardValidatePurchase(TransactionCase):
         }
 
         with patch(
-            "odoo.addons.bonuscard_odoo.models.bonuscard_api_service.BonuscardApiService.validate_purchase",
+            "odoo.addons.bonuscard_odoo.models.bonuscard_api_service.BonuscardApiService._validate_purchase",
             return_value=api_response,
         ) as mock_validate:
             result = self.service.validate_purchase_for_pos(partner.id, order_lines)
@@ -179,7 +181,7 @@ class TestBonuscardValidatePurchase(TransactionCase):
         order_lines = [{"product_id": product.id, "qty": 1, "price_unit": 50.0}]
 
         with patch(
-            "odoo.addons.bonuscard_odoo.models.bonuscard_api_service.BonuscardApiService.validate_purchase",
+            "odoo.addons.bonuscard_odoo.models.bonuscard_api_service.BonuscardApiService._validate_purchase",
             return_value={
                 "error": False,
                 "transactionIdentifier": "TX002",
@@ -203,7 +205,7 @@ class TestBonuscardValidatePurchase(TransactionCase):
         ]
 
         with patch(
-            "odoo.addons.bonuscard_odoo.models.bonuscard_api_service.BonuscardApiService.validate_purchase",
+            "odoo.addons.bonuscard_odoo.models.bonuscard_api_service.BonuscardApiService._validate_purchase",
             return_value={
                 "error": False,
                 "transactionIdentifier": "TX003",
@@ -253,7 +255,7 @@ class TestBonuscardValidatePurchase(TransactionCase):
         order_lines = [{"product_id": product.id, "qty": 1, "price_unit": 10.0}]
 
         with patch(
-            "odoo.addons.bonuscard_odoo.models.bonuscard_api_service.BonuscardApiService.validate_purchase",
+            "odoo.addons.bonuscard_odoo.models.bonuscard_api_service.BonuscardApiService._validate_purchase",
             return_value={
                 "error": False,
                 "transactionIdentifier": "TX-PREV",
@@ -276,7 +278,7 @@ class TestBonuscardValidatePurchase(TransactionCase):
         order_lines = [{"product_id": product.id, "qty": 1, "price_unit": 10.0}]
 
         with patch(
-            "odoo.addons.bonuscard_odoo.models.bonuscard_api_service.BonuscardApiService.validate_purchase",
+            "odoo.addons.bonuscard_odoo.models.bonuscard_api_service.BonuscardApiService._validate_purchase",
             side_effect=UserError("Bonuscard API unavailable"),
         ):
             result = self.service.validate_purchase_for_pos(partner.id, order_lines)
@@ -292,7 +294,7 @@ class TestBonuscardValidatePurchase(TransactionCase):
         order_lines = [{"product_id": product.id, "qty": 1, "price_unit": 10.0}]
 
         with patch(
-            "odoo.addons.bonuscard_odoo.models.bonuscard_api_service.BonuscardApiService.validate_purchase",
+            "odoo.addons.bonuscard_odoo.models.bonuscard_api_service.BonuscardApiService._validate_purchase",
             side_effect=RuntimeError(),
         ):
             result = self.service.validate_purchase_for_pos(partner.id, order_lines)
@@ -318,7 +320,7 @@ class TestBonuscardValidatePurchase(TransactionCase):
         ]
 
         with patch(
-            "odoo.addons.bonuscard_odoo.models.bonuscard_api_service.BonuscardApiService.validate_purchase",
+            "odoo.addons.bonuscard_odoo.models.bonuscard_api_service.BonuscardApiService._validate_purchase",
             return_value={
                 "error": False,
                 "transactionIdentifier": "TX-SAFE",

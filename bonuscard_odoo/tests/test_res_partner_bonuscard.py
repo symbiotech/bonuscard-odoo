@@ -29,7 +29,7 @@ class TestResPartnerBonuscard(TransactionCase):
         )
 
         with patch(
-            "odoo.addons.bonuscard_odoo.models.bonuscard_api_service.BonuscardApiService.search_customers",
+            "odoo.addons.bonuscard_odoo.models.bonuscard_api_service.BonuscardApiService._search_customers",
             return_value=[
                 {
                     "id": 1,
@@ -54,7 +54,7 @@ class TestResPartnerBonuscard(TransactionCase):
         )
 
         with patch(
-            "odoo.addons.bonuscard_odoo.models.bonuscard_api_service.BonuscardApiService.search_customers",
+            "odoo.addons.bonuscard_odoo.models.bonuscard_api_service.BonuscardApiService._search_customers",
             return_value=[],
         ):
             partner.action_refresh_bonuscard_status()
@@ -71,7 +71,7 @@ class TestResPartnerBonuscard(TransactionCase):
         )
 
         with patch(
-            "odoo.addons.bonuscard_odoo.models.bonuscard_api_service.BonuscardApiService.search_customers",
+            "odoo.addons.bonuscard_odoo.models.bonuscard_api_service.BonuscardApiService._search_customers",
             return_value=[
                 {"id": 1, "name": "Test Testsson", "phoneNumber": "+46707654321"},
                 {"id": 2, "name": "Test Testsson", "phoneNumber": "+46707654321"},
@@ -90,7 +90,7 @@ class TestResPartnerBonuscard(TransactionCase):
         )
 
         with patch(
-            "odoo.addons.bonuscard_odoo.models.bonuscard_api_service.BonuscardApiService.search_customers",
+            "odoo.addons.bonuscard_odoo.models.bonuscard_api_service.BonuscardApiService._search_customers",
             return_value=[
                 {
                     "id": 8,
@@ -126,7 +126,7 @@ class TestResPartnerBonuscard(TransactionCase):
         partner = self.partner_model.create(partner_values)
 
         with patch(
-            "odoo.addons.bonuscard_odoo.models.bonuscard_api_service.BonuscardApiService.search_customers",
+            "odoo.addons.bonuscard_odoo.models.bonuscard_api_service.BonuscardApiService._search_customers",
             return_value=[
                 {
                     "id": 42,

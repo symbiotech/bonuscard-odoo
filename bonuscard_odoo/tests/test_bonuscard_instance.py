@@ -61,7 +61,7 @@ class TestBonuscardInstance(TransactionCase):
         )
 
         with patch(
-            "odoo.addons.bonuscard_odoo.models.bonuscard_api_service.BonuscardApiService.test_connection",
+            "odoo.addons.bonuscard_odoo.models.bonuscard_api_service.BonuscardApiService._test_connection",
             return_value={"reachable": True},
         ):
             record.action_test_connection()
@@ -81,7 +81,7 @@ class TestBonuscardInstance(TransactionCase):
         )
 
         with patch(
-            "odoo.addons.bonuscard_odoo.models.bonuscard_api_service.BonuscardApiService.test_connection",
+            "odoo.addons.bonuscard_odoo.models.bonuscard_api_service.BonuscardApiService._test_connection",
             side_effect=UserError("Auth failed"),
         ):
             record.action_test_connection()
@@ -124,7 +124,7 @@ class TestBonuscardInstance(TransactionCase):
             side_effect=http_err,
         ):
             with self.assertRaises(BonuscardHttpError) as ctx:
-                service.request(record)
+                service._request(record)
 
         self.assertEqual(ctx.exception.status_code, 500)
 
@@ -152,7 +152,7 @@ class TestBonuscardInstance(TransactionCase):
             "odoo.addons.bonuscard_odoo.models.bonuscard_api_service.urlopen",
             side_effect=http_err,
         ):
-            result = service.test_connection(record)
+            result = service._test_connection(record)
 
         self.assertEqual(result, {"reachable": True})
 
@@ -180,7 +180,7 @@ class TestBonuscardInstance(TransactionCase):
             "odoo.addons.bonuscard_odoo.models.bonuscard_api_service.urlopen",
             side_effect=http_err,
         ):
-            result = service.test_connection(record)
+            result = service._test_connection(record)
 
         self.assertEqual(result, {"reachable": True})
 
@@ -209,7 +209,7 @@ class TestBonuscardInstance(TransactionCase):
             side_effect=http_err,
         ):
             with self.assertRaises(BonuscardHttpError) as ctx:
-                service.test_connection(record)
+                service._test_connection(record)
 
         self.assertEqual(ctx.exception.status_code, 500)
 
@@ -225,10 +225,10 @@ class TestBonuscardInstance(TransactionCase):
         service = self.env["bonuscard.api.service"]
 
         with patch(
-            "odoo.addons.bonuscard_odoo.models.bonuscard_api_service.BonuscardApiService.request",
+            "odoo.addons.bonuscard_odoo.models.bonuscard_api_service.BonuscardApiService._request",
             return_value={"customers": [{"id": 1, "recruitmentCode": "WLKT6"}]},
         ) as request_mock:
-            customers = service.search_customers(record, "0707654321")
+            customers = service._search_customers(record, "0707654321")
 
         self.assertEqual(customers, [{"id": 1, "recruitmentCode": "WLKT6"}])
         request_mock.assert_called_once_with(

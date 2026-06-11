@@ -76,7 +76,7 @@ class BonuscardApiService(models.AbstractModel):
 
         raise UserError(self.env._("Bonuscard API error (%s).", error_code))
 
-    def request(
+    def _request(
         self,
         instance,
         endpoint="",
@@ -144,21 +144,21 @@ class BonuscardApiService(models.AbstractModel):
             return True
         return super().check_access_rights(operation, raise_exception=raise_exception)
 
-    def test_connection(self, instance):
+    def _test_connection(self, instance):
         instance.ensure_one()
 
         try:
-            return self.request(instance, endpoint="", method="GET")
+            return self._request(instance, endpoint="", method="GET")
         except BonuscardHttpError as err:
             if err.status_code in (404, 405):
                 return {"reachable": True}
             raise
 
-    def search_customers(self, instance, query):
+    def _search_customers(self, instance, query):
         instance.ensure_one()
         if not query:
             return []
-        payload = self.request(
+        payload = self._request(
             instance,
             endpoint="SearchCustomers",
             method="GET",
@@ -166,7 +166,7 @@ class BonuscardApiService(models.AbstractModel):
         )
         return payload.get("customers") or []
 
-    def validate_purchase(
+    def _validate_purchase(
         self,
         instance,
         customer_identifier,
@@ -183,7 +183,7 @@ class BonuscardApiService(models.AbstractModel):
             body["transactionIdentifier"] = transaction_identifier
         if codes:
             body["codes"] = codes
-        return self.request(
+        return self._request(
             instance, endpoint="ValidatePurchase", method="POST", payload=body
         )
 
@@ -279,7 +279,7 @@ class BonuscardApiService(models.AbstractModel):
             }
 
         try:
-            return self.validate_purchase(
+            return self._validate_purchase(
                 instance,
                 customer_identifier,
                 checkout_items,

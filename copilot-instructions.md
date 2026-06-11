@@ -58,6 +58,7 @@
 - Never write real credentials into repository files, tests, fixtures, commits, or pull request text.
 - Use runtime configuration only (local Odoo records, CI/deployment secrets, or secure parameter stores).
 - Manual integration tests may read `.env` values locally, but `.env` must keep placeholders by default in git-tracked content.
+- For local test execution in this repository, always follow `LOCAL_SETUP.md` rather than ad-hoc test commands in the addon folder. Use the provided Odoo source root command from that file
 
 ## Odoo Coding Guidance
 

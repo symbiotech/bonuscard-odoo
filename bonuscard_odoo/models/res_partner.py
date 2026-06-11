@@ -129,7 +129,7 @@ class ResPartner(models.Model):
             }
 
         for term in partner._get_bonuscard_search_terms():
-            customers = service.search_customers(instance, term)
+            customers = service._search_customers(instance, term)
             if not customers:
                 continue
             exact_matches = partner._filter_exact_bonuscard_matches(customers)
