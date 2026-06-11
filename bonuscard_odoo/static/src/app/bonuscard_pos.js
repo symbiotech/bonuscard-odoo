@@ -152,6 +152,7 @@ patch(OrderPaymentValidation.prototype, {
             }
         } catch {
             // Fire-and-forget: do not block the POS payment flow.
+            this.pos.notification.add(_t("Bonuscard finalization failed."), { type: "warning" });
         }
     },
 });
