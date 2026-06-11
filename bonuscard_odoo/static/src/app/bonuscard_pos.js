@@ -132,6 +132,21 @@ patch(PosStore.prototype, {
         return super.pay(...arguments);
     },
 
+    async closePos() {
+        const order = this.getOrder();
+        if (order?.bonuscard_transaction_id) {
+            this.data
+                .call("bonuscard.api.service", "cancel_purchase_for_pos", [
+                    order.bonuscard_transaction_id,
+                ])
+                .catch(() => { });
+            order.bonuscard_transaction_id = null;
+            order.bonuscard_checkout_items = null;
+            order.bonuscard_partner_id = false;
+        }
+        return super.closePos(...arguments);
+    },
+
     async deleteCurrentOrder() {
         const order = this.getOrder();
         if (order?.bonuscard_transaction_id) {
@@ -186,6 +201,9 @@ patch(OrderPaymentValidation.prototype, {
                     result.messages?.[0] || _t("Bonuscard finalization failed."),
                     { type: "warning" }
                 );
+            } else {
+                order.bonuscard_transaction_id = null;
+                order.bonuscard_checkout_items = null;
             }
         } catch {
             // Do not interrupt the POS payment flow if Bonuscard finalization fails.
