@@ -9,6 +9,9 @@ authors = [
     {name = "symbiotech", email = "symbiotech3@gmail.com"}
 ]
 keywords = ["odoo", "addon", "bonuscard", "pos", "loyalty"]
+dependencies = [
+    "pre-commit>=4.6.0",
+]
 
 [project.urls]
 Repository = "https://github.com/symbiotech/bonuscard-odoo"

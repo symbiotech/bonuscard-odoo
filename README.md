@@ -133,15 +133,20 @@ This addon is an Odoo 19 module that runs against your main Odoo installation.
 ### Prerequisites
 
 - Odoo 19.0 source code with a configured Python environment
-- Pre-commit installed globally: `pip install pre-commit`
+- `uv` installed on your machine for dependency and tool management
 
 ### One-Time Setup
 
-Install pre-commit hooks in this repository:
+Use `uv` to add the pre-commit tool without installing the current project package:
 
 ```bash
+uv add --group dev pre-commit --no-install-project
+uv sync --no-install-project
 pre-commit install
 ```
+
+> Note: This repository uses a custom Odoo addon build backend, so `uv` may fail if it tries to install the addon package itself.
+> Using `--no-install-project` keeps `pre-commit` and other dev tools in the environment without building the current project.
 
 After installation, hooks run automatically on every `git commit`.
 
