@@ -4,7 +4,7 @@ from urllib.error import HTTPError, URLError
 from urllib.parse import urlencode
 from urllib.request import Request, urlopen
 
-from odoo import api, models
+from odoo import SUPERUSER_ID, api, models
 from odoo.exceptions import UserError
 
 _logger = logging.getLogger(__name__)
@@ -136,7 +136,11 @@ class BonuscardApiService(models.AbstractModel):
         ``ir.model.access`` entry, we explicitly allow ``read`` while
         delegating other operations to the superclass.
         """
-        if operation == "read":
+        if operation == "read" and (
+            self.env.user.id == SUPERUSER_ID
+            or self.env.user.has_group("point_of_sale.group_pos_user")
+            or self.env.user.has_group("bonuscard_odoo.bonuscard_odoo_group_user")
+        ):
             return True
         return super().check_access_rights(operation, raise_exception=raise_exception)
 

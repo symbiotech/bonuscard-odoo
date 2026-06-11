@@ -146,6 +146,27 @@ class TestBonuscardValidatePurchase(TransactionCase):
     def test_bonuscard_api_service_allows_read_access_for_rpc(self):
         self.assertTrue(self.service.check_access_rights("read"))
 
+    def test_bonuscard_api_service_allows_read_access_for_pos_users(self):
+        pos_group = self.env.ref("point_of_sale.group_pos_user")
+        user = self.env["res.users"].create(
+            {
+                "name": "POS User",
+                "login": "pos_user@example.com",
+                "groups_id": [(6, 0, [pos_group.id])],
+            }
+        )
+        self.assertTrue(self.service.with_user(user).check_access_rights("read"))
+
+    def test_bonuscard_api_service_denies_read_access_for_regular_users(self):
+        user = self.env["res.users"].create(
+            {"name": "Regular User", "login": "regular_user@example.com"}
+        )
+        self.assertFalse(
+            self.service.with_user(user).check_access_rights(
+                "read", raise_exception=False
+            )
+        )
+
     def test_validate_purchase_for_pos_uses_default_code_when_no_barcode(self):
         partner = self._make_partner_with_code()
         product = self.env["product.product"].create(
