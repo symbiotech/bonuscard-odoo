@@ -9,7 +9,8 @@ authors = [
     {name = "symbiotech", email = "symbiotech3@gmail.com"}
 ]
 keywords = ["odoo", "addon", "bonuscard", "pos", "loyalty"]
-dependencies = [
+[dependency-groups]
+dev = [
     "pre-commit>=4.6.0",
 ]
 
