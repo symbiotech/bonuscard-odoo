@@ -411,3 +411,24 @@ class TestBonuscardValidatePurchase(TransactionCase):
 
         self.assertTrue(result.get("error"))
         self.assertEqual(result.get("messages"), ["Bonuscard API unavailable"])
+
+    def test_finalize_purchase_for_pos_accepts_api_checkout_items(self):
+        partner = self._make_partner_with_code()
+        checkout_items = [{"ean": "8710255122465", "quantity": "1", "pricePerItem": "10"}]
+        api_response = {"error": False, "transactionIdentifier": "TX001"}
+
+        with patch(
+            "odoo.addons.bonuscard_odoo.models.bonuscard_api_service.BonuscardApiService._finalize_purchase",
+            return_value=api_response,
+        ) as mock_finalize:
+            result = self.service.finalize_purchase_for_pos(
+                partner.id, "TX001", checkout_items
+            )
+
+        self.assertFalse(result.get("error"))
+        mock_finalize.assert_called_once_with(
+            self.instance,
+            "WLKT6",
+            "TX001",
+            [{"ean": "8710255122465", "quantity": 1.0, "pricePerItem": 10.0}],
+        )
