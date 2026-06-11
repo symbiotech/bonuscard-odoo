@@ -414,7 +414,9 @@ class TestBonuscardValidatePurchase(TransactionCase):
 
     def test_finalize_purchase_for_pos_accepts_api_checkout_items(self):
         partner = self._make_partner_with_code()
-        checkout_items = [{"ean": "8710255122465", "quantity": "1", "pricePerItem": "10"}]
+        checkout_items = [
+            {"ean": "8710255122465", "quantity": "1", "pricePerItem": "10"}
+        ]
         api_response = {"error": False, "transactionIdentifier": "TX001"}
 
         with patch(
