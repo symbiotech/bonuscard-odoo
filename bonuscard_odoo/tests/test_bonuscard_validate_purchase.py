@@ -13,7 +13,7 @@ class TestBonuscardValidatePurchase(TransactionCase):
         cls.instance = cls.env["bonuscard.connector.instance"].create(
             {
                 "name": "Validate Test",
-                "api_base_url": "https://web.bonuscard.com/api/",
+                "api_base_url": "https://example.invalid/api/",
                 "api_username": "demo-user",
                 "api_password": "demo-pass",
             }
