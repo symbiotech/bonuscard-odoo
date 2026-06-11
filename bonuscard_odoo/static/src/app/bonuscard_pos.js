@@ -81,7 +81,7 @@ patch(PosStore.prototype, {
 
                     if (!result.error) {
                         order.bonuscard_transaction_id = result.transactionIdentifier;
-                        order.bonuscard_checkout_items = orderLines;
+                        order.bonuscard_checkout_items = result.checkoutItems || orderLines;
                         order.bonuscard_partner_id = partner.id;
 
                         const totalDiscount = result.totalDiscount || 0;

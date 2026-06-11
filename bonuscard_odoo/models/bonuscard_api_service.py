@@ -130,11 +130,11 @@ class BonuscardApiService(models.AbstractModel):
     def check_access_rights(self, operation, raise_exception=True):
         """Grant read access on this abstract service model for RPC calls.
 
-        POS invokes :meth:`validate_purchase_for_pos` via ``call_kw``, which
-        enforces model access rights (typically requiring ``read`` on the
-        model). Since this is an abstract service model without an
-        ``ir.model.access`` entry, we explicitly allow ``read`` while
-        delegating other operations to the superclass.
+        POS invokes :meth:`validate_purchase_for_pos`, :meth:`finalize_purchase_for_pos`,
+        and :meth:`cancel_purchase_for_pos` via ``call_kw``, which enforces model access
+        rights (typically requiring ``read`` on the model). Since this is an abstract
+        service model without an ``ir.model.access`` entry, we explicitly allow ``read``
+        while delegating other operations to the superclass.
         """
         if operation == "read" and (
             self.env.user.id == SUPERUSER_ID
