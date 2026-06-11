@@ -131,6 +131,35 @@ patch(PosStore.prototype, {
 
         return super.pay(...arguments);
     },
+
+    async deleteCurrentOrder() {
+        const order = this.getOrder();
+        if (order?.bonuscard_transaction_id) {
+            this.data
+                .call("bonuscard.api.service", "cancel_purchase_for_pos", [
+                    order.bonuscard_transaction_id,
+                ])
+                .catch(() => { });
+        }
+        return super.deleteCurrentOrder(...arguments);
+    },
+
+    async onClickBackButton() {
+        if (this.router.state.current === "PaymentScreen") {
+            const order = this.getOrder();
+            if (order?.bonuscard_transaction_id) {
+                this.data
+                    .call("bonuscard.api.service", "cancel_purchase_for_pos", [
+                        order.bonuscard_transaction_id,
+                    ])
+                    .catch(() => { });
+                order.bonuscard_transaction_id = null;
+                order.bonuscard_checkout_items = null;
+                order.bonuscard_partner_id = false;
+            }
+        }
+        return super.onClickBackButton(...arguments);
+    },
 });
 
 patch(OrderPaymentValidation.prototype, {

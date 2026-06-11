@@ -486,3 +486,50 @@ class BonuscardApiService(models.AbstractModel):
                 "error": True,
                 "messages": [message],
             }
+
+    def _cancel_purchase(self, instance, transaction_identifier):
+        instance.ensure_one()
+        return self._request(
+            instance,
+            endpoint="CancelPurchase",
+            method="POST",
+            payload={"transactionIdentifier": transaction_identifier},
+        )
+
+    @api.model
+    def cancel_purchase_for_pos(self, transaction_identifier):
+        """Called from POS JS when a pending Bonuscard purchase is canceled."""
+        if not transaction_identifier:
+            return {
+                "error": True,
+                "messages": [self.env._("Missing Bonuscard transaction identifier.")],
+            }
+
+        instance = self._get_company_instance(self.env.company)
+        if not instance:
+            return {
+                "error": True,
+                "messages": [
+                    self.env._("No active Bonuscard connection is configured."),
+                ],
+            }
+
+        try:
+            return self._cancel_purchase(instance, transaction_identifier)
+        except Exception as exc:  # pylint: disable=broad-except
+            if isinstance(exc, BonuscardHttpError):
+                _logger.warning(
+                    "Bonuscard HTTP error during POS cancel (HTTP %s) for transaction %s",
+                    exc.status_code,
+                    transaction_identifier,
+                )
+                message = self.env._("Bonuscard service is temporarily unavailable.")
+            elif isinstance(exc, UserError):
+                message = getattr(exc, "name", None) or str(exc)
+            else:
+                _logger.exception(
+                    "Unexpected error during Bonuscard cancel for transaction %s",
+                    transaction_identifier,
+                )
+                message = self.env._("Bonuscard cancel failed.")
+            return {"error": True, "messages": [message]}

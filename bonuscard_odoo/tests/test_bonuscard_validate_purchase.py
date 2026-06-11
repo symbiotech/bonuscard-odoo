@@ -384,6 +384,62 @@ class TestBonuscardValidatePurchase(TransactionCase):
             [{"ean": "8710255122465", "quantity": 1.0, "pricePerItem": 100.0}],
         )
 
+    def test_cancel_purchase_sends_correct_payload(self):
+        with patch(
+            "odoo.addons.bonuscard_odoo.models.bonuscard_api_service.BonuscardApiService._request",
+            return_value={"error": False},
+        ) as mock_request:
+            self.service._cancel_purchase(self.instance, "TX001")
+
+        mock_request.assert_called_once_with(
+            self.instance,
+            endpoint="CancelPurchase",
+            method="POST",
+            payload={"transactionIdentifier": "TX001"},
+        )
+
+    def test_cancel_purchase_for_pos_returns_result(self):
+        with patch(
+            "odoo.addons.bonuscard_odoo.models.bonuscard_api_service.BonuscardApiService._cancel_purchase",
+            return_value={"error": False},
+        ) as mock_cancel:
+            result = self.service.cancel_purchase_for_pos("TX001")
+
+        self.assertFalse(result.get("error"))
+        mock_cancel.assert_called_once_with(self.instance, "TX001")
+
+    def test_cancel_purchase_for_pos_returns_error_when_missing_transaction_identifier(
+        self,
+    ):
+        result = self.service.cancel_purchase_for_pos(None)
+
+        self.assertTrue(result.get("error"))
+        self.assertEqual(
+            result.get("messages"),
+            ["Missing Bonuscard transaction identifier."],
+        )
+
+    def test_cancel_purchase_for_pos_returns_error_when_no_instance(self):
+        self.instance.active = False
+        result = self.service.cancel_purchase_for_pos("TX001")
+
+        self.assertTrue(result.get("error"))
+        self.assertEqual(
+            result.get("messages"),
+            ["No active Bonuscard connection is configured."],
+        )
+        self.instance.active = True
+
+    def test_cancel_purchase_for_pos_returns_error_when_cancel_raises(self):
+        with patch(
+            "odoo.addons.bonuscard_odoo.models.bonuscard_api_service.BonuscardApiService._cancel_purchase",
+            side_effect=UserError("Bonuscard cancel failed"),
+        ):
+            result = self.service.cancel_purchase_for_pos("TX001")
+
+        self.assertTrue(result.get("error"))
+        self.assertEqual(result.get("messages"), ["Bonuscard cancel failed"])
+
     def test_finalize_purchase_for_pos_returns_error_when_missing_transaction_identifier(
         self,
     ):
