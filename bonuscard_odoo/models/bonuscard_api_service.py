@@ -288,7 +288,15 @@ class BonuscardApiService(models.AbstractModel):
         except Exception as exc:  # pylint: disable=broad-except
             # POS flow must remain non-blocking: return an error payload instead
             # of raising and let the frontend continue with normal payment.
-            if isinstance(exc, UserError):
+            if isinstance(exc, BonuscardHttpError):
+                # Avoid sending raw HTTP response bodies to the POS frontend.
+                _logger.warning(
+                    "Bonuscard HTTP error during POS validation (HTTP %s) for partner %s",
+                    exc.status_code,
+                    partner.id,
+                )
+                message = self.env._("Bonuscard service is temporarily unavailable.")
+            elif isinstance(exc, UserError):
                 # Surface only the user-safe message from UserError subclasses.
                 message = getattr(exc, "name", None) or str(exc)
             else:
@@ -296,7 +304,7 @@ class BonuscardApiService(models.AbstractModel):
                 # to avoid leaking internal details to the POS frontend.
                 _logger.exception(
                     "Unexpected error during Bonuscard validation for partner %s",
-                    partner.id if partner else None,
+                    partner.id,
                 )
                 message = self.env._("Bonuscard validation failed.")
             return {
