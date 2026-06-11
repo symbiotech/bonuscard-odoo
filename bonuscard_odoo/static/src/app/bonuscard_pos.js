@@ -150,11 +150,11 @@ patch(PosStore.prototype, {
     async deleteCurrentOrder() {
         const order = this.getOrder();
         if (order?.bonuscard_transaction_id) {
-            this.data
+            await this.data
                 .call("bonuscard.api.service", "cancel_purchase_for_pos", [
                     order.bonuscard_transaction_id,
                 ])
-                .catch(() => { });
+                .catch(() => {});
         }
         return super.deleteCurrentOrder(...arguments);
     },
