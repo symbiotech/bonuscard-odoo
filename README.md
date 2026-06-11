@@ -137,11 +137,10 @@ This addon is an Odoo 19 module that runs against your main Odoo installation.
 
 ### One-Time Setup
 
-Use `uv` to add the pre-commit tool without installing the current project package:
+Use `uv` to sync dev tools without installing the current project package:
 
 ```bash
-uv add --group dev pre-commit --no-install-project
-uv sync --no-install-project
+uv sync --group dev --no-install-project
 pre-commit install
 ```
 
