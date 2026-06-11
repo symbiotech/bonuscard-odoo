@@ -5,6 +5,7 @@ import { _t } from "@web/core/l10n/translation";
 import { sprintf } from "@web/core/utils/strings";
 import { ask } from "@point_of_sale/app/utils/make_awaitable_dialog";
 import { PosStore } from "@point_of_sale/app/services/pos_store";
+import OrderPaymentValidation from "@point_of_sale/app/utils/order_payment_validation";
 
 patch(PosStore.prototype, {
     async setPartnerToCurrentOrder(partner) {
@@ -70,6 +71,11 @@ patch(PosStore.prototype, {
                     price_unit: l.price_unit,
                 }));
 
+            // Clear any previously stored checkout payload before a new validation
+            // attempt. This prevents stale validation state from causing a later
+            // FinalizePurchase call if the current validation fails.
+            order.bonuscard_checkout_items = null;
+
             if (orderLines.length > 0) {
                 try {
                     const result = await this.data.call(
@@ -80,7 +86,10 @@ patch(PosStore.prototype, {
 
                     if (!result.error) {
                         order.bonuscard_transaction_id = result.transactionIdentifier;
-                        order.bonuscard_checkout_items = orderLines;
+                        order.bonuscard_checkout_items =
+                            Array.isArray(result.checkoutItems) && result.checkoutItems.length
+                                ? result.checkoutItems
+                                : orderLines;
                         order.bonuscard_partner_id = partner.id;
 
                         const totalDiscount = result.totalDiscount || 0;
@@ -121,5 +130,37 @@ patch(PosStore.prototype, {
         }
 
         return super.pay(...arguments);
+    },
+});
+
+patch(OrderPaymentValidation.prototype, {
+    async afterOrderValidation() {
+        await super.afterOrderValidation(...arguments);
+        const order = this.order;
+
+        if (!order?.bonuscard_transaction_id || !order?.bonuscard_checkout_items) {
+            return;
+        }
+
+        try {
+            const result = await this.pos.data.call(
+                "bonuscard.api.service",
+                "finalize_purchase_for_pos",
+                [
+                    order.bonuscard_partner_id,
+                    order.bonuscard_transaction_id,
+                    order.bonuscard_checkout_items,
+                ]
+            );
+            if (result.error) {
+                this.pos.notification.add(
+                    result.messages?.[0] || _t("Bonuscard finalization failed."),
+                    { type: "warning" }
+                );
+            }
+        } catch {
+            // Do not interrupt the POS payment flow if Bonuscard finalization fails.
+            this.pos.notification.add(_t("Bonuscard finalization failed."), { type: "warning" });
+        }
     },
 });

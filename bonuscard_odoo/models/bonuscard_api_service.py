@@ -130,11 +130,11 @@ class BonuscardApiService(models.AbstractModel):
     def check_access_rights(self, operation, raise_exception=True):
         """Grant read access on this abstract service model for RPC calls.
 
-        POS invokes :meth:`validate_purchase_for_pos` via ``call_kw``, which
-        enforces model access rights (typically requiring ``read`` on the
-        model). Since this is an abstract service model without an
-        ``ir.model.access`` entry, we explicitly allow ``read`` while
-        delegating other operations to the superclass.
+        POS invokes :meth:`validate_purchase_for_pos`, :meth:`finalize_purchase_for_pos`,
+        and :meth:`cancel_purchase_for_pos` via ``call_kw``, which enforces model access
+        rights (typically requiring ``read`` on the model). Since this is an abstract
+        service model without an ``ir.model.access`` entry, we explicitly allow ``read``
+        while delegating other operations to the superclass.
         """
         if operation == "read" and (
             self.env.user.id == SUPERUSER_ID
@@ -307,6 +307,181 @@ class BonuscardApiService(models.AbstractModel):
                     partner.id,
                 )
                 message = self.env._("Bonuscard validation failed.")
+            return {
+                "error": True,
+                "messages": [message],
+            }
+
+    def _prepare_checkout_items_for_api(self, checkout_items):
+        if not isinstance(checkout_items, list):
+            return []
+
+        sanitized_items = [item for item in checkout_items if isinstance(item, dict)]
+        if not sanitized_items:
+            return []
+
+        product_ids = [
+            item.get("product_id") for item in sanitized_items if item.get("product_id")
+        ]
+        products = {
+            p.id: p for p in self.env["product.product"].browse(product_ids).exists()
+        }
+
+        formatted_items = []
+        for item in sanitized_items:
+            if (
+                item.get("ean")
+                and item.get("quantity") is not None
+                and item.get("pricePerItem") is not None
+            ):
+                try:
+                    quantity = float(item.get("quantity"))
+                    price_per_item = float(item.get("pricePerItem"))
+                except (TypeError, ValueError):
+                    continue
+                if quantity <= 0:
+                    continue
+                formatted_items.append(
+                    {
+                        "ean": item.get("ean"),
+                        "quantity": quantity,
+                        "pricePerItem": price_per_item,
+                    }
+                )
+                continue
+
+            product = products.get(item.get("product_id"))
+            if not product:
+                continue
+
+            ean = product.barcode or product.default_code
+            if not ean:
+                continue
+
+            try:
+                quantity = float(item.get("qty", 1))
+                price_per_item = float(item.get("price_unit", 0))
+            except (TypeError, ValueError):
+                continue
+
+            if quantity <= 0:
+                continue
+
+            formatted_items.append(
+                {
+                    "ean": ean,
+                    "quantity": quantity,
+                    "pricePerItem": price_per_item,
+                }
+            )
+
+        return formatted_items
+
+    def _finalize_purchase(
+        self,
+        instance,
+        customer_identifier,
+        transaction_identifier,
+        checkout_items,
+        note=None,
+        codes=None,
+    ):
+        instance.ensure_one()
+        body = {
+            "customerIdentifier": customer_identifier,
+            "transactionIdentifier": transaction_identifier,
+            "checkoutItems": checkout_items,
+        }
+        if note:
+            body["note"] = note
+        if codes:
+            body["codes"] = codes
+        return self._request(
+            instance, endpoint="FinalizePurchase", method="POST", payload=body
+        )
+
+    @api.model
+    def finalize_purchase_for_pos(
+        self, partner_id, transaction_identifier, checkout_items
+    ):
+        """Called from POS JS after payment succeeds to commit Bonuscard discounts.
+
+        Args:
+            partner_id: int – the POS partner's id
+            transaction_identifier: str – transaction ID from ValidatePurchase
+            checkout_items: list – checkoutItems echoed by ValidatePurchase API response
+
+        Returns a dict with the API response keys, or {error, messages} on failure.
+        Never raises — returns an error dict instead.
+        """
+        partner = self.env["res.partner"].browse(partner_id).exists()
+        if not partner:
+            return {
+                "error": True,
+                "messages": [self.env._("Partner not found.")],
+            }
+
+        customer_identifier = partner.commercial_partner_id.bonuscard_recruitment_code
+        if not customer_identifier:
+            return {
+                "error": True,
+                "messages": [
+                    self.env._("Customer does not have a Bonuscard recruitment code."),
+                ],
+            }
+
+        if not transaction_identifier:
+            return {
+                "error": True,
+                "messages": [self.env._("Missing Bonuscard transaction identifier.")],
+            }
+
+        if not isinstance(checkout_items, list):
+            return {
+                "error": True,
+                "messages": [self.env._("Invalid checkout payload from POS.")],
+            }
+
+        company = partner.commercial_partner_id.company_id or self.env.company
+        instance = self._get_company_instance(company)
+        if not instance:
+            return {
+                "error": True,
+                "messages": [
+                    self.env._("No active Bonuscard connection is configured."),
+                ],
+            }
+
+        formatted_items = self._prepare_checkout_items_for_api(checkout_items)
+        if not formatted_items:
+            return {
+                "error": True,
+                "messages": [self.env._("Invalid checkout payload from POS.")],
+            }
+
+        try:
+            return self._finalize_purchase(
+                instance,
+                customer_identifier,
+                transaction_identifier,
+                formatted_items,
+            )
+        except Exception as exc:  # pylint: disable=broad-except
+            if isinstance(exc, BonuscardHttpError):
+                _logger.warning(
+                    "Bonuscard HTTP error during POS finalize (HTTP %s) for partner %s",
+                    exc.status_code,
+                    partner.id,
+                )
+                message = self.env._("Bonuscard service is temporarily unavailable.")
+            elif isinstance(exc, UserError):
+                message = getattr(exc, "name", None) or str(exc)
+            else:
+                _logger.exception(
+                    "Unexpected error during Bonuscard finalize for partner %s",
+                    partner.id,
+                )
+                message = self.env._("Bonuscard finalization failed.")
             return {
                 "error": True,
                 "messages": [message],
