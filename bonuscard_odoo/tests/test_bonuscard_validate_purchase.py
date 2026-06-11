@@ -1,5 +1,6 @@
 from unittest.mock import patch
 
+from odoo.addons.bonuscard_odoo.models.bonuscard_api_service import BonuscardHttpError
 from odoo.exceptions import UserError
 from odoo.tests import TransactionCase, tagged
 
@@ -439,6 +440,31 @@ class TestBonuscardValidatePurchase(TransactionCase):
 
         self.assertTrue(result.get("error"))
         self.assertEqual(result.get("messages"), ["Bonuscard cancel failed"])
+
+    def test_cancel_purchase_for_pos_returns_service_unavailable_on_http_error(self):
+        with patch(
+            "odoo.addons.bonuscard_odoo.models.bonuscard_api_service.BonuscardApiService._cancel_purchase",
+            side_effect=BonuscardHttpError("HTTP error", status_code=503),
+        ):
+            result = self.service.cancel_purchase_for_pos("TX001")
+
+        self.assertTrue(result.get("error"))
+        self.assertEqual(
+            result.get("messages"),
+            ["Bonuscard service is temporarily unavailable."],
+        )
+
+    def test_cancel_purchase_for_pos_returns_generic_error_on_unexpected_exception(
+        self,
+    ):
+        with patch(
+            "odoo.addons.bonuscard_odoo.models.bonuscard_api_service.BonuscardApiService._cancel_purchase",
+            side_effect=RuntimeError("Unexpected error"),
+        ):
+            result = self.service.cancel_purchase_for_pos("TX001")
+
+        self.assertTrue(result.get("error"))
+        self.assertEqual(result.get("messages"), ["Bonuscard cancel failed."])
 
     def test_finalize_purchase_for_pos_returns_error_when_missing_transaction_identifier(
         self,
