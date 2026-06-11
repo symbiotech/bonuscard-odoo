@@ -329,7 +329,11 @@ class BonuscardApiService(models.AbstractModel):
 
         formatted_items = []
         for item in sanitized_items:
-            if item.get("ean") and item.get("quantity") is not None and item.get("pricePerItem") is not None:
+            if (
+                item.get("ean")
+                and item.get("quantity") is not None
+                and item.get("pricePerItem") is not None
+            ):
                 try:
                     quantity = float(item.get("quantity"))
                     price_per_item = float(item.get("pricePerItem"))
@@ -338,7 +342,11 @@ class BonuscardApiService(models.AbstractModel):
                 if quantity <= 0:
                     continue
                 formatted_items.append(
-                    {"ean": item.get("ean"), "quantity": quantity, "pricePerItem": price_per_item}
+                    {
+                        "ean": item.get("ean"),
+                        "quantity": quantity,
+                        "pricePerItem": price_per_item,
+                    }
                 )
                 continue
 
@@ -396,6 +404,16 @@ class BonuscardApiService(models.AbstractModel):
     def finalize_purchase_for_pos(
         self, partner_id, transaction_identifier, checkout_items
     ):
+        """Called from POS JS after payment succeeds to commit Bonuscard discounts.
+
+        Args:
+            partner_id: int – the POS partner's id
+            transaction_identifier: str – transaction ID from ValidatePurchase
+            checkout_items: list – checkoutItems echoed by ValidatePurchase API response
+
+        Returns a dict with the API response keys, or {error, messages} on failure.
+        Never raises — returns an error dict instead.
+        """
         partner = self.env["res.partner"].browse(partner_id).exists()
         if not partner:
             return {
