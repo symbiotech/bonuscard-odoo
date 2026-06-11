@@ -5,6 +5,7 @@ import { _t } from "@web/core/l10n/translation";
 import { sprintf } from "@web/core/utils/strings";
 import { ask } from "@point_of_sale/app/utils/make_awaitable_dialog";
 import { PosStore } from "@point_of_sale/app/services/pos_store";
+import OrderPaymentValidation from "@point_of_sale/app/utils/order_payment_validation";
 
 patch(PosStore.prototype, {
     async setPartnerToCurrentOrder(partner) {
@@ -121,5 +122,36 @@ patch(PosStore.prototype, {
         }
 
         return super.pay(...arguments);
+    },
+});
+
+patch(OrderPaymentValidation.prototype, {
+    async afterOrderValidation() {
+        await super.afterOrderValidation(...arguments);
+        const order = this.order;
+
+        if (!order?.bonuscard_transaction_id || !order?.bonuscard_checkout_items) {
+            return;
+        }
+
+        try {
+            const result = await this.pos.data.call(
+                "bonuscard.api.service",
+                "finalize_purchase_for_pos",
+                [
+                    order.bonuscard_partner_id,
+                    order.bonuscard_transaction_id,
+                    order.bonuscard_checkout_items,
+                ]
+            );
+            if (result.error) {
+                this.pos.notification.add(
+                    result.messages?.[0] || _t("Bonuscard finalization failed."),
+                    { type: "warning" }
+                );
+            }
+        } catch {
+            // Fire-and-forget: do not block the POS payment flow.
+        }
     },
 });

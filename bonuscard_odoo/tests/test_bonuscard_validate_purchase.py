@@ -336,3 +336,78 @@ class TestBonuscardValidatePurchase(TransactionCase):
             [{"ean": "EAN-SAFE", "quantity": 1, "pricePerItem": 10.0}],
             transaction_identifier=None,
         )
+
+    def test_finalize_purchase_sends_correct_payload(self):
+        checkout_items = [{"ean": "8710255122465", "quantity": 2, "pricePerItem": 299}]
+
+        with patch(
+            "odoo.addons.bonuscard_odoo.models.bonuscard_api_service.BonuscardApiService._request",
+            return_value={"error": False, "transactionIdentifier": "TX001"},
+        ) as mock_request:
+            self.service._finalize_purchase(
+                self.instance,
+                "WLKT6",
+                "TX001",
+                checkout_items,
+            )
+
+        mock_request.assert_called_once_with(
+            self.instance,
+            endpoint="FinalizePurchase",
+            method="POST",
+            payload={
+                "customerIdentifier": "WLKT6",
+                "transactionIdentifier": "TX001",
+                "checkoutItems": checkout_items,
+            },
+        )
+
+    def test_finalize_purchase_for_pos_transforms_pos_order_lines(self):
+        partner = self._make_partner_with_code()
+        product = self._make_product_with_barcode()
+        order_lines = [{"product_id": product.id, "qty": 1, "price_unit": 100.0}]
+        api_response = {"error": False, "transactionIdentifier": "TX001"}
+
+        with patch(
+            "odoo.addons.bonuscard_odoo.models.bonuscard_api_service.BonuscardApiService._finalize_purchase",
+            return_value=api_response,
+        ) as mock_finalize:
+            result = self.service.finalize_purchase_for_pos(
+                partner.id, "TX001", order_lines
+            )
+
+        self.assertFalse(result.get("error"))
+        mock_finalize.assert_called_once_with(
+            self.instance,
+            "WLKT6",
+            "TX001",
+            [{"ean": "8710255122465", "quantity": 1.0, "pricePerItem": 100.0}],
+        )
+
+    def test_finalize_purchase_for_pos_returns_error_when_missing_transaction_identifier(
+        self,
+    ):
+        partner = self._make_partner_with_code()
+        result = self.service.finalize_purchase_for_pos(partner.id, None, [])
+
+        self.assertTrue(result.get("error"))
+        self.assertEqual(
+            result.get("messages"),
+            ["Missing Bonuscard transaction identifier."],
+        )
+
+    def test_finalize_purchase_for_pos_returns_error_when_finalize_raises(self):
+        partner = self._make_partner_with_code()
+        product = self._make_product_with_barcode()
+        order_lines = [{"product_id": product.id, "qty": 1, "price_unit": 10.0}]
+
+        with patch(
+            "odoo.addons.bonuscard_odoo.models.bonuscard_api_service.BonuscardApiService._finalize_purchase",
+            side_effect=UserError("Bonuscard API unavailable"),
+        ):
+            result = self.service.finalize_purchase_for_pos(
+                partner.id, "TX001", order_lines
+            )
+
+        self.assertTrue(result.get("error"))
+        self.assertEqual(result.get("messages"), ["Bonuscard API unavailable"])
