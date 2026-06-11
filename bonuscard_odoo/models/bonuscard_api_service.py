@@ -245,11 +245,22 @@ class BonuscardApiService(models.AbstractModel):
             ean = product.barcode or product.default_code
             if not ean:
                 continue
+
+            qty = line.get("qty", 1)
+            price_unit = line.get("price_unit", 0)
+            try:
+                qty = float(qty)
+                price_unit = float(price_unit)
+            except (TypeError, ValueError):
+                continue
+            if qty <= 0:
+                continue
+
             checkout_items.append(
                 {
                     "ean": ean,
-                    "quantity": line.get("qty", 1),
-                    "pricePerItem": line.get("price_unit", 0),
+                    "quantity": qty,
+                    "pricePerItem": price_unit,
                 }
             )
 
