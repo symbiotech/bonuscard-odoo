@@ -12,6 +12,7 @@ patch(PosStore.prototype, {
         const order = this.getOrder();
         if (order && order.bonuscard_partner_id !== (partner?.id || false)) {
             order.bonuscard_transaction_id = null;
+            order.bonuscard_checkout_items = null;
             order.bonuscard_partner_id = partner?.id || false;
         }
         if (!partner) {
@@ -56,6 +57,7 @@ patch(PosStore.prototype, {
 
         if (order && order.bonuscard_partner_id !== (partner?.id || false)) {
             order.bonuscard_transaction_id = null;
+            order.bonuscard_checkout_items = null;
             order.bonuscard_partner_id = partner?.id || false;
         }
 
@@ -78,6 +80,7 @@ patch(PosStore.prototype, {
 
                     if (!result.error) {
                         order.bonuscard_transaction_id = result.transactionIdentifier;
+                        order.bonuscard_checkout_items = orderLines;
                         order.bonuscard_partner_id = partner.id;
 
                         const totalDiscount = result.totalDiscount || 0;
