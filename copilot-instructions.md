@@ -96,7 +96,7 @@ The following rules apply when writing or modifying Python code:
 To run all checks locally:
 
 ```bash
-pip install pre-commit
+uv sync --group dev --no-install-project
 pre-commit install      # install hooks once
 pre-commit run --all-files   # run everything now
 ```
