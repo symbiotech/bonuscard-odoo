@@ -163,11 +163,11 @@ patch(PosStore.prototype, {
         if (this.router.state.current === "PaymentScreen") {
             const order = this.getOrder();
             if (order?.bonuscard_transaction_id) {
-                this.data
+                await this.data
                     .call("bonuscard.api.service", "cancel_purchase_for_pos", [
                         order.bonuscard_transaction_id,
                     ])
-                    .catch(() => { });
+                    .catch(() => {});
                 order.bonuscard_transaction_id = null;
                 order.bonuscard_checkout_items = null;
                 order.bonuscard_partner_id = false;
