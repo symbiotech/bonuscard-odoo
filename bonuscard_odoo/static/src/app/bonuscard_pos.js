@@ -163,14 +163,25 @@ patch(PosStore.prototype, {
         if (this.router.state.current === "PaymentScreen") {
             const order = this.getOrder();
             if (order?.bonuscard_transaction_id) {
-                await this.data
-                    .call("bonuscard.api.service", "cancel_purchase_for_pos", [
-                        order.bonuscard_transaction_id,
-                    ])
-                    .catch(() => {});
-                order.bonuscard_transaction_id = null;
-                order.bonuscard_checkout_items = null;
-                order.bonuscard_partner_id = false;
+                try {
+                    const result = await this.data.call(
+                        "bonuscard.api.service",
+                        "cancel_purchase_for_pos",
+                        [order.bonuscard_transaction_id]
+                    );
+                    if (!result?.error) {
+                        order.bonuscard_transaction_id = null;
+                        order.bonuscard_checkout_items = null;
+                        order.bonuscard_partner_id = false;
+                    } else {
+                        this.notification.add(
+                            result.messages?.[0] || _t("Bonuscard cancel failed."),
+                            { type: "warning" }
+                        );
+                    }
+                } catch {
+                    this.notification.add(_t("Bonuscard cancel failed."), { type: "warning" });
+                }
             }
         }
         return super.onClickBackButton(...arguments);
