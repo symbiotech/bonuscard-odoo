@@ -1,0 +1,47 @@
+flowchart LR
+    subgraph POS Frontend
+        A[Select Customer in POS]
+        B[Start Payment]
+        C[Payment Validation]
+        D[Payment Success]
+        E[Cancel / Back / POS Close]
+    end
+
+    subgraph Odoo Backend
+        F[res.partner.get_bonuscard_status_for_pos]
+        G[bonuscard.api.service.validate_purchase_for_pos]
+        H[bonuscard.api.service.finalize_purchase_for_pos]
+        I[bonuscard.api.service.cancel_purchase_for_pos]
+        J[bonuscard.connector.instance\nBonuscard API credentials]
+    end
+
+    subgraph Bonuscard API
+        K[SearchCustomers]
+        L[ValidatePurchase]
+        M[FinalizePurchase]
+        N[CancelPurchase]
+    end
+
+    A -->|setPartnerToCurrentOrder| F
+    F -->|search terms: phone/email/name| K
+    K -->|match result| F
+    F -->|status/recruitment_code| A
+
+    B -->|partner has bonuscard_recruitment_code| G
+    G -->|checkoutItems + customerIdentifier| L
+    L -->|transactionIdentifier + discounts| G
+    G -->|store transaction state| B
+
+    C -->|afterOrderValidation| H
+    H -->|transactionIdentifier + checkoutItems| M
+    M -->|commit purchase| H
+    H -->|clear order bonuscard state| C
+
+    E -->|cancel pending transaction| I
+    I -->|transactionIdentifier| N
+    N -->|cancel purchase| I
+    I -->|clear order bonuscard state| E
+
+    J -->|used by validate/finalize/cancel| G
+    J -->|used by validate/finalize/cancel| H
+    J -->|used by validate/finalize/cancel| I
