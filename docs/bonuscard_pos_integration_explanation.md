@@ -23,7 +23,7 @@ This document explains how the Bonuscard POS integration works in the `bonuscard
 3. Payment confirmation
    - `OrderPaymentValidation.afterOrderValidation()` calls `bonuscard.api.service.finalize_purchase_for_pos`
    - This sends the stored `transactionIdentifier` and `checkoutItems` to Bonuscard
-   - On success, the POS clears the captured Bonuscard transaction state
+   - On success, the POS clears `order.bonuscard_transaction_id` and `order.bonuscard_checkout_items`
 
 4. Cancel or rollback flows
    - `PosStore.onClickBackButton()`, `deleteCurrentOrder()`, and `closePos()` cancel pending Bonuscard transactions
