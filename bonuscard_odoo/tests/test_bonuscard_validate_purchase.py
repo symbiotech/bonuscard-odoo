@@ -1,6 +1,9 @@
 from unittest.mock import patch
 
-from odoo.addons.bonuscard_odoo.models.bonuscard_api_service import BonuscardHttpError
+from odoo.addons.bonuscard_odoo.models.bonuscard_api_service import (
+    BonuscardApiError,
+    BonuscardHttpError,
+)
 from odoo.exceptions import UserError
 from odoo.tests import TransactionCase, tagged
 
@@ -147,7 +150,7 @@ class TestBonuscardValidatePurchase(TransactionCase):
         )
 
     def test_bonuscard_api_service_allows_read_access_for_rpc(self):
-        self.assertTrue(self.service.check_access_rights("read"))
+        self.assertTrue(self.service.has_access("read"))
 
     def test_bonuscard_api_service_allows_read_access_for_pos_users(self):
         pos_group = self.env.ref("point_of_sale.group_pos_user")
@@ -158,17 +161,13 @@ class TestBonuscardValidatePurchase(TransactionCase):
                 "group_ids": [(6, 0, [pos_group.id])],
             }
         )
-        self.assertTrue(self.service.with_user(user).check_access_rights("read"))
+        self.assertTrue(self.service.with_user(user).has_access("read"))
 
     def test_bonuscard_api_service_denies_read_access_for_regular_users(self):
         user = self.env["res.users"].create(
             {"name": "Regular User", "login": "regular_user@example.com"}
         )
-        self.assertFalse(
-            self.service.with_user(user).check_access_rights(
-                "read", raise_exception=False
-            )
-        )
+        self.assertFalse(self.service.with_user(user).has_access("read"))
 
     def test_validate_purchase_for_pos_uses_default_code_when_no_barcode(self):
         partner = self._make_partner_with_code()
@@ -287,6 +286,46 @@ class TestBonuscardValidatePurchase(TransactionCase):
         self.assertTrue(result.get("error"))
         self.assertEqual(result.get("messages"), ["Bonuscard API unavailable"])
 
+    def test_validate_purchase_for_pos_handles_api_error_code_2(self):
+        partner = self._make_partner_with_code()
+        product = self._make_product_with_barcode()
+        order_lines = [{"product_id": product.id, "qty": 1, "price_unit": 10.0}]
+
+        with patch(
+            "odoo.addons.bonuscard_odoo.models.bonuscard_api_service.BonuscardApiService._validate_purchase",
+            side_effect=BonuscardApiError(
+                "Bonuscard API error (2): Locked to another transaction.",
+                error_code=2,
+            ),
+        ):
+            result = self.service.validate_purchase_for_pos(partner.id, order_lines)
+
+        self.assertTrue(result.get("error"))
+        self.assertEqual(
+            result.get("messages"),
+            ["Customer is locked to an open transaction. Please try again or restart."],
+        )
+
+    def test_validate_purchase_for_pos_handles_api_error_code_4(self):
+        partner = self._make_partner_with_code()
+        product = self._make_product_with_barcode()
+        order_lines = [{"product_id": product.id, "qty": 1, "price_unit": 10.0}]
+
+        with patch(
+            "odoo.addons.bonuscard_odoo.models.bonuscard_api_service.BonuscardApiService._validate_purchase",
+            side_effect=BonuscardApiError(
+                "Bonuscard API error (4): Account verification required.",
+                error_code=4,
+            ),
+        ):
+            result = self.service.validate_purchase_for_pos(partner.id, order_lines)
+
+        self.assertTrue(result.get("error"))
+        self.assertEqual(
+            result.get("messages"),
+            ["Customer needs to verify their Bonuscard account before purchasing."],
+        )
+
     def test_validate_purchase_for_pos_returns_generic_error_when_exception_has_no_message(
         self,
     ):
@@ -363,6 +402,33 @@ class TestBonuscardValidatePurchase(TransactionCase):
             },
         )
 
+    def test_finalize_purchase_includes_note(self):
+        checkout_items = [{"ean": "8710255122465", "quantity": 1, "pricePerItem": 100}]
+
+        with patch(
+            "odoo.addons.bonuscard_odoo.models.bonuscard_api_service.BonuscardApiService._request",
+            return_value={"error": False, "transactionIdentifier": "TX001"},
+        ) as mock_request:
+            self.service._finalize_purchase(
+                self.instance,
+                "WLKT6",
+                "TX001",
+                checkout_items,
+                note="POS payment completed",
+            )
+
+        mock_request.assert_called_once_with(
+            self.instance,
+            endpoint="FinalizePurchase",
+            method="POST",
+            payload={
+                "customerIdentifier": "WLKT6",
+                "transactionIdentifier": "TX001",
+                "checkoutItems": checkout_items,
+                "note": "POS payment completed",
+            },
+        )
+
     def test_finalize_purchase_for_pos_transforms_pos_order_lines(self):
         partner = self._make_partner_with_code()
         product = self._make_product_with_barcode()
@@ -384,6 +450,30 @@ class TestBonuscardValidatePurchase(TransactionCase):
             "TX001",
             [{"ean": "8710255122465", "quantity": 1.0, "pricePerItem": 100.0}],
         )
+
+    def test_finalize_purchase_for_pos_no_partner(self):
+        result = self.service.finalize_purchase_for_pos(0, "TX001", [])
+
+        self.assertTrue(result.get("error"))
+        self.assertEqual(result.get("messages"), ["Partner not found."])
+
+    def test_finalize_purchase_for_pos_no_instance(self):
+        partner = self._make_partner_with_code()
+        product = self._make_product_with_barcode()
+        order_lines = [{"product_id": product.id, "qty": 1, "price_unit": 100.0}]
+        self.instance.active = False
+        try:
+            result = self.service.finalize_purchase_for_pos(
+                partner.id, "TX001", order_lines
+            )
+
+            self.assertTrue(result.get("error"))
+            self.assertEqual(
+                result.get("messages"),
+                ["No active Bonuscard connection is configured."],
+            )
+        finally:
+            self.instance.active = True
 
     def test_cancel_purchase_sends_correct_payload(self):
         with patch(
@@ -544,4 +634,50 @@ class TestBonuscardValidatePurchase(TransactionCase):
             "WLKT6",
             "TX001",
             [{"ean": "8710255122465", "quantity": 1.0, "pricePerItem": 10.0}],
+        )
+
+    def test_finalize_purchase_for_pos_handles_api_error_code_2(self):
+        partner = self._make_partner_with_code()
+        checkout_items = [
+            {"ean": "8710255122465", "quantity": "1", "pricePerItem": "10"}
+        ]
+
+        with patch(
+            "odoo.addons.bonuscard_odoo.models.bonuscard_api_service.BonuscardApiService._finalize_purchase",
+            side_effect=BonuscardApiError(
+                "Bonuscard API error (2): Locked to another transaction.",
+                error_code=2,
+            ),
+        ):
+            result = self.service.finalize_purchase_for_pos(
+                partner.id, "TX001", checkout_items
+            )
+
+        self.assertTrue(result.get("error"))
+        self.assertEqual(
+            result.get("messages"),
+            ["Customer is locked to an open transaction. Please try again or restart."],
+        )
+
+    def test_finalize_purchase_for_pos_handles_api_error_code_4(self):
+        partner = self._make_partner_with_code()
+        checkout_items = [
+            {"ean": "8710255122465", "quantity": "1", "pricePerItem": "10"}
+        ]
+
+        with patch(
+            "odoo.addons.bonuscard_odoo.models.bonuscard_api_service.BonuscardApiService._finalize_purchase",
+            side_effect=BonuscardApiError(
+                "Bonuscard API error (4): Account verification required.",
+                error_code=4,
+            ),
+        ):
+            result = self.service.finalize_purchase_for_pos(
+                partner.id, "TX001", checkout_items
+            )
+
+        self.assertTrue(result.get("error"))
+        self.assertEqual(
+            result.get("messages"),
+            ["Customer needs to verify their Bonuscard account before purchasing."],
         )

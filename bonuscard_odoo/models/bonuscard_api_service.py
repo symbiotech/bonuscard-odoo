@@ -24,6 +24,14 @@ class BonuscardHttpError(UserError):
         self.status_code = status_code
 
 
+class BonuscardApiError(UserError):
+    """Raised when the Bonuscard API returns a business-level error payload."""
+
+    def __init__(self, message, error_code=None):
+        super().__init__(message)
+        self.error_code = error_code
+
+
 class BonuscardApiService(models.AbstractModel):
     _name = "bonuscard.api.service"
     _description = "Bonuscard API Service"
@@ -59,7 +67,7 @@ class BonuscardApiService(models.AbstractModel):
             return [str(message) for message in messages if message]
         return []
 
-    def _raise_on_api_error(self, payload):
+    def _raise_on_api_error(self, instance, payload):
         if not isinstance(payload, dict) or not payload.get("error"):
             return
 
@@ -68,13 +76,23 @@ class BonuscardApiService(models.AbstractModel):
         )
         messages = self._extract_error_messages(payload)
         if messages:
-            raise UserError(
-                self.env._(
-                    "Bonuscard API error (%s): %s", error_code, " | ".join(messages)
-                )
+            message = self.env._(
+                "Bonuscard API error (%s): %s",
+                error_code,
+                " | ".join(messages),
+            )
+        else:
+            message = self.env._("Bonuscard API error (%s).", error_code)
+
+        try:
+            instance.write({"last_error": message})
+        except Exception:  # pylint: disable=broad-except
+            _logger.exception(
+                "Failed to save Bonuscard API error message to instance %s",
+                instance.id,
             )
 
-        raise UserError(self.env._("Bonuscard API error (%s).", error_code))
+        raise BonuscardApiError(message, error_code=error_code)
 
     def _request(
         self,
@@ -124,25 +142,27 @@ class BonuscardApiService(models.AbstractModel):
                 self.env._("Bonuscard API connection error: %s", err.reason)
             ) from err
 
-        self._raise_on_api_error(decoded_response)
+        self._raise_on_api_error(instance, decoded_response)
         return decoded_response
 
-    def check_access_rights(self, operation, raise_exception=True):
-        """Grant read access on this abstract service model for RPC calls.
+    def check_access(self, operation: str) -> None:
+        """Grant read access on this abstract service model for RPC calls."""
+        if operation == "read" and (
+            self.env.user.id == SUPERUSER_ID
+            or self.env.user.has_group("point_of_sale.group_pos_user")
+            or self.env.user.has_group("bonuscard_odoo.bonuscard_odoo_group_user")
+        ):
+            return None
+        return super().check_access(operation)
 
-        POS invokes :meth:`validate_purchase_for_pos`, :meth:`finalize_purchase_for_pos`,
-        and :meth:`cancel_purchase_for_pos` via ``call_kw``, which enforces model access
-        rights (typically requiring ``read`` on the model). Since this is an abstract
-        service model without an ``ir.model.access`` entry, we explicitly allow ``read``
-        while delegating other operations to the superclass.
-        """
+    def has_access(self, operation: str) -> bool:
         if operation == "read" and (
             self.env.user.id == SUPERUSER_ID
             or self.env.user.has_group("point_of_sale.group_pos_user")
             or self.env.user.has_group("bonuscard_odoo.bonuscard_odoo_group_user")
         ):
             return True
-        return super().check_access_rights(operation, raise_exception=raise_exception)
+        return super().has_access(operation)
 
     def _test_connection(self, instance):
         instance.ensure_one()
@@ -285,6 +305,14 @@ class BonuscardApiService(models.AbstractModel):
                 checkout_items,
                 transaction_identifier=transaction_identifier,
             )
+        except BonuscardApiError as exc:
+            message = self._get_bonuscard_error_message(
+                exc, self.env._("Bonuscard validation failed.")
+            )
+            return {
+                "error": True,
+                "messages": [message],
+            }
         except Exception as exc:  # pylint: disable=broad-except
             # POS flow must remain non-blocking: return an error payload instead
             # of raising and let the frontend continue with normal payment.
@@ -377,6 +405,23 @@ class BonuscardApiService(models.AbstractModel):
 
         return formatted_items
 
+    def _get_bonuscard_error_message(self, exc, default_message):
+        error_code = exc.error_code
+        try:
+            error_code = int(error_code)
+        except (TypeError, ValueError):
+            error_code = None
+
+        if error_code == 2:
+            return self.env._(
+                "Customer is locked to an open transaction. Please try again or restart."
+            )
+        if error_code == 4:
+            return self.env._(
+                "Customer needs to verify their Bonuscard account before purchasing."
+            )
+        return getattr(exc, "name", None) or str(exc) or default_message
+
     def _finalize_purchase(
         self,
         instance,
@@ -466,6 +511,14 @@ class BonuscardApiService(models.AbstractModel):
                 transaction_identifier,
                 formatted_items,
             )
+        except BonuscardApiError as exc:
+            message = self._get_bonuscard_error_message(
+                exc, self.env._("Bonuscard finalization failed.")
+            )
+            return {
+                "error": True,
+                "messages": [message],
+            }
         except Exception as exc:  # pylint: disable=broad-except
             if isinstance(exc, BonuscardHttpError):
                 _logger.warning(
