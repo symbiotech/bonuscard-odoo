@@ -145,22 +145,24 @@ class BonuscardApiService(models.AbstractModel):
         self._raise_on_api_error(instance, decoded_response)
         return decoded_response
 
-    def check_access_rights(self, operation, raise_exception=True):
-        """Grant read access on this abstract service model for RPC calls.
+    def check_access(self, operation: str) -> None:
+        """Grant read access on this abstract service model for RPC calls."""
+        if operation == "read" and (
+            self.env.user.id == SUPERUSER_ID
+            or self.env.user.has_group("point_of_sale.group_pos_user")
+            or self.env.user.has_group("bonuscard_odoo.bonuscard_odoo_group_user")
+        ):
+            return None
+        return super().check_access(operation)
 
-        POS invokes :meth:`validate_purchase_for_pos`, :meth:`finalize_purchase_for_pos`,
-        and :meth:`cancel_purchase_for_pos` via ``call_kw``, which enforces model access
-        rights (typically requiring ``read`` on the model). Since this is an abstract
-        service model without an ``ir.model.access`` entry, we explicitly allow ``read``
-        while delegating other operations to the superclass.
-        """
+    def has_access(self, operation: str) -> bool:
         if operation == "read" and (
             self.env.user.id == SUPERUSER_ID
             or self.env.user.has_group("point_of_sale.group_pos_user")
             or self.env.user.has_group("bonuscard_odoo.bonuscard_odoo_group_user")
         ):
             return True
-        return super().check_access_rights(operation, raise_exception=raise_exception)
+        return super().has_access(operation)
 
     def _test_connection(self, instance):
         instance.ensure_one()
