@@ -406,6 +406,33 @@ class TestBonuscardValidatePurchase(TransactionCase):
             },
         )
 
+    def test_finalize_purchase_includes_note(self):
+        checkout_items = [{"ean": "8710255122465", "quantity": 1, "pricePerItem": 100}]
+
+        with patch(
+            "odoo.addons.bonuscard_odoo.models.bonuscard_api_service.BonuscardApiService._request",
+            return_value={"error": False, "transactionIdentifier": "TX001"},
+        ) as mock_request:
+            self.service._finalize_purchase(
+                self.instance,
+                "WLKT6",
+                "TX001",
+                checkout_items,
+                note="POS payment completed",
+            )
+
+        mock_request.assert_called_once_with(
+            self.instance,
+            endpoint="FinalizePurchase",
+            method="POST",
+            payload={
+                "customerIdentifier": "WLKT6",
+                "transactionIdentifier": "TX001",
+                "checkoutItems": checkout_items,
+                "note": "POS payment completed",
+            },
+        )
+
     def test_finalize_purchase_for_pos_transforms_pos_order_lines(self):
         partner = self._make_partner_with_code()
         product = self._make_product_with_barcode()
@@ -427,6 +454,29 @@ class TestBonuscardValidatePurchase(TransactionCase):
             "TX001",
             [{"ean": "8710255122465", "quantity": 1.0, "pricePerItem": 100.0}],
         )
+
+    def test_finalize_purchase_for_pos_no_partner(self):
+        result = self.service.finalize_purchase_for_pos(0, "TX001", [])
+
+        self.assertTrue(result.get("error"))
+        self.assertEqual(result.get("messages"), ["Partner not found."])
+
+    def test_finalize_purchase_for_pos_no_instance(self):
+        partner = self._make_partner_with_code()
+        product = self._make_product_with_barcode()
+        order_lines = [{"product_id": product.id, "qty": 1, "price_unit": 100.0}]
+        self.instance.active = False
+
+        result = self.service.finalize_purchase_for_pos(
+            partner.id, "TX001", order_lines
+        )
+
+        self.assertTrue(result.get("error"))
+        self.assertEqual(
+            result.get("messages"),
+            ["No active Bonuscard connection is configured."],
+        )
+        self.instance.active = True
 
     def test_cancel_purchase_sends_correct_payload(self):
         with patch(
