@@ -28,7 +28,7 @@ This document explains how the Bonuscard POS integration works in the `bonuscard
 4. Cancel or rollback flows
    - `PosStore.onClickBackButton()`, `deleteCurrentOrder()`, and `closePos()` cancel pending Bonuscard transactions
    - They call `bonuscard.api.service.cancel_purchase_for_pos`
-   - This keeps the Bonuscard state consistent when the POS flow is abandoned
+   - This attempts to keep the Bonuscard state consistent when the POS flow is abandoned (cancellation is best-effort and may fail in some cases)
 
 ## Backend components
 
