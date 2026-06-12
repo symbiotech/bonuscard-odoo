@@ -133,8 +133,12 @@ patch(PosStore.prototype, {
     },
 
     async closePos() {
-        const order = this.getOrder();
-        if (order?.bonuscard_transaction_id) {
+        const orders = this.models["pos.order"]?.getAll?.() ?? [];
+        for (const order of orders) {
+            if (!order?.bonuscard_transaction_id) {
+                continue;
+            }
+
             await this.data
                 .call("bonuscard.api.service", "cancel_purchase_for_pos", [
                     order.bonuscard_transaction_id,
