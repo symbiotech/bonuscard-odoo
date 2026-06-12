@@ -462,17 +462,18 @@ class TestBonuscardValidatePurchase(TransactionCase):
         product = self._make_product_with_barcode()
         order_lines = [{"product_id": product.id, "qty": 1, "price_unit": 100.0}]
         self.instance.active = False
+        try:
+            result = self.service.finalize_purchase_for_pos(
+                partner.id, "TX001", order_lines
+            )
 
-        result = self.service.finalize_purchase_for_pos(
-            partner.id, "TX001", order_lines
-        )
-
-        self.assertTrue(result.get("error"))
-        self.assertEqual(
-            result.get("messages"),
-            ["No active Bonuscard connection is configured."],
-        )
-        self.instance.active = True
+            self.assertTrue(result.get("error"))
+            self.assertEqual(
+                result.get("messages"),
+                ["No active Bonuscard connection is configured."],
+            )
+        finally:
+            self.instance.active = True
 
     def test_cancel_purchase_sends_correct_payload(self):
         with patch(
