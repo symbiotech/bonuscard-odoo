@@ -8,7 +8,7 @@ This document explains how the Bonuscard POS integration works in the `bonuscard
 ## Integration steps
 
 1. Customer selected in POS
-   - `bonuscard_pos.js` extends `PosStore.setPartnerToCurrentOrder`
+   - `bonuscard_odoo/static/src/app/bonuscard_pos.js` extends `PosStore.setPartnerToCurrentOrder`
    - Calls `res.partner.get_bonuscard_status_for_pos` to resolve Bonuscard status
    - The backend searches Bonuscard using customer phone, mobile, email, or name
    - The partner record is updated with `bonuscard_status` and `bonuscard_recruitment_code`
