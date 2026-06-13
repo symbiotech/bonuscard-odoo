@@ -88,12 +88,31 @@ patch(PosStore.prototype, {
                 continue;
             }
 
-            const identifiers = new Set(
-                [...(item.relatedIdentifiers || []), item.ean]
-                    .filter((identifier) => identifier !== undefined && identifier !== null)
-                    .map((identifier) => String(identifier))
+            const checkoutItemsByIdentifier = new Map(
+                (result.checkoutItems || [])
+                    .filter(
+                        (checkoutItem) =>
+                            checkoutItem && checkoutItem.identifier !== undefined && checkoutItem.identifier !== null
+                    )
+                    .map((checkoutItem) => [String(checkoutItem.identifier), checkoutItem])
             );
 
+            const identifiers = new Set();
+            for (const relatedIdentifier of item.relatedIdentifiers || []) {
+                const checkoutItem = checkoutItemsByIdentifier.get(String(relatedIdentifier));
+                if (checkoutItem?.ean) {
+                    identifiers.add(String(checkoutItem.ean));
+                }
+                if (checkoutItem?.articleNumber) {
+                    identifiers.add(String(checkoutItem.articleNumber));
+                }
+                if (!checkoutItem) {
+                    identifiers.add(String(relatedIdentifier));
+                }
+            }
+            if (!identifiers.size && item.ean !== undefined && item.ean !== null) {
+                identifiers.add(String(item.ean));
+            }
             const matchedLines = new Set();
             for (const identifier of identifiers) {
                 const lines = orderLineMap.get(identifier);
