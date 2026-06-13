@@ -52,6 +52,88 @@ patch(PosStore.prototype, {
         }
     },
 
+    async _applyBonuscardDiscountsToOrder(order, result) {
+        const discountProduct = this.config?.discount_product_id;
+        const discountProductRecord =
+            discountProduct?.id && this.models["product.product"].get(discountProduct.id)
+                ? this.models["product.product"].get(discountProduct.id)
+                : null;
+
+        const orderLineMap = new Map();
+        for (const line of order.lines) {
+            const product = line.product_id;
+            if (!product) {
+                continue;
+            }
+            const keys = [String(product.id)];
+            if (product.barcode) {
+                keys.push(product.barcode);
+            }
+            if (product.default_code) {
+                keys.push(product.default_code);
+            }
+            for (const key of keys) {
+                if (!orderLineMap.has(key)) {
+                    orderLineMap.set(key, []);
+                }
+                orderLineMap.get(key).push(line);
+            }
+        }
+
+        let applied = false;
+        for (const item of result.resultItems || []) {
+            const itemQuantity = Number(item.quantity || 1);
+            const itemPricePerItem = Number(item.pricePerItem || 0);
+            if (itemQuantity <= 0 || itemPricePerItem >= 0) {
+                continue;
+            }
+
+            const identifiers = new Set(
+                [...(item.relatedIdentifiers || []), item.ean]
+                    .filter((identifier) => identifier !== undefined && identifier !== null)
+                    .map((identifier) => String(identifier))
+            );
+
+            const matchedLines = [];
+            for (const identifier of identifiers) {
+                const lines = orderLineMap.get(identifier);
+                if (lines) {
+                    matchedLines.push(...lines);
+                }
+            }
+
+            if (matchedLines.length) {
+                for (const line of matchedLines) {
+                    if (typeof line.setDiscount === "function" && line.price_unit) {
+                        const discountPercent = Math.min(
+                            100,
+                            (Math.abs(itemPricePerItem) / line.price_unit) * 100
+                        );
+                        if (discountPercent > 0) {
+                            line.setDiscount(discountPercent);
+                            applied = true;
+                        }
+                    }
+                }
+            } else if (discountProductRecord) {
+                await this.addLineToOrder(
+                    {
+                        product_id: discountProductRecord,
+                        product_tmpl_id: discountProductRecord.product_tmpl_id,
+                        qty: itemQuantity,
+                        price_unit: itemPricePerItem,
+                    },
+                    order,
+                    {},
+                    false
+                );
+                applied = true;
+            }
+        }
+
+        return applied;
+    },
+
     async pay() {
         const order = this.getOrder();
         const partner = order?.getPartner();
@@ -108,15 +190,14 @@ patch(PosStore.prototype, {
                             const confirmed = await ask(this.env.services.dialog, {
                                 title: _t("Bonuscard Discounts Applied"),
                                 body: sprintf(
-                                    _t("Total discount: %s\n\n%s\n\nProceed to payment?"),
+                                    _t(
+                                        "Total discount: %s\n\n%s\n\nApply the discount to the current order?"
+                                    ),
                                     totalDiscount.toFixed(2),
                                     discountLines
                                 ),
                             });
                             if (!confirmed) {
-                                // If the user cancels after Bonuscard validation,
-                                // cancel the pending Bonuscard purchase and clear
-                                // transaction state so it does not remain open.
                                 if (order.bonuscard_transaction_id) {
                                     try {
                                         const result = await this.data.call(
@@ -142,6 +223,14 @@ patch(PosStore.prototype, {
                                         });
                                     }
                                 }
+                                return;
+                            }
+                            const applied = await this._applyBonuscardDiscountsToOrder(order, result);
+                            if (applied) {
+                                this.notification.add(
+                                    _t("Bonuscard discount has been applied to the order."),
+                                    { type: "success" }
+                                );
                                 return;
                             }
                         }
