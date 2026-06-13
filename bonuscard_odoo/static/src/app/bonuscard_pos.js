@@ -105,18 +105,35 @@ patch(PosStore.prototype, {
             }
 
             if (matchedLines.size) {
+                let appliedForItem = false;
                 for (const line of matchedLines) {
                     if (typeof line.setDiscount === "function" && line.price_unit) {
+                        const unitPrice = Math.abs(line.price_unit);
                         const discountPercent = Math.min(
                             100,
-                            (Math.abs(itemPricePerItem) / line.price_unit) * 100
+                            (Math.abs(itemPricePerItem) / unitPrice) * 100
                         );
                         if (discountPercent > 0) {
                             line.setDiscount(discountPercent);
-                            applied = true;
+                            appliedForItem = true;
                         }
                     }
                 }
+                if (!appliedForItem && discountProductRecord) {
+                    await this.addLineToOrder(
+                        {
+                            product_id: discountProductRecord,
+                            product_tmpl_id: discountProductRecord.product_tmpl_id,
+                            qty: itemQuantity,
+                            price_unit: itemPricePerItem,
+                        },
+                        order,
+                        {},
+                        false
+                    );
+                    appliedForItem = true;
+                }
+                applied = applied || appliedForItem;
             } else if (discountProductRecord) {
                 await this.addLineToOrder(
                     {
