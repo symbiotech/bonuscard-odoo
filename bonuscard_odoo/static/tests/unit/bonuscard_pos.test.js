@@ -76,11 +76,19 @@ test("_applyBonuscardDiscountsToOrder only consumes the configured quantity acro
     );
 
     const result = {
+        checkoutItems: [
+            {
+                identifier: "ITEM1",
+                ean: product.barcode,
+                quantity: 1,
+                pricePerItem: 10,
+            },
+        ],
         resultItems: [
             {
                 quantity: 1,
                 pricePerItem: -2,
-                relatedIdentifiers: [String(product.id)],
+                relatedIdentifiers: ["ITEM1"],
             },
         ],
     };
