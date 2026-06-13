@@ -114,6 +114,17 @@ patch(PosStore.prototype, {
                                 ),
                             });
                             if (!confirmed) {
+                                // If the user cancels after Bonuscard validation,
+                                // cancel the pending Bonuscard purchase and clear
+                                // transaction state so it does not remain open.
+                                await this.data
+                                    .call("bonuscard.api.service", "cancel_purchase_for_pos", [
+                                        order.bonuscard_transaction_id,
+                                        order.bonuscard_partner_id || null,
+                                    ])
+                                    .catch(() => { });
+                                order.bonuscard_transaction_id = null;
+                                order.bonuscard_checkout_items = null;
                                 return;
                             }
                         }
