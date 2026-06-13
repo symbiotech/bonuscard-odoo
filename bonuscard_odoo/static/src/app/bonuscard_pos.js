@@ -117,14 +117,31 @@ patch(PosStore.prototype, {
                                 // If the user cancels after Bonuscard validation,
                                 // cancel the pending Bonuscard purchase and clear
                                 // transaction state so it does not remain open.
-                                await this.data
-                                    .call("bonuscard.api.service", "cancel_purchase_for_pos", [
-                                        order.bonuscard_transaction_id,
-                                        order.bonuscard_partner_id || null,
-                                    ])
-                                    .catch(() => { });
-                                order.bonuscard_transaction_id = null;
-                                order.bonuscard_checkout_items = null;
+                                if (order.bonuscard_transaction_id) {
+                                    try {
+                                        const result = await this.data.call(
+                                            "bonuscard.api.service",
+                                            "cancel_purchase_for_pos",
+                                            [
+                                                order.bonuscard_transaction_id,
+                                                order.bonuscard_partner_id || null,
+                                            ]
+                                        );
+                                        if (!result?.error) {
+                                            order.bonuscard_transaction_id = null;
+                                            order.bonuscard_checkout_items = null;
+                                        } else {
+                                            this.notification.add(
+                                                result.messages?.[0] || _t("Bonuscard cancel failed."),
+                                                { type: "warning" }
+                                            );
+                                        }
+                                    } catch {
+                                        this.notification.add(_t("Bonuscard cancel failed."), {
+                                            type: "warning",
+                                        });
+                                    }
+                                }
                                 return;
                             }
                         }
