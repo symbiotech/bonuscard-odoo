@@ -118,21 +118,6 @@ patch(PosStore.prototype, {
                     }
                 }
             } else if (discountProductRecord) {
-
-            if (matchedLines.length) {
-                for (const line of matchedLines) {
-                    if (typeof line.setDiscount === "function" && line.price_unit) {
-                        const discountPercent = Math.min(
-                            100,
-                            (Math.abs(itemPricePerItem) / line.price_unit) * 100
-                        );
-                        if (discountPercent > 0) {
-                            line.setDiscount(discountPercent);
-                            applied = true;
-                        }
-                    }
-                }
-            } else if (discountProductRecord) {
                 await this.addLineToOrder(
                     {
                         product_id: discountProductRecord,
