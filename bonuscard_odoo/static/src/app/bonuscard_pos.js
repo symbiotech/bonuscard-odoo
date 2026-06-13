@@ -82,8 +82,8 @@ patch(PosStore.prototype, {
 
         let applied = false;
         for (const item of result.resultItems || []) {
-            const itemQuantity = Number(item.quantity || 1);
-            const itemPricePerItem = Number(item.pricePerItem || 0);
+            const itemQuantity = Number(item.quantity ?? 1);
+            const itemPricePerItem = Number(item.pricePerItem ?? 0);
             if (itemQuantity <= 0 || itemPricePerItem >= 0) {
                 continue;
             }
