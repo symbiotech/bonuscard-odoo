@@ -129,13 +129,21 @@ test("pay applies Bonuscard discount and does not create a payment line when app
 
     onRpc("bonuscard.api.service", "validate_purchase_for_pos", () => ({
         transactionIdentifier: "TXN1",
-        checkoutItems: [],
+        checkoutItems: [
+            {
+                identifier: "ITEM1",
+                ean: product.barcode,
+                quantity: 1,
+                pricePerItem: 10,
+            },
+        ],
         totalDiscount: 2,
         resultItems: [
             {
+                description: "Discount",
                 quantity: 1,
                 pricePerItem: -2,
-                relatedIdentifiers: [String(product.id)],
+                relatedIdentifiers: ["ITEM1"],
             },
         ],
     }));
