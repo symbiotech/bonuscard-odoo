@@ -226,13 +226,20 @@ patch(PosStore.prototype, {
                                 return;
                             }
                             const applied = await this._applyBonuscardDiscountsToOrder(order, result);
-                            if (applied) {
+                            if (!applied) {
                                 this.notification.add(
-                                    _t("Bonuscard discount has been applied to the order."),
-                                    { type: "success" }
+                                    _t(
+                                        "Bonuscard returned a discount, but it could not be applied to the order. Please configure a discount product in POS settings."
+                                    ),
+                                    { type: "warning" }
                                 );
                                 return;
                             }
+                            this.notification.add(
+                                _t("Bonuscard discount has been applied to the order."),
+                                { type: "success" }
+                            );
+                            return;
                         }
                     } else {
                         const msg = result.messages?.[0] || _t("Bonuscard validation failed.");
