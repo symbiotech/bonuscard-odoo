@@ -94,13 +94,30 @@ patch(PosStore.prototype, {
                     .map((identifier) => String(identifier))
             );
 
-            const matchedLines = [];
+            const matchedLines = new Set();
             for (const identifier of identifiers) {
                 const lines = orderLineMap.get(identifier);
                 if (lines) {
-                    matchedLines.push(...lines);
+                    for (const line of lines) {
+                        matchedLines.add(line);
+                    }
                 }
             }
+
+            if (matchedLines.size) {
+                for (const line of matchedLines) {
+                    if (typeof line.setDiscount === "function" && line.price_unit) {
+                        const discountPercent = Math.min(
+                            100,
+                            (Math.abs(itemPricePerItem) / line.price_unit) * 100
+                        );
+                        if (discountPercent > 0) {
+                            line.setDiscount(discountPercent);
+                            applied = true;
+                        }
+                    }
+                }
+            } else if (discountProductRecord) {
 
             if (matchedLines.length) {
                 for (const line of matchedLines) {
