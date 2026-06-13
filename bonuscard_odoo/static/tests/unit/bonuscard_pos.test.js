@@ -41,6 +41,49 @@ test("_applyBonuscardDiscountsToOrder applies line discounts for matching identi
     expect(line.discount).toBe(20);
 });
 
+test("_applyBonuscardDiscountsToOrder only consumes the configured quantity across matched lines", async () => {
+    const store = await setupPosEnv();
+    const order = await getFilledOrder(store);
+
+    const product = store.models["product.product"].get(5);
+    product.barcode = product.barcode || "TEST-123";
+
+    const line1 = await store.addLineToOrder(
+        {
+            product_id: product,
+            product_tmpl_id: product.product_tmpl_id,
+            qty: 1,
+            price_unit: 10,
+        },
+        order
+    );
+    const line2 = await store.addLineToOrder(
+        {
+            product_id: product,
+            product_tmpl_id: product.product_tmpl_id,
+            qty: 1,
+            price_unit: 10,
+        },
+        order
+    );
+
+    const result = {
+        resultItems: [
+            {
+                quantity: 1,
+                pricePerItem: -2,
+                relatedIdentifiers: [String(product.id)],
+            },
+        ],
+    };
+
+    const applied = await store._applyBonuscardDiscountsToOrder(order, result);
+
+    expect(applied).toBe(true);
+    expect(line1.discount + line2.discount).toBe(20);
+    expect([line1.discount, line2.discount].filter((discount) => discount > 0).length).toBe(1);
+});
+
 test("pay applies Bonuscard discount and does not create a payment line when approved", async () => {
     const store = await setupPosEnv();
     const order = store.addNewOrder();

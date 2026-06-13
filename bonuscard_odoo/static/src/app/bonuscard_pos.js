@@ -105,9 +105,24 @@ patch(PosStore.prototype, {
             }
 
             if (matchedLines.size) {
+                let remainingQuantity = Math.abs(itemQuantity);
                 let appliedForItem = false;
-                for (const line of matchedLines) {
-                    if (typeof line.setDiscount === "function" && line.price_unit) {
+                const matchedLinesArray = [...matchedLines].sort(
+                    (a, b) => Math.abs(Number(a.qty || 0)) - Math.abs(Number(b.qty || 0))
+                );
+                for (const line of matchedLinesArray) {
+                    if (remainingQuantity <= 0) {
+                        break;
+                    }
+                    const lineQuantity = Math.abs(Number(line.qty || 0));
+                    if (
+                        lineQuantity <= 0 ||
+                        typeof line.setDiscount !== "function" ||
+                        !line.price_unit
+                    ) {
+                        continue;
+                    }
+                    if (lineQuantity <= remainingQuantity) {
                         const unitPrice = Math.abs(line.price_unit);
                         const discountPercent = Math.min(
                             100,
@@ -116,15 +131,18 @@ patch(PosStore.prototype, {
                         if (discountPercent > 0) {
                             line.setDiscount(discountPercent);
                             appliedForItem = true;
+                            remainingQuantity -= lineQuantity;
                         }
+                    } else {
+                        break;
                     }
                 }
-                if (!appliedForItem && discountProductRecord) {
+                if (remainingQuantity > 0 && discountProductRecord) {
                     await this.addLineToOrder(
                         {
                             product_id: discountProductRecord,
                             product_tmpl_id: discountProductRecord.product_tmpl_id,
-                            qty: itemQuantity,
+                            qty: remainingQuantity,
                             price_unit: itemPricePerItem,
                         },
                         order,
@@ -132,6 +150,7 @@ patch(PosStore.prototype, {
                         false
                     );
                     appliedForItem = true;
+                    remainingQuantity = 0;
                 }
                 applied = applied || appliedForItem;
             } else if (discountProductRecord) {
