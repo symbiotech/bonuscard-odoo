@@ -237,3 +237,25 @@ class TestBonuscardInstance(TransactionCase):
             method="GET",
             params={"query": "0707654321"},
         )
+
+    def test_request_converts_timeout_to_user_error(self):
+        record = self.instance_model.create(
+            {
+                "name": "Timeout Error",
+                "api_base_url": "https://web.bonuscard.com/api/",
+                "api_username": "demo-user",
+                "api_password": "demo-pass",
+            }
+        )
+        service = self.env["bonuscard.api.service"]
+
+        with (
+            patch(
+                "odoo.addons.bonuscard_odoo.models.bonuscard_api_service.urlopen",
+                side_effect=TimeoutError("timed out"),
+            ),
+            self.assertRaises(UserError) as ctx,
+        ):
+            service._request(record)
+
+        self.assertIn("Bonuscard API connection error", str(ctx.exception))

@@ -1,5 +1,6 @@
 import json
 import logging
+import socket
 from urllib.error import HTTPError, URLError
 from urllib.parse import urlencode
 from urllib.request import Request, urlopen
@@ -137,9 +138,10 @@ class BonuscardApiService(models.AbstractModel):
                 self.env._("Bonuscard API HTTP error: %s", message or err.reason),
                 status_code=err.code,
             ) from err
-        except URLError as err:
+        except (URLError, TimeoutError, socket.timeout) as err:
+            reason = getattr(err, "reason", str(err))
             raise UserError(
-                self.env._("Bonuscard API connection error: %s", err.reason)
+                self.env._("Bonuscard API connection error: %s", reason)
             ) from err
 
         self._raise_on_api_error(instance, decoded_response)
