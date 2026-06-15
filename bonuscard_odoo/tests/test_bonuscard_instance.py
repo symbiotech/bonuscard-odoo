@@ -259,3 +259,31 @@ class TestBonuscardInstance(TransactionCase):
             service._request(record)
 
         self.assertIn("Bonuscard API connection error", str(ctx.exception))
+
+    def test_request_retries_on_transient_timeout_and_succeeds(self):
+        record = self.instance_model.create(
+            {
+                "name": "Retry Timeout",
+                "api_base_url": "https://web.bonuscard.com/api/",
+                "api_username": "demo-user",
+                "api_password": "demo-pass",
+            }
+        )
+        service = self.env["bonuscard.api.service"]
+
+        response = MagicMock()
+        response.read.return_value = b'{"success": true}'
+        urlopen_context = MagicMock()
+        urlopen_context.__enter__.return_value = response
+        urlopen_context.__exit__.return_value = False
+
+        with (
+            patch(
+                "odoo.addons.bonuscard_odoo.models.bonuscard_api_service.urlopen",
+                side_effect=[TimeoutError("timed out"), urlopen_context],
+            ),
+            patch("odoo.addons.bonuscard_odoo.models.bonuscard_api_service.time.sleep"),
+        ):
+            result = service._request(record)
+
+        self.assertEqual(result, {"success": True})
