@@ -106,9 +106,9 @@ pre-commit run --all-files   # run everything now
 1. ~~Correct authentication and connection settings for Basic auth.~~ ✅
 2. ~~Introduce a reusable Bonuscard API client/service layer.~~ ✅
 3. ~~Implement SearchCustomers with POS partner selection hook and status badges.~~ ✅
-4. Implement POS-oriented ValidatePurchase support.
-5. Implement FinalizePurchase and CancelPurchase lifecycle handling.
-6. Add logging, diagnostics, and retry-safe error handling.
+4. ~~Implement POS-oriented ValidatePurchase support.~~ ✅
+5. ~~Implement FinalizePurchase and CancelPurchase lifecycle handling.~~ ✅
+6. ~~Add logging, diagnostics, and retry-safe error handling.~~ ✅
 7. Add follow-up features only after the purchase flow is stable:
    - RegisterCustomer
    - ActivateDiscountCode
