@@ -16,12 +16,21 @@ patch(PosStore.prototype, {
         const order = this.getOrder();
         if (order && order.bonuscard_partner_id !== (partner?.id || false)) {
             if (order.bonuscard_transaction_id) {
-                await this.data
-                    .call("bonuscard.api.service", "cancel_purchase_for_pos", [
-                        order.bonuscard_transaction_id,
-                        order.bonuscard_partner_id || null,
-                    ])
-                    .catch(() => { });
+                try {
+                    const cancelResult = await this.data.call(
+                        "bonuscard.api.service",
+                        "cancel_purchase_for_pos",
+                        [order.bonuscard_transaction_id, order.bonuscard_partner_id || null]
+                    );
+                    if (cancelResult?.error) {
+                        this.notification.add(
+                            cancelResult.messages?.[0] || _t("Bonuscard cancel failed."),
+                            { type: "warning" }
+                        );
+                    }
+                } catch {
+                    // Network failure — lock will expire naturally; proceed with partner change.
+                }
             }
             order.bonuscard_transaction_id = null;
             order.bonuscard_checkout_items = null;

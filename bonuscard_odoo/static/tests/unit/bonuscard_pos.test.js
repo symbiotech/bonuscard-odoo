@@ -416,6 +416,56 @@ test("changing partner cancels the open Bonuscard transaction before clearing it
     expect(order.bonuscard_transaction_id).toBeNull();
 });
 
+test("changing partner clears transaction state even when cancel returns an error", async () => {
+    const store = await setupPosEnv();
+    const order = store.addNewOrder();
+    const product = store.models["product.product"].get(5);
+    product.barcode = product.barcode || "TEST-123";
+
+    await store.addLineToOrder(
+        {
+            product_id: product,
+            product_tmpl_id: product.product_tmpl_id,
+            qty: 1,
+            price_unit: 10,
+        },
+        order
+    );
+
+    const partner1 = store.models["res.partner"].create({
+        name: "Bonuscard Customer",
+        bonuscard_recruitment_code: "ABC123",
+        bonuscard_status: "linked",
+    });
+    const partner2 = store.models["res.partner"].create({
+        name: "Other Customer",
+    });
+
+    onRpc("bonuscard.api.service", "validate_purchase_for_pos", () => ({
+        transactionIdentifier: "TXN1",
+        checkoutItems: [],
+        totalDiscount: 0,
+        resultItems: [],
+    }));
+    onRpc("res.partner", "get_bonuscard_status_for_pos", () => ({
+        status: "not_found",
+        recruitment_code: false,
+        note: "Customer is not linked",
+    }));
+    onRpc("bonuscard.api.service", "cancel_purchase_for_pos", () => ({
+        error: true,
+        messages: ["Bonuscard service is temporarily unavailable."],
+    }));
+
+    await store.setPartnerToCurrentOrder(partner1);
+    expect(order.bonuscard_transaction_id).toBe("TXN1");
+
+    await store.setPartnerToCurrentOrder(partner2);
+    // Partner change must proceed regardless of cancel failure.
+    expect(order.bonuscard_transaction_id).toBeNull();
+    expect(order.bonuscard_partner_id).toBe(partner2.id);
+});
+
 test("removing partner cancels the open Bonuscard transaction before clearing it", async () => {
     const store = await setupPosEnv();
     const order = store.addNewOrder();
