@@ -61,6 +61,9 @@ patch(PosStore.prototype, {
 
         const orderLineMap = new Map();
         for (const line of order.lines) {
+            if (Number(line.qty || 0) <= 0) {
+                continue;
+            }
             const product = line.product_id;
             if (!product) {
                 continue;
