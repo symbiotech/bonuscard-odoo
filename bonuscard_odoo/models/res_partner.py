@@ -201,7 +201,11 @@ class ResPartner(models.Model):
                 )
             )
 
-        phone_number = partner.phone or partner.mobile
+        phone_number = (
+            partner.phone
+            or (partner._fields.get("mobile") and partner.mobile)
+            or ""
+        ).strip()
         if not phone_number:
             raise UserError(
                 self.env._(
