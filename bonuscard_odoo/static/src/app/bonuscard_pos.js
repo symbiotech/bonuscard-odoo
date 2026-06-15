@@ -395,11 +395,11 @@ patch(PosOrder.prototype, {
         const result = super.removeOrderline(...arguments);
         if (result) {
             this.clearBonuscardDiscounts();
-            this.bonuscard_transaction_id = null;
             this.bonuscard_checkout_items = null;
             this.bonuscard_needs_validation = true;
         }
         return result;
+    }
     },
 });
 
