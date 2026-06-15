@@ -21,6 +21,9 @@
         "point_of_sale._assets_pos": [
             "bonuscard_odoo/static/src/app/**/*",
         ],
+        "web.assets_tests": [
+            "bonuscard_odoo/static/tests/unit/bonuscard_pos.test.js",
+        ],
     },
     "demo": [],
     "installable": True,
