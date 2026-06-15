@@ -185,6 +185,7 @@ test("quantity change clears pending Bonuscard transaction", async () => {
     line.setQuantity(2);
     expect(order.bonuscard_needs_validation).toBe(true);
     expect(order.bonuscard_checkout_items).toBeNull();
+});
 
 test("removing a line clears pending Bonuscard transaction", async () => {
     const store = await setupPosEnv();
@@ -227,6 +228,7 @@ test("removing a line clears pending Bonuscard transaction", async () => {
     order.removeOrderline(line);
     expect(order.bonuscard_needs_validation).toBe(true);
     expect(order.bonuscard_checkout_items).toBeNull();
+});
 
 test("addLineToOrder validates Bonuscard purchase after customer is selected", async () => {
     const store = await setupPosEnv();
