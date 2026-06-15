@@ -129,6 +129,7 @@ patch(PosStore.prototype, {
                         ? result.checkoutItems
                         : orderLines;
                 order.bonuscard_partner_id = partner.id;
+                order.bonuscard_needs_validation = false;
 
                 if (result.totalDiscount > 0) {
                     const applied = await this._applyBonuscardDiscountsToOrder(order, result);
