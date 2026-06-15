@@ -214,6 +214,7 @@ class BonuscardApiService(models.AbstractModel):
 
     def _register_customer(self, instance, phone_number):
         instance.ensure_one()
+        phone_number = (phone_number or "").strip()
         if not phone_number:
             return {}
         return self._request(
