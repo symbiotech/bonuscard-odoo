@@ -399,7 +399,6 @@ patch(PosOrder.prototype, {
             this.bonuscard_needs_validation = true;
         }
         return result;
-    }
     },
 });
 
@@ -412,7 +411,6 @@ patch(PosOrderline.prototype, {
             order.bonuscard_needs_validation = true;
         }
         return result;
-    }
     },
 
     delete(...args) {
@@ -423,7 +421,6 @@ patch(PosOrderline.prototype, {
             order.bonuscard_needs_validation = true;
         }
         return result;
-    }
     },
 });
 
