@@ -145,7 +145,7 @@ class BonuscardApiService(models.AbstractModel):
                 return decoded_response
             except HTTPError as err:
                 if err.code in (401, 403):
-                    message = err.read().decode("utf-8", errors="ignore")
+                    err.read()
                     raise UserError(
                         self.env._(
                             "Bonuscard authentication failed. Check the API username and password."
