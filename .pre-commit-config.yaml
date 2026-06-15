@@ -29,7 +29,8 @@ repos:
     hooks:
       - id: eslint
         name: eslint JavaScript lint
-        args: ["bonuscard_odoo/static/src/app"]
+        args:
+          ["--debug", "--format", "stylish", "bonuscard_odoo/static/src/app"]
   - repo: https://github.com/OCA/pylint-odoo
     rev: v10.0.2
     hooks:
