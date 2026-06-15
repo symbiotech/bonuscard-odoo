@@ -152,3 +152,52 @@ class TestResPartnerBonuscard(TransactionCase):
             partner.action_refresh_bonuscard_status()
 
         self.instance.active = True
+
+    def test_register_to_bonuscard_links_customer(self):
+        partner = self.partner_model.create(
+            {
+                "name": "Register Customer",
+                "phone": "+46707654321",
+            }
+        )
+
+        with patch(
+            "odoo.addons.bonuscard_odoo.models.bonuscard_api_service.BonuscardApiService._register_customer",
+            return_value={
+                "customer": {
+                    "id": 7,
+                    "name": "Register Customer",
+                    "phoneNumber": "+46707654321",
+                    "recruitmentCode": "REG123",
+                }
+            },
+        ):
+            action = partner.action_register_to_bonuscard()
+
+        self.assertEqual(partner.bonuscard_status, "linked")
+        self.assertEqual(partner.bonuscard_recruitment_code, "REG123")
+        self.assertEqual(action["type"], "ir.actions.client")
+        self.assertEqual(action["tag"], "display_notification")
+        self.assertEqual(action["params"]["type"], "success")
+        self.assertIn("REG123", action["params"]["message"])
+
+    def test_register_to_bonuscard_raises_user_error_on_api_failure(self):
+        partner = self.partner_model.create(
+            {
+                "name": "Register Error",
+                "phone": "+46707654321",
+            }
+        )
+
+        with patch(
+            "odoo.addons.bonuscard_odoo.models.bonuscard_api_service.BonuscardApiService._register_customer",
+            return_value={
+                "error": True,
+                "messages": ["Already registered to Bonuscard."],
+            },
+        ):
+            with self.assertRaises(UserError) as exc:
+                partner.action_register_to_bonuscard()
+
+        self.assertIn("Already registered to Bonuscard.", str(exc.exception))
+        self.assertEqual(partner.bonuscard_status, "not_checked")
