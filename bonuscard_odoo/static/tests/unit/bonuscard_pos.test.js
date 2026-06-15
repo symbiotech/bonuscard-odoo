@@ -183,8 +183,8 @@ test("quantity change clears pending Bonuscard transaction", async () => {
 
     expect(order.bonuscard_transaction_id).toBe("TXN1");
     line.setQuantity(2);
-    expect(order.bonuscard_transaction_id).toBeNull();
-});
+    expect(order.bonuscard_needs_validation).toBe(true);
+    expect(order.bonuscard_checkout_items).toBeNull();
 
 test("removing a line clears pending Bonuscard transaction", async () => {
     const store = await setupPosEnv();
