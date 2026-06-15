@@ -15,6 +15,23 @@ patch(PosStore.prototype, {
         await super.setPartnerToCurrentOrder(...arguments);
         const order = this.getOrder();
         if (order && order.bonuscard_partner_id !== (partner?.id || false)) {
+            if (order.bonuscard_transaction_id) {
+                try {
+                    const cancelResult = await this.data.call(
+                        "bonuscard.api.service",
+                        "cancel_purchase_for_pos",
+                        [order.bonuscard_transaction_id, order.bonuscard_partner_id || null]
+                    );
+                    if (cancelResult?.error) {
+                        this.notification.add(
+                            cancelResult.messages?.[0] || _t("Bonuscard cancel failed."),
+                            { type: "warning" }
+                        );
+                    }
+                } catch {
+                    // Network failure — lock will expire naturally; proceed with partner change.
+                }
+            }
             order.bonuscard_transaction_id = null;
             order.bonuscard_checkout_items = null;
             order.bonuscard_partner_id = partner?.id || false;
@@ -124,7 +141,8 @@ patch(PosStore.prototype, {
             );
 
             if (!result.error) {
-                order.bonuscard_transaction_id = result.transactionIdentifier;
+                order.bonuscard_transaction_id =
+                    result.transactionIdentifier || order.bonuscard_transaction_id;
                 order.bonuscard_checkout_items =
                     Array.isArray(result.checkoutItems) && result.checkoutItems.length
                         ? result.checkoutItems
@@ -346,6 +364,9 @@ patch(PosStore.prototype, {
                     order.bonuscard_partner_id || null,
                 ])
                 .catch(() => { });
+            order.bonuscard_transaction_id = null;
+            order.bonuscard_checkout_items = null;
+            order.bonuscard_partner_id = false;
         }
         return super.deleteCurrentOrder(...arguments);
     },
