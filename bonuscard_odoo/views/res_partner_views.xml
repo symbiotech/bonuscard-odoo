@@ -33,7 +33,7 @@
                         <group col="4">
                             <button name="action_refresh_bonuscard_status" string="Check Bonuscard" type="object" class="btn-primary"/>
                             <button name="action_clear_bonuscard_link" string="Reset Bonuscard Status" type="object" invisible="bonuscard_status == 'not_checked'"/>
-                            <button name="action_register_to_bonuscard" string="Register to Bonuscard" type="object" class="btn-primary" invisible="bonuscard_status == 'linked'"/>
+                            <button name="action_register_to_bonuscard" string="Register to Bonuscard" type="object" class="btn-primary" invisible="bonuscard_status != 'not_found'"/>
                         </group>
                     </group>
                 </page>
