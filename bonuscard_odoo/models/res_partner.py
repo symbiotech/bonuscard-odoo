@@ -222,6 +222,12 @@ class ResPartner(models.Model):
                 raise UserError(" | ".join(messages))
 
             customer = result.get("customer") or {}
+            if not customer.get("recruitmentCode"):
+                raise UserError(
+                    self.env._(
+                        "Bonuscard registration succeeded but no recruitment code was returned."
+                    )
+                )
             note = self.env._(
                 "Successfully registered to Bonuscard on %s.",
                 fields.Datetime.now(),
