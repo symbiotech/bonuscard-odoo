@@ -67,3 +67,28 @@ class TestBonuscardIntegration(TransactionCase):
 
         instance.action_test_connection()
         self.assertEqual(instance.connection_status, "ok")
+
+    def test_register_customer_with_phone_number(self):
+        """Test RegisterCustomer endpoint with a valid phone number."""
+        instance = self.env["bonuscard.connector.instance"].create(
+            {
+                "name": "Bonuscard Integration Test",
+                "api_base_url": self.api_base_url,
+                "api_username": self.api_username,
+                "api_password": self.api_password,
+                "api_culture": self.api_culture,
+            }
+        )
+
+        service = self.env["bonuscard.api.service"]
+        phone_number = os.getenv("BONUSCARD_TEST_PHONE_FOR_REGISTRATION", "").strip()
+        if not phone_number:
+            self.skipTest(
+                "RegisterCustomer test skipped. Missing BONUSCARD_TEST_PHONE_FOR_REGISTRATION"
+            )
+
+        result = service._register_customer(instance, phone_number=phone_number)
+        self.assertFalse(result.get("error"), f"API error: {result.get('messages')}")
+        self.assertIn("customer", result)
+        self.assertIn("phoneNumber", result["customer"])
+        self.assertIn("recruitmentCode", result["customer"])

@@ -188,6 +188,66 @@ class ResPartner(models.Model):
                 partner.write(values)
         return True
 
+    def action_register_to_bonuscard(self):
+        self.ensure_one()
+        service = self.env["bonuscard.api.service"]
+        partner = self.commercial_partner_id
+        company = partner.company_id or self.env.company
+        instance = service._get_company_instance(company)
+        if not instance:
+            raise UserError(
+                self.env._(
+                    "No active Bonuscard connection is configured for this company."
+                )
+            )
+
+        phone_number = partner.phone or partner.mobile
+        if not phone_number:
+            raise UserError(
+                self.env._(
+                    "Partner must have a phone number or mobile number to register with Bonuscard."
+                )
+            )
+
+        try:
+            result = service._register_customer(instance, phone_number=phone_number)
+            if result.get("error"):
+                messages = result.get("messages") or [
+                    self.env._("Bonuscard registration failed.")
+                ]
+                raise UserError(" | ".join(messages))
+
+            customer = result.get("customer") or {}
+            note = self.env._(
+                "Successfully registered to Bonuscard on %s.",
+                fields.Datetime.now(),
+            )
+            values = partner._write_bonuscard_status(
+                "linked", customer=customer, note=note
+            )
+            if self != partner:
+                self.write(values)
+
+            return {
+                "type": "ir.actions.client",
+                "tag": "display_notification",
+                "params": {
+                    "title": self.env._("Success"),
+                    "message": self.env._(
+                        "Customer registered successfully. Recruitment code: %s",
+                        customer.get("recruitmentCode"),
+                    ),
+                    "type": "success",
+                    "sticky": False,
+                },
+            }
+        except Exception as exc:
+            if isinstance(exc, UserError):
+                raise
+            raise UserError(
+                self.env._("Bonuscard registration failed: %s", str(exc))
+            ) from exc
+
     @api.model
     def get_bonuscard_status_for_pos(self, partner_id):
         partner = self.browse(partner_id).exists()

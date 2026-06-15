@@ -212,6 +212,17 @@ class BonuscardApiService(models.AbstractModel):
         )
         return payload.get("customers") or []
 
+    def _register_customer(self, instance, phone_number):
+        instance.ensure_one()
+        if not phone_number:
+            return {}
+        return self._request(
+            instance,
+            endpoint="RegisterCustomer",
+            method="POST",
+            params={"phoneNumber": phone_number},
+        )
+
     def _validate_purchase(
         self,
         instance,
