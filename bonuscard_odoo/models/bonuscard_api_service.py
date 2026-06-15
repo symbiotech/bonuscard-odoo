@@ -152,6 +152,7 @@ class BonuscardApiService(models.AbstractModel):
                         )
                     ) from err
                 if attempt < _REQUEST_RETRY_COUNT and self._should_retry_error(err):
+                    err.read()
                     attempt += 1
                     time.sleep(_REQUEST_RETRY_INITIAL_DELAY * attempt)
                     continue
