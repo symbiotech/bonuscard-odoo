@@ -419,11 +419,11 @@ patch(PosOrderline.prototype, {
         const order = this.order_id;
         const result = super.delete(...args);
         if (order) {
-            order.bonuscard_transaction_id = null;
             order.bonuscard_checkout_items = null;
             order.bonuscard_needs_validation = true;
         }
         return result;
+    }
     },
 });
 
