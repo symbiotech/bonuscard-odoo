@@ -165,9 +165,9 @@ test("validatePurchaseForOrder retains existing transactionIdentifier when API r
         bonuscard_recruitment_code: "ABC123",
         bonuscard_status: "linked",
     });
+    order.setPartner(partner);
 
     order.bonuscard_transaction_id = "TXN1";
-
     onRpc("bonuscard.api.service", "validate_purchase_for_pos", () => ({
         checkoutItems: [],
         totalDiscount: 2,
