@@ -161,16 +161,22 @@ class TestResPartnerBonuscard(TransactionCase):
             }
         )
 
-        with patch(
-            "odoo.addons.bonuscard_odoo.models.bonuscard_api_service.BonuscardApiService._register_customer",
-            return_value={
-                "customer": {
-                    "id": 7,
-                    "name": "Register Customer",
-                    "phoneNumber": "+46707654321",
-                    "recruitmentCode": "REG123",
-                }
-            },
+        with (
+            patch(
+                "odoo.addons.bonuscard_odoo.models.bonuscard_api_service.BonuscardApiService._search_customers",
+                return_value=[],
+            ),
+            patch(
+                "odoo.addons.bonuscard_odoo.models.bonuscard_api_service.BonuscardApiService._register_customer",
+                return_value={
+                    "customer": {
+                        "id": 7,
+                        "name": "Register Customer",
+                        "phoneNumber": "+46707654321",
+                        "recruitmentCode": "REG123",
+                    }
+                },
+            ),
         ):
             action = partner.action_register_to_bonuscard()
 
@@ -181,6 +187,42 @@ class TestResPartnerBonuscard(TransactionCase):
         self.assertEqual(action["params"]["type"], "success")
         self.assertIn("REG123", action["params"]["message"])
 
+    def test_register_to_bonuscard_rechecks_before_registering_if_customer_already_exists(
+        self,
+    ):
+        partner = self.partner_model.create(
+            {
+                "name": "Existing Bonuscard Customer",
+                "phone": "+46707654321",
+            }
+        )
+
+        with (
+            patch(
+                "odoo.addons.bonuscard_odoo.models.bonuscard_api_service.BonuscardApiService._search_customers",
+                return_value=[
+                    {
+                        "id": 7,
+                        "name": "Existing Bonuscard Customer",
+                        "phoneNumber": "+46707654321",
+                        "recruitmentCode": "REG123",
+                    }
+                ],
+            ),
+            patch(
+                "odoo.addons.bonuscard_odoo.models.bonuscard_api_service.BonuscardApiService._register_customer",
+                side_effect=AssertionError(
+                    "Register should not be called when the customer is already present."
+                ),
+            ),
+        ):
+            action = partner.action_register_to_bonuscard()
+
+        self.assertEqual(partner.bonuscard_status, "linked")
+        self.assertEqual(partner.bonuscard_recruitment_code, "REG123")
+        self.assertEqual(action["params"]["type"], "info")
+        self.assertIn("already registered", action["params"]["message"].lower())
+
     def test_register_to_bonuscard_raises_user_error_on_api_failure(self):
         partner = self.partner_model.create(
             {
@@ -189,15 +231,21 @@ class TestResPartnerBonuscard(TransactionCase):
             }
         )
 
-        with patch(
-            "odoo.addons.bonuscard_odoo.models.bonuscard_api_service.BonuscardApiService._register_customer",
-            return_value={
-                "error": True,
-                "messages": ["Already registered to Bonuscard."],
-            },
+        with (
+            patch(
+                "odoo.addons.bonuscard_odoo.models.bonuscard_api_service.BonuscardApiService._search_customers",
+                return_value=[],
+            ),
+            patch(
+                "odoo.addons.bonuscard_odoo.models.bonuscard_api_service.BonuscardApiService._register_customer",
+                return_value={
+                    "error": True,
+                    "messages": ["Already registered to Bonuscard."],
+                },
+            ),
         ):
             with self.assertRaises(UserError) as exc:
                 partner.action_register_to_bonuscard()
 
         self.assertIn("Already registered to Bonuscard.", str(exc.exception))
-        self.assertEqual(partner.bonuscard_status, "not_checked")
+        self.assertEqual(partner.bonuscard_status, "not_found")

@@ -202,9 +202,7 @@ class ResPartner(models.Model):
             )
 
         phone_number = (
-            partner.phone
-            or (partner._fields.get("mobile") and partner.mobile)
-            or ""
+            partner.phone or (partner._fields.get("mobile") and partner.mobile) or ""
         ).strip()
         if not phone_number:
             raise UserError(
@@ -214,6 +212,37 @@ class ResPartner(models.Model):
             )
 
         try:
+            search_result = partner._sync_bonuscard_status(
+                raise_if_missing_instance=True
+            )
+            if search_result.get("status") == "linked":
+                return {
+                    "type": "ir.actions.client",
+                    "tag": "display_notification",
+                    "params": {
+                        "title": self.env._("Success"),
+                        "message": self.env._(
+                            "Customer is already registered in Bonuscard and has been linked."
+                        ),
+                        "type": "info",
+                        "sticky": False,
+                    },
+                }
+            if search_result.get("status") == "ambiguous":
+                raise UserError(
+                    self.env._(
+                        "Bonuscard returned multiple matches for the customer. "
+                        "Please verify the partner details before attempting registration."
+                    )
+                )
+            if search_result.get("status") == "error":
+                raise UserError(
+                    self.env._(
+                        "Could not verify the Bonuscard status before registration: %s",
+                        search_result.get("note"),
+                    )
+                )
+
             result = service._register_customer(instance, phone_number=phone_number)
             if result.get("error"):
                 messages = result.get("messages") or [
