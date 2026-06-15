@@ -83,6 +83,17 @@ patch(PosStore.prototype, {
             }
         }
 
+        const checkoutItemsByIdentifier = new Map(
+            (result.checkoutItems || [])
+                .filter(
+                    (checkoutItem) =>
+                        checkoutItem &&
+                        checkoutItem.identifier !== undefined &&
+                        checkoutItem.identifier !== null
+                )
+                .map((checkoutItem) => [String(checkoutItem.identifier), checkoutItem])
+        );
+
         let applied = false;
         for (const item of result.resultItems || []) {
             const itemQuantity = Number(item.quantity ?? 1);
@@ -90,16 +101,6 @@ patch(PosStore.prototype, {
             if (itemQuantity <= 0 || itemPricePerItem >= 0) {
                 continue;
             }
-
-            const checkoutItemsByIdentifier = new Map(
-                (result.checkoutItems || [])
-                    .filter(
-                        (checkoutItem) =>
-                            checkoutItem && checkoutItem.identifier !== undefined && checkoutItem.identifier !== null
-                    )
-                    .map((checkoutItem) => [String(checkoutItem.identifier), checkoutItem])
-            );
-
             const identifiers = new Set();
             for (const relatedIdentifier of item.relatedIdentifiers || []) {
                 const checkoutItem = checkoutItemsByIdentifier.get(String(relatedIdentifier));
