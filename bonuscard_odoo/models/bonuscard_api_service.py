@@ -1,5 +1,6 @@
 import json
 import logging
+import time
 from urllib.error import HTTPError, URLError
 from urllib.parse import urlencode
 from urllib.request import Request, urlopen
@@ -8,6 +9,10 @@ from odoo import SUPERUSER_ID, api, models
 from odoo.exceptions import UserError
 
 _logger = logging.getLogger(__name__)
+
+_RETRYABLE_HTTP_STATUS_CODES = {429, 500, 502, 503, 504}
+_REQUEST_RETRY_COUNT = 2
+_REQUEST_RETRY_INITIAL_DELAY = 0.5
 
 
 class BonuscardHttpError(UserError):
@@ -94,6 +99,15 @@ class BonuscardApiService(models.AbstractModel):
 
         raise BonuscardApiError(message, error_code=error_code)
 
+    def _should_retry_error(self, err):
+        if isinstance(err, HTTPError):
+            if err.code in (401, 403):
+                return False
+            return err.code in _RETRYABLE_HTTP_STATUS_CODES or err.code >= 500
+        if isinstance(err, (URLError, TimeoutError)):
+            return True
+        return False
+
     def _request(
         self,
         instance,
@@ -122,29 +136,39 @@ class BonuscardApiService(models.AbstractModel):
         request = Request(url=url, data=body, headers=headers, method=method)
         timeout = int(instance.request_timeout or 20)
 
-        try:
-            with urlopen(request, timeout=timeout) as response:
-                decoded_response = self._decode_response(response)
-        except HTTPError as err:
-            message = err.read().decode("utf-8", errors="ignore")
-            if err.code in (401, 403):
-                raise UserError(
-                    self.env._(
-                        "Bonuscard authentication failed. Check the API username and password."
-                    )
+        attempt = 0
+        while True:
+            try:
+                with urlopen(request, timeout=timeout) as response:
+                    decoded_response = self._decode_response(response)
+                self._raise_on_api_error(instance, decoded_response)
+                return decoded_response
+            except HTTPError as err:
+                if err.code in (401, 403):
+                    message = err.read().decode("utf-8", errors="ignore")
+                    raise UserError(
+                        self.env._(
+                            "Bonuscard authentication failed. Check the API username and password."
+                        )
+                    ) from err
+                if attempt < _REQUEST_RETRY_COUNT and self._should_retry_error(err):
+                    attempt += 1
+                    time.sleep(_REQUEST_RETRY_INITIAL_DELAY * attempt)
+                    continue
+                message = err.read().decode("utf-8", errors="ignore")
+                raise BonuscardHttpError(
+                    self.env._("Bonuscard API HTTP error: %s", message or err.reason),
+                    status_code=err.code,
                 ) from err
-            raise BonuscardHttpError(
-                self.env._("Bonuscard API HTTP error: %s", message or err.reason),
-                status_code=err.code,
-            ) from err
-        except (URLError, TimeoutError) as err:
-            reason = getattr(err, "reason", str(err))
-            raise UserError(
-                self.env._("Bonuscard API connection error: %s", reason)
-            ) from err
-
-        self._raise_on_api_error(instance, decoded_response)
-        return decoded_response
+            except (URLError, TimeoutError) as err:
+                if attempt < _REQUEST_RETRY_COUNT and self._should_retry_error(err):
+                    attempt += 1
+                    time.sleep(_REQUEST_RETRY_INITIAL_DELAY * attempt)
+                    continue
+                reason = getattr(err, "reason", str(err))
+                raise UserError(
+                    self.env._("Bonuscard API connection error: %s", reason)
+                ) from err
 
     def check_access(self, operation: str) -> None:
         """Grant read access on this abstract service model for RPC calls."""
