@@ -248,7 +248,8 @@ class ResPartner(models.Model):
                 messages = result.get("messages") or [
                     self.env._("Bonuscard registration failed.")
                 ]
-                raise UserError(" | ".join(messages))
+                error_note = " | ".join(messages)
+                raise UserError(error_note)
 
             customer = result.get("customer") or {}
             if not customer.get("recruitmentCode"):

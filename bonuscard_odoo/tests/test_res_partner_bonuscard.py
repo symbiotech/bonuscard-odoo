@@ -248,4 +248,5 @@ class TestResPartnerBonuscard(TransactionCase):
                 partner.action_register_to_bonuscard()
 
         self.assertIn("Already registered to Bonuscard.", str(exc.exception))
-        self.assertEqual(partner.bonuscard_status, "not_found")
+        # When an exception is raised, the transaction rolls back, so status remains unchanged
+        self.assertEqual(partner.bonuscard_status, "not_checked")
