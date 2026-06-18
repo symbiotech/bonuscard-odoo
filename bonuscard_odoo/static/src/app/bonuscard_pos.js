@@ -35,7 +35,7 @@ patch(PosStore.prototype, {
                         "setPartnerToCurrentOrder",
                         "Bonuscard cancel failed during partner change",
                         false,
-                        [{ transactionId: order.bonuscard_transaction_id, partnerId: order.bonuscard_partner_id || partner?.id, error }]
+                        [{ transactionId: order.bonuscard_transaction_id, partnerId: order.bonuscard_partner_id || null, newPartnerId: partner?.id || null, error }]
                     );
                     // Network failure — lock will expire naturally; proceed with partner change.
                 }
