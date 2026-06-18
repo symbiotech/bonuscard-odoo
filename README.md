@@ -26,7 +26,7 @@ This module is designed as an independent, production-ready Odoo 19 addon.
 - **Partner integration**: Bonuscard status fields and sync controls on the `res.partner` form (`linked`, `not_found`, `ambiguous`, `error`)
 - **POS badge**: status indicators on the partner-selection screen in Point of Sale
 - **Smart button**: one-click Bonuscard status check directly from the partner form
-- Manual customer registration from the partner form when Bonuscard lookup returns `Not Found`
+- **Manual registration**: register a customer from the partner form when Bonuscard lookup returns `not_found`
 
 ## Installation
 
