@@ -130,7 +130,7 @@ The API accepts a unique phone number and returns a new customer object with:
 - `error`: `false` on success
 - `messages`: status messages from the API
 
-The partner action `action_register_to_bonuscard` is exposed in the partner form when Bonuscard status is `Not Found`.
+The partner action `action_register_to_bonuscard` is exposed in the partner form when Bonuscard status is `not_found` (Not Found).
 It re-checks the partner before registering, links the returned customer, and stores `bonuscard_recruitment_code` on the partner.
 
 ### Purchase Lifecycle (Foundation)
