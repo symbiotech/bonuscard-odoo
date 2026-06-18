@@ -107,7 +107,7 @@ in the Bonuscard section.
 
 ### Customer Registration
 
-When a customer lookup returns `Not Found`, the partner form shows a **Register to Bonuscard** button in the Bonuscard section.
+When a customer lookup returns **Not Found** (`not_found`), the partner form shows a **Register to Bonuscard** button in the Bonuscard section.
 
 The registration flow does the following:
 - re-checks the partner against Bonuscard before registering
