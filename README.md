@@ -26,6 +26,7 @@ This module is designed as an independent, production-ready Odoo 19 addon.
 - **Partner integration**: Bonuscard status fields and sync controls on the `res.partner` form (`linked`, `not_found`, `ambiguous`, `error`)
 - **POS badge**: status indicators on the partner-selection screen in Point of Sale
 - **Smart button**: one-click Bonuscard status check directly from the partner form
+- Manual customer registration from the partner form when Bonuscard lookup returns `Not Found`
 
 ## Installation
 
@@ -106,8 +107,17 @@ in the Bonuscard section.
 
 ### Customer Registration
 
-When a new customer is not found in Bonuscard, you can register them using the `RegisterCustomer`
-endpoint. This endpoint is available through the `bonuscard.api.service` model:
+When a customer lookup returns `Not Found`, the partner form shows a **Register to Bonuscard** button in the Bonuscard section.
+
+The registration flow does the following:
+- re-checks the partner against Bonuscard before registering
+- if the customer is still not found, calls `RegisterCustomer` using the partner's phone or mobile number
+- writes the returned `recruitmentCode` and links the partner record
+- if the customer already exists in Bonuscard, the action links the existing customer and shows a success notification
+
+The partner must have a phone number or mobile number to register.
+
+You can also call the same endpoint manually in Python:
 
 ```python
 service = self.env['bonuscard.api.service']
@@ -119,6 +129,9 @@ The API accepts a unique phone number and returns a new customer object with:
 - `customer`: newly created customer with `id`, `phoneNumber`, and `recruitmentCode`
 - `error`: `false` on success
 - `messages`: status messages from the API
+
+The partner action `action_register_to_bonuscard` is exposed in the partner form when Bonuscard status is `Not Found`.
+It re-checks the partner before registering, links the returned customer, and stores `bonuscard_recruitment_code` on the partner.
 
 ### Purchase Lifecycle (Foundation)
 
@@ -133,7 +146,7 @@ Use this module as the integration foundation for the POS purchase lifecycle:
 - Add endpoint-specific POS service wrappers for purchase validation and finalization
 - Add transaction identifier persistence and retry-safe lifecycle handling
 - Add follow-up features for customers, discount codes, and sales reports
-- ✓ Add customer registration (RegisterCustomer) from POS when no match is found
+- ✓ Add manual customer registration from the partner form when no match is found
 - Add discount code activation (ActivateDiscountCode)
 - Persist `recruitment_code` alongside each sale for purchase reporting
 
