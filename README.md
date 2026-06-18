@@ -104,6 +104,22 @@ You can also check or reset the status directly from the partner form view using
 **Bonuscard** smart button or the **Check Bonuscard** / **Reset Bonuscard Status** buttons
 in the Bonuscard section.
 
+### Customer Registration
+
+When a new customer is not found in Bonuscard, you can register them using the `RegisterCustomer`
+endpoint. This endpoint is available through the `bonuscard.api.service` model:
+
+```python
+service = self.env['bonuscard.api.service']
+instance = service._get_company_instance(company)
+result = service._register_customer(instance, phone_number="+46707654321")
+```
+
+The API accepts a unique phone number and returns a new customer object with:
+- `customer`: newly created customer with `id`, `phoneNumber`, and `recruitmentCode`
+- `error`: `false` on success
+- `messages`: status messages from the API
+
 ### Purchase Lifecycle (Foundation)
 
 Use this module as the integration foundation for the POS purchase lifecycle:
@@ -117,7 +133,7 @@ Use this module as the integration foundation for the POS purchase lifecycle:
 - Add endpoint-specific POS service wrappers for purchase validation and finalization
 - Add transaction identifier persistence and retry-safe lifecycle handling
 - Add follow-up features for customers, discount codes, and sales reports
-- Add customer registration (RegisterCustomer) from POS when no match is found
+- ✓ Add customer registration (RegisterCustomer) from POS when no match is found
 - Add discount code activation (ActivateDiscountCode)
 - Persist `recruitment_code` alongside each sale for purchase reporting
 
