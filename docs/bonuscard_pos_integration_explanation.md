@@ -13,19 +13,24 @@ This document explains how the Bonuscard POS integration works in the `bonuscard
    - The backend searches Bonuscard using customer phone, mobile, email, or name
    - The partner record is updated with `bonuscard_status` and `bonuscard_recruitment_code`
 
-2. Payment starts in POS
+2. Manual partner registration
+   - If the lookup returns `not_found`, the partner form shows a `Register to Bonuscard` button
+   - `res.partner.action_register_to_bonuscard` re-checks the partner against Bonuscard before registering
+   - If still not found, it calls `RegisterCustomer`, writes the returned `recruitmentCode`, and links the partner
+
+3. Payment starts in POS
    - `PosStore.pay()` checks if the partner has a `bonuscard_recruitment_code`
    - It builds `orderLines` from products with `barcode` or `default_code`
    - Calls `bonuscard.api.service.validate_purchase_for_pos`
    - Stores `order.bonuscard_transaction_id`, `order.bonuscard_checkout_items`, and `order.bonuscard_partner_id`
    - If discounts are returned, it asks the user to confirm before proceeding
 
-3. Payment confirmation
+4. Payment confirmation
    - `OrderPaymentValidation.afterOrderValidation()` calls `bonuscard.api.service.finalize_purchase_for_pos`
    - This sends the stored `transactionIdentifier` and `checkoutItems` to Bonuscard
    - On success, the POS clears `order.bonuscard_transaction_id` and `order.bonuscard_checkout_items`
 
-4. Cancel or rollback flows
+5. Cancel or rollback flows
    - `PosStore.onClickBackButton()`, `deleteCurrentOrder()`, and `closePos()` cancel pending Bonuscard transactions
    - They call `bonuscard.api.service.cancel_purchase_for_pos`
    - This attempts to keep the Bonuscard state consistent when the POS flow is abandoned (cancellation is best-effort and may fail in some cases)
@@ -47,6 +52,7 @@ This document explains how the Bonuscard POS integration works in the `bonuscard
     - `bonuscard_status`
     - `bonuscard_last_lookup_note`
   - Implements search/match logic and status synchronization
+  - Adds `action_register_to_bonuscard` for manual registration when the customer is not found
 
 ## Important state tracked in POS
 
