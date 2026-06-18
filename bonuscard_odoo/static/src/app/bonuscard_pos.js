@@ -4,6 +4,7 @@ import { patch } from "@web/core/utils/patch";
 import { _t } from "@web/core/l10n/translation";
 import { sprintf } from "@web/core/utils/strings";
 import { AlertDialog } from "@web/core/confirmation_dialog/confirmation_dialog";
+import { logPosMessage } from "@point_of_sale/app/utils/pretty_console_log";
 import { PosOrder } from "@point_of_sale/app/models/pos_order";
 import { PosOrderline } from "@point_of_sale/app/models/pos_order_line";
 import { PosStore } from "@point_of_sale/app/services/pos_store";
@@ -28,7 +29,14 @@ patch(PosStore.prototype, {
                             { type: "warning" }
                         );
                     }
-                } catch {
+                } catch (error) {
+                    logPosMessage(
+                        "Bonuscard",
+                        "setPartnerToCurrentOrder",
+                        "Bonuscard cancel failed during partner change",
+                        false,
+                        [{ transactionId: order.bonuscard_transaction_id, partnerId: order.bonuscard_partner_id || partner?.id, error }]
+                    );
                     // Network failure — lock will expire naturally; proceed with partner change.
                 }
             }
@@ -69,7 +77,14 @@ patch(PosStore.prototype, {
                         type: "danger",
                     });
                 }
-            } catch {
+            } catch (error) {
+                logPosMessage(
+                    "Bonuscard",
+                    "setPartnerToCurrentOrder",
+                    "Bonuscard lookup failed for partner",
+                    false,
+                    [{ partnerId: partner?.id, error }]
+                );
                 this.notification.add(_t("Bonuscard lookup failed."), { type: "danger" });
             }
         }
@@ -170,7 +185,14 @@ patch(PosStore.prototype, {
             }
             const msg = result.messages?.[0] || _t("Bonuscard validation failed.");
             this.notification.add(msg, { type: "warning" });
-        } catch {
+        } catch (error) {
+            logPosMessage(
+                "Bonuscard",
+                "_validateBonuscardPurchaseForOrder",
+                "Bonuscard validation request failed",
+                false,
+                [{ partnerId: partner?.id, transactionId: order.bonuscard_transaction_id, error }]
+            );
             this.notification.add(_t("Bonuscard validation failed."), { type: "warning" });
         }
         return false;
@@ -347,7 +369,15 @@ patch(PosStore.prototype, {
                     order.bonuscard_transaction_id,
                     order.bonuscard_partner_id || null,
                 ])
-                .catch(() => { });
+                .catch((error) => {
+                    logPosMessage(
+                        "Bonuscard",
+                        "closePos",
+                        "Bonuscard cancel failed during POS close",
+                        false,
+                        [{ transactionId: order.bonuscard_transaction_id, partnerId: order.bonuscard_partner_id || null, error }]
+                    );
+                });
             order.bonuscard_transaction_id = null;
             order.bonuscard_checkout_items = null;
             order.bonuscard_partner_id = false;
@@ -363,7 +393,15 @@ patch(PosStore.prototype, {
                     order.bonuscard_transaction_id,
                     order.bonuscard_partner_id || null,
                 ])
-                .catch(() => { });
+                .catch((error) => {
+                    logPosMessage(
+                        "Bonuscard",
+                        "deleteCurrentOrder",
+                        "Bonuscard cancel failed during order deletion",
+                        false,
+                        [{ transactionId: order.bonuscard_transaction_id, partnerId: order.bonuscard_partner_id || null, error }]
+                    );
+                });
             order.bonuscard_transaction_id = null;
             order.bonuscard_checkout_items = null;
             order.bonuscard_partner_id = false;
@@ -391,7 +429,14 @@ patch(PosStore.prototype, {
                             { type: "warning" }
                         );
                     }
-                } catch {
+                } catch (error) {
+                    logPosMessage(
+                        "Bonuscard",
+                        "onClickBackButton",
+                        "Bonuscard cancel failed during back navigation",
+                        false,
+                        [{ transactionId: order.bonuscard_transaction_id, partnerId: order.bonuscard_partner_id || null, error }]
+                    );
                     this.notification.add(_t("Bonuscard cancel failed."), { type: "warning" });
                 }
             }
@@ -540,7 +585,14 @@ patch(OrderPaymentValidation.prototype, {
                 order.bonuscard_transaction_id = null;
                 order.bonuscard_checkout_items = null;
             }
-        } catch {
+        } catch (error) {
+            logPosMessage(
+                "Bonuscard",
+                "afterOrderValidation",
+                "Bonuscard finalization failed during payment",
+                false,
+                [{ transactionId: order.bonuscard_transaction_id, partnerId: order.bonuscard_partner_id || null, error }]
+            );
             // Do not interrupt the POS payment flow if Bonuscard finalization fails.
             this.pos.notification.add(_t("Bonuscard finalization failed."), { type: "warning" });
         }
