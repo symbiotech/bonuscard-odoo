@@ -1,7 +1,10 @@
+import logging
 import re
 
 from odoo import api, fields, models
 from odoo.exceptions import UserError
+
+_logger = logging.getLogger(__name__)
 
 
 class ResPartner(models.Model):
@@ -284,6 +287,10 @@ class ResPartner(models.Model):
         except Exception as exc:
             if isinstance(exc, UserError):
                 raise
+            _logger.exception(
+                "Unexpected error during Bonuscard registration for partner %s",
+                partner.id,
+            )
             raise UserError(
                 self.env._("Bonuscard registration failed: %s", str(exc))
             ) from exc

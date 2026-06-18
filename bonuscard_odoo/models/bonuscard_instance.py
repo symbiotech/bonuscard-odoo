@@ -1,8 +1,11 @@
 import base64
+import logging
 from urllib.parse import urljoin
 
 from odoo import api, fields, models
 from odoo.exceptions import ValidationError
+
+_logger = logging.getLogger(__name__)
 
 
 class BonuscardConnectorInstance(models.Model):
@@ -98,6 +101,10 @@ class BonuscardConnectorInstance(models.Model):
                     }
                 )
             except Exception as exc:  # pylint: disable=broad-except
+                _logger.exception(
+                    "Bonuscard connection test failed for instance %s",
+                    rec.id,
+                )
                 rec.write(
                     {
                         "connection_status": "error",

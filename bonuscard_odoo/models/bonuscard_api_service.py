@@ -89,6 +89,12 @@ class BonuscardApiService(models.AbstractModel):
         else:
             message = self.env._("Bonuscard API error (%s).", error_code)
 
+        _logger.warning(
+            "Bonuscard API business error for instance %s: %s",
+            instance.id,
+            message,
+        )
+
         try:
             instance.write({"last_error": message})
         except Exception:  # pylint: disable=broad-except
@@ -146,6 +152,13 @@ class BonuscardApiService(models.AbstractModel):
             except HTTPError as err:
                 if err.code in (401, 403):
                     err.read()
+                    _logger.warning(
+                        "Bonuscard authentication failed for request %s %s: HTTP %s",
+                        method,
+                        url,
+                        err.code,
+                        exc_info=True,
+                    )
                     raise UserError(
                         self.env._(
                             "Bonuscard authentication failed. Check the API username and password."
@@ -153,20 +166,49 @@ class BonuscardApiService(models.AbstractModel):
                     ) from err
                 if attempt < _REQUEST_RETRY_COUNT and self._should_retry_error(err):
                     err.read()
+                    _logger.warning(
+                        "Retrying Bonuscard request %s %s after HTTP %s (attempt %s)",
+                        method,
+                        url,
+                        err.code,
+                        attempt + 1,
+                    )
                     attempt += 1
                     time.sleep(_REQUEST_RETRY_INITIAL_DELAY * attempt)
                     continue
                 message = err.read().decode("utf-8", errors="ignore")
+                _logger.warning(
+                    "Bonuscard HTTP error on %s %s status=%s: %s",
+                    method,
+                    url,
+                    err.code,
+                    message or err.reason,
+                    exc_info=True,
+                )
                 raise BonuscardHttpError(
                     self.env._("Bonuscard API HTTP error: %s", message or err.reason),
                     status_code=err.code,
                 ) from err
             except (URLError, TimeoutError) as err:
                 if attempt < _REQUEST_RETRY_COUNT and self._should_retry_error(err):
+                    _logger.warning(
+                        "Retrying Bonuscard connection %s %s after %s (attempt %s)",
+                        method,
+                        url,
+                        getattr(err, "reason", str(err)),
+                        attempt + 1,
+                    )
                     attempt += 1
                     time.sleep(_REQUEST_RETRY_INITIAL_DELAY * attempt)
                     continue
                 reason = getattr(err, "reason", str(err))
+                _logger.warning(
+                    "Bonuscard API connection error on %s %s: %s",
+                    method,
+                    url,
+                    reason,
+                    exc_info=True,
+                )
                 raise UserError(
                     self.env._("Bonuscard API connection error: %s", reason)
                 ) from err
