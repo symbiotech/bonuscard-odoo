@@ -6,9 +6,10 @@ import { useService } from "@web/core/utils/hooks";
 import { PartnerLine } from "@point_of_sale/app/screens/partner_list/partner_line/partner_line";
 import { PartnerList } from "@point_of_sale/app/screens/partner_list/partner_list";
 
-PartnerLine.props = PartnerLine.props.includes("onClickRegisterBonuscard")
-    ? PartnerLine.props
-    : [...PartnerLine.props, "onClickRegisterBonuscard"];
+PartnerLine.props = {
+    ...PartnerLine.props,
+    onClickRegisterBonuscard: { type: Function, optional: true },
+};
 
 patch(PartnerList.prototype, {
     setup() {
