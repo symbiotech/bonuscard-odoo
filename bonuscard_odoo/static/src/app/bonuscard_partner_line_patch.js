@@ -27,12 +27,6 @@ patch(PartnerList.prototype, {
             const result = await this.pos.data.call("res.partner", "action_register_to_bonuscard", [[partner.id]]);
             if (result?.type?.startsWith("ir.actions.") && this.action?.doAction) {
                 await this.action.doAction(result);
-            } else if (result?.type === "ir.actions.client" && result.tag === "display_notification") {
-                const params = result.params || {};
-                this.notification.add(params.message || _t("Customer registered successfully."), {
-                    type: params.type || "success",
-                    sticky: params.sticky || false,
-                });
             } else if (result?.message) {
                 this.notification.add(result.message, {
                     type: result.type || "success",
