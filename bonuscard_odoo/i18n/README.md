@@ -9,7 +9,7 @@ This module uses Odoo's standard i18n mechanism. Translations are stored in the 
 
 ## Add another language
 
-1. Copy `sv.po` to the new language code, e.g. `fr.po` for French or `de.po` for German.
+1. Copy `sv_SE.po` to the new language code, e.g. `fr_FR.po` for French or `de_DE.po` for German.
 2. Translate the `msgstr` values for each `msgid`.
 3. Install or update the module in Odoo.
 4. In Odoo, go to `Settings > Translations > Load a Translation` or `Settings > Translations > Import/Export > Import Translation` to import the new `.po` file.
