@@ -4,7 +4,7 @@ This module uses Odoo's standard i18n mechanism. Translations are stored in the 
 
 ## Swedish translation
 
-- File: `bonuscard_odoo/i18n/sv.po`
+- File: `bonuscard_odoo/i18n/sv_SE.po`
 - Contains Swedish translations for Python, XML, and JavaScript user-facing strings.
 
 ## Add another language
