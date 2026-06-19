@@ -199,9 +199,9 @@ msgstr "Kunden hittades inte."
 #. module: bonuscard_odoo
 msgid ""
 "Customer registered successfully. Recruitment code: %s. A verification "
-"emailwill be sent by Bonuscard to the customer's email address."
+"email will be sent by Bonuscard to the customer's email address."
 msgstr ""
-"Kunden registrerades framgångsrikt. Rekryteringskod: %s. Ettverifieringsmejl"
+"Kunden registrerades framgångsrikt. Rekryteringskod: %s. Ett verifieringsmejl"
 " kommer att skickas av Bonuscard till kundens e-postadress."
 
 #. module: bonuscard_odoo
