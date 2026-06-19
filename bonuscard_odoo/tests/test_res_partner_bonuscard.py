@@ -186,6 +186,7 @@ class TestResPartnerBonuscard(TransactionCase):
         self.assertEqual(action["tag"], "display_notification")
         self.assertEqual(action["params"]["type"], "success")
         self.assertIn("REG123", action["params"]["message"])
+        self.assertIn("verification email", action["params"]["message"].lower())
 
     def test_register_to_bonuscard_rechecks_before_registering_if_customer_already_exists(
         self,
