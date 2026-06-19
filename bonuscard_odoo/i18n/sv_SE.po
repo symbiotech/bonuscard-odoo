@@ -110,10 +110,10 @@ msgstr ""
 #. odoo-javascript
 msgid ""
 "Bonuscard returned a discount, but it could not be applied to the "
-"order.Please configure a discount product in POS settings."
+"order. Please configure a discount product in POS settings."
 msgstr ""
 "Bonuscard returnerade en rabatt, men den kunde inte tillämpas på "
-"ordern.Konfigurera en rabattprodukt i POS-inställningarna."
+"ordern. Konfigurera en rabattprodukt i POS-inställningarna."
 
 #. module: bonuscard_odoo
 msgid "Bonuscard returned multiple customer matches for %s."
