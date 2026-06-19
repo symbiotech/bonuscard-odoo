@@ -24,25 +24,23 @@ patch(PartnerList.prototype, {
         }
 
         try {
-            const result = await this.pos.data.call("res.partner", "action_register_to_bonuscard", [partner.id]);
-            if (result && result.type === "ir.actions.client") {
-                if (this.action && typeof this.action.doAction === "function") {
-                    await this.action.doAction(result);
-                    return;
-                }
+            const result = await this.pos.data.call("res.partner", "action_register_to_bonuscard", [[partner.id]]);
+            if (result?.type?.startsWith("ir.actions.") && this.action?.doAction) {
+                await this.action.doAction(result);
+            } else if (result?.type === "ir.actions.client") {
                 const params = result.params || {};
                 this.notification.add(params.message || _t("Customer registered successfully."), {
                     type: params.type || "success",
                     sticky: params.sticky || false,
                 });
-                return;
-            }
-
-            if (result && result.message) {
+            } else if (result?.message) {
                 this.notification.add(result.message, { type: result.type || "success", sticky: result.sticky || false });
             } else {
                 this.notification.add(_t("Bonuscard registration completed."), { type: "success" });
             }
+
+            partner.bonuscard_status = "linked";
+        
         } catch (error) {
             this.notification.add(error.message || _t("Bonuscard registration failed."), { type: "danger", sticky: false });
         }
