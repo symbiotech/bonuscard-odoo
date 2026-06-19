@@ -10,6 +10,7 @@ import { PosOrderline } from "@point_of_sale/app/models/pos_order_line";
 import { PosStore } from "@point_of_sale/app/services/pos_store";
 import { OrderSummary } from "@point_of_sale/app/screens/product_screen/order_summary/order_summary";
 import OrderPaymentValidation from "@point_of_sale/app/utils/order_payment_validation";
+import "./bonuscard_partner_line_patch";
 
 patch(PosStore.prototype, {
     async setPartnerToCurrentOrder(partner) {

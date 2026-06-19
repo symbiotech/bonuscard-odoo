@@ -6,10 +6,43 @@ import { definePosModels } from "@point_of_sale/../tests/unit/data/generate_mode
 import { onRpc, patchWithCleanup } from "@web/../tests/web_test_helpers";
 import { OrderSummary } from "@point_of_sale/app/screens/product_screen/order_summary/order_summary";
 import * as makeAwaitableDialog from "@point_of_sale/app/utils/make_awaitable_dialog";
+import { PartnerLine } from "@point_of_sale/app/screens/partner_list/partner_line/partner_line";
+import { PartnerList } from "@point_of_sale/app/screens/partner_list/partner_list";
 
 // Ensure the Bonuscard POS patches are loaded for this test suite.
 import "../../src/app/bonuscard_pos";
 definePosModels();
+
+test("PartnerList.registerPartnerToBonuscard calls the backend and shows a notification", async () => {
+    const partner = { id: 42, name: "New Customer" };
+    const calls = [];
+    const notifications = [];
+    const fakeContext = {
+        pos: {
+            data: {
+                call: async (model, method, args) => {
+                    calls.push({ model, method, args });
+                    return { message: "Customer registered successfully.", type: "success" };
+                },
+            },
+        },
+        notification: {
+            add: (message, options) => notifications.push({ message, options }),
+        },
+    };
+
+    await PartnerList.prototype.registerPartnerToBonuscard.call(fakeContext, partner);
+
+    expect(calls.length).toBe(1);
+    expect(calls[0]).toEqual({
+        model: "res.partner",
+        method: "action_register_to_bonuscard",
+        args: [partner.id],
+    });
+    expect(notifications.length).toBe(1);
+    expect(notifications[0].message).toBe("Customer registered successfully.");
+    expect(notifications[0].options.type).toBe("success");
+});
 
 test("_applyBonuscardDiscountsToOrder applies line discounts for matching identifiers", async () => {
     const store = await setupPosEnv();
