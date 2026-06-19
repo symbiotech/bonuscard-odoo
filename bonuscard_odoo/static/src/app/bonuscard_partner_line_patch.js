@@ -45,7 +45,7 @@ patch(PartnerList.prototype, {
             partner.bonuscard_recruitment_code = statusResult.recruitment_code;
             partner.bonuscard_last_lookup_note = statusResult.note;
         } catch (error) {
-            this.notification.add(error.message || _t("Bonuscard registration failed."), { type: "danger", sticky: false });
+            this.notification.add(_t("Bonuscard registration failed."), { type: "danger", sticky: false });
         }
     },
 });
