@@ -46,15 +46,23 @@ test("PartnerList.registerPartnerToBonuscard calls the backend and shows a notif
 
     await PartnerList.prototype.registerPartnerToBonuscard.call(fakeContext, partner);
 
-    expect(calls.length).toBe(1);
-    expect(calls[0]).toEqual({
-        model: "res.partner",
-        method: "action_register_to_bonuscard",
-        args: [[partner.id]],
-    });
-    expect(notifications.length).toBe(1);
-    expect(notifications[0].message).toBe("Customer registered successfully.");
-    expect(notifications[0].options.type).toBe("success");
+    expect(calls).toEqual([
+        {
+            model: "res.partner",
+            method: "action_register_to_bonuscard",
+            args: [[partner.id]],
+        },
+        {
+            model: "res.partner",
+            method: "get_bonuscard_status_for_pos",
+            args: [partner.id],
+        },
+    ]);
+    expect(actions.length).toBe(1);
+    expect(actions[0].tag).toBe("display_notification");
+    expect(notifications.length).toBe(0);
+    expect(partner.bonuscard_status).toBe("linked");
+    expect(partner.bonuscard_recruitment_code).toBe("REG123");
 });
 
 test("_applyBonuscardDiscountsToOrder applies line discounts for matching identifiers", async () => {
