@@ -6,7 +6,6 @@ import { definePosModels } from "@point_of_sale/../tests/unit/data/generate_mode
 import { onRpc, patchWithCleanup } from "@web/../tests/web_test_helpers";
 import { OrderSummary } from "@point_of_sale/app/screens/product_screen/order_summary/order_summary";
 import * as makeAwaitableDialog from "@point_of_sale/app/utils/make_awaitable_dialog";
-import { PartnerLine } from "@point_of_sale/app/screens/partner_list/partner_line/partner_line";
 import { PartnerList } from "@point_of_sale/app/screens/partner_list/partner_list";
 
 // Ensure the Bonuscard POS patches are loaded for this test suite.
