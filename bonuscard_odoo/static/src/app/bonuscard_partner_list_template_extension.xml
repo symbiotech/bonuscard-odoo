@@ -3,7 +3,7 @@
 
     <t t-name="bonuscard_odoo.PartnerListExtension" t-inherit="point_of_sale.PartnerList" t-inherit-mode="extension">
         <xpath expr="//PartnerLine[@onClickPartner.bind='clickPartner']" position="attributes">
-            <attribute name="onClickRegisterBonuscard.bind">(p) => this.registerPartnerToBonuscard(p)</attribute>
+            <attribute name="onClickRegisterBonuscard.bind">registerPartnerToBonuscard</attribute>
         </xpath>
     </t>
 
