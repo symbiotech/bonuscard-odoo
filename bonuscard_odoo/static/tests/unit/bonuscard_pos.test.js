@@ -6,10 +6,64 @@ import { definePosModels } from "@point_of_sale/../tests/unit/data/generate_mode
 import { onRpc, patchWithCleanup } from "@web/../tests/web_test_helpers";
 import { OrderSummary } from "@point_of_sale/app/screens/product_screen/order_summary/order_summary";
 import * as makeAwaitableDialog from "@point_of_sale/app/utils/make_awaitable_dialog";
+import { PartnerList } from "@point_of_sale/app/screens/partner_list/partner_list";
 
 // Ensure the Bonuscard POS patches are loaded for this test suite.
 import "../../src/app/bonuscard_pos";
 definePosModels();
+
+test("PartnerList.registerPartnerToBonuscard calls the backend, executes the returned action, and refreshes partner status", async () => {
+    const partner = { id: 42, name: "New Customer" };
+    const calls = [];
+    const actions = [];
+    const notifications = [];
+    const fakeContext = {
+        pos: {
+            data: {
+                call: async (model, method, args) => {
+                    calls.push({ model, method, args });
+                    if (method === "action_register_to_bonuscard") {
+                        return {
+                            type: "ir.actions.client",
+                            tag: "display_notification",
+                            params: { message: "Customer registered successfully.", type: "success", sticky: false },
+                        };
+                    }
+                    if (method === "get_bonuscard_status_for_pos") {
+                        return { status: "linked", recruitment_code: "REG123", note: "" };
+                    }
+                    throw new Error(`Unexpected RPC: ${model}.${method}`);
+                },
+            },
+        },
+        action: {
+            doAction: (action) => actions.push(action),
+        },
+        notification: {
+            add: (message, options) => notifications.push({ message, options }),
+        },
+    };
+
+    await PartnerList.prototype.registerPartnerToBonuscard.call(fakeContext, partner);
+
+    expect(calls).toEqual([
+        {
+            model: "res.partner",
+            method: "action_register_to_bonuscard",
+            args: [[partner.id]],
+        },
+        {
+            model: "res.partner",
+            method: "get_bonuscard_status_for_pos",
+            args: [partner.id],
+        },
+    ]);
+    expect(actions.length).toBe(1);
+    expect(actions[0].tag).toBe("display_notification");
+    expect(notifications.length).toBe(0);
+    expect(partner.bonuscard_status).toBe("linked");
+    expect(partner.bonuscard_recruitment_code).toBe("REG123");
+});
 
 test("_applyBonuscardDiscountsToOrder applies line discounts for matching identifiers", async () => {
     const store = await setupPosEnv();

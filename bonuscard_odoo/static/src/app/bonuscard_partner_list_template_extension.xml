@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates id="template" xml:space="preserve">
+
+    <t t-name="bonuscard_odoo.PartnerListExtension" t-inherit="point_of_sale.PartnerList" t-inherit-mode="extension">
+        <xpath expr="//PartnerLine[@onClickPartner.bind='clickPartner']" position="attributes">
+            <attribute name="onClickRegisterBonuscard.bind">registerPartnerToBonuscard</attribute>
+        </xpath>
+    </t>
+
+</templates>

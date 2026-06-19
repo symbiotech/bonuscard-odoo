@@ -94,6 +94,10 @@ msgid "Bonuscard member detected: %s"
 msgstr "Bonuscard-medlem upptäckt: %s"
 
 #. module: bonuscard_odoo
+msgid "Bonuscard registration completed."
+msgstr "Bonuscard-registreringen slutfördes."
+
+#. module: bonuscard_odoo
 msgid "Bonuscard registration failed."
 msgstr "Bonuscard-registreringen misslyckades."
 
@@ -197,6 +201,10 @@ msgid "Customer not found."
 msgstr "Kunden hittades inte."
 
 #. module: bonuscard_odoo
+msgid "Customer registered successfully."
+msgstr "Kunden registrerades framgångsrikt."
+
+#. module: bonuscard_odoo
 msgid ""
 "Customer registered successfully. Recruitment code: %s. A verification email"
 " will be sent by Bonuscard to the customer's email address."
@@ -291,6 +299,10 @@ msgstr "Produktions-Bonuscard"
 #. module: bonuscard_odoo
 msgid "Register to Bonuscard"
 msgstr "Registrera till Bonuscard"
+
+#. module: bonuscard_odoo
+msgid "Register with Bonuscard"
+msgstr "Registrera med Bonuscard"
 
 #. module: bonuscard_odoo
 msgid "Request Timeout (s)"
