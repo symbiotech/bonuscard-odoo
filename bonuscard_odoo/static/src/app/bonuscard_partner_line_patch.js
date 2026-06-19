@@ -3,6 +3,7 @@
 import { patch } from "@web/core/utils/patch";
 import { _t } from "@web/core/l10n/translation";
 import { useService } from "@web/core/utils/hooks";
+import { logPosMessage } from "@point_of_sale/app/utils/pretty_console_log";
 import { PartnerLine } from "@point_of_sale/app/screens/partner_list/partner_line/partner_line";
 import { PartnerList } from "@point_of_sale/app/screens/partner_list/partner_list";
 
