@@ -4,7 +4,7 @@
     <t t-name="bonuscard_odoo.PartnerLineExtension" t-inherit="point_of_sale.PartnerLine" t-inherit-mode="extension">
         <xpath expr="//t[.//DropdownItem[contains(@onSelected, 'onClickOrders')]]" position="inside">
             <DropdownItem t-if="props.partner.bonuscard_status == 'not_found' and props.onClickRegisterBonuscard" onSelected="() => props.onClickRegisterBonuscard(props.partner)">
-                <t t-esc="_t('Register with Bonuscard')" />
+                Register with Bonuscard
             </DropdownItem>
         </xpath>
     </t>
