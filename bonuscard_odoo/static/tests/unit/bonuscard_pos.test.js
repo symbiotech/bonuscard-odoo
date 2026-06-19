@@ -36,7 +36,7 @@ test("PartnerList.registerPartnerToBonuscard calls the backend and shows a notif
     expect(calls[0]).toEqual({
         model: "res.partner",
         method: "action_register_to_bonuscard",
-        args: [partner.id],
+        args: [[partner.id]],
     });
     expect(notifications.length).toBe(1);
     expect(notifications[0].message).toBe("Customer registered successfully.");
