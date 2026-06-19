@@ -65,8 +65,8 @@ msgstr "Bonuscard-anslutningar"
 #. module: bonuscard_odoo
 msgid "Bonuscard authentication failed. Check the API username and password."
 msgstr ""
-"Bonuscard-autentisering misslyckades. Kontrollera API-användarnamn "
-"och lösenord."
+"Bonuscard-autentisering misslyckades. Kontrollera API-användarnamn och "
+"lösenord."
 
 #. module: bonuscard_odoo
 #. odoo-javascript
@@ -109,11 +109,11 @@ msgstr ""
 #. module: bonuscard_odoo
 #. odoo-javascript
 msgid ""
-"Bonuscard returned a discount, but it could not be applied to the "
-"order. Please configure a discount product in POS settings."
+"Bonuscard returned a discount, but it could not be applied to the order. "
+"Please configure a discount product in POS settings."
 msgstr ""
-"Bonuscard returnerade en rabatt, men den kunde inte tillämpas på "
-"ordern. Konfigurera en rabattprodukt i POS-inställningarna."
+"Bonuscard returnerade en rabatt, men den kunde inte tillämpas på ordern. "
+"Konfigurera en rabattprodukt i POS-inställningarna."
 
 #. module: bonuscard_odoo
 msgid "Bonuscard returned multiple customer matches for %s."
@@ -126,11 +126,11 @@ msgstr "Bonuscard returnerade flera kundträffar."
 
 #. module: bonuscard_odoo
 msgid ""
-"Bonuscard returned multiple matches for the customer. Please verify "
-"the partner details before attempting registration."
+"Bonuscard returned multiple matches for the customer. Please verify the "
+"partner details before attempting registration."
 msgstr ""
-"Bonuscard returnerade flera träffar för kunden. "
-"Kontrollera partneruppgifterna innan du försöker registrera."
+"Bonuscard returnerade flera träffar för kunden. Kontrollera "
+"partneruppgifterna innan du försöker registrera."
 
 #. module: bonuscard_odoo
 msgid "Bonuscard service is temporarily unavailable."
@@ -198,11 +198,11 @@ msgstr "Kunden hittades inte."
 
 #. module: bonuscard_odoo
 msgid ""
-"Customer registered successfully. Recruitment code: %s. A verification "
-"email will be sent by Bonuscard to the customer's email address."
+"Customer registered successfully. Recruitment code: %s. A verification email"
+" will be sent by Bonuscard to the customer's email address."
 msgstr ""
-"Kunden registrerades framgångsrikt. Rekryteringskod: %s. Ett verifieringsmejl"
-" kommer att skickas av Bonuscard till kundens e-postadress."
+"Kunden registrerades framgångsrikt. Rekryteringskod: %s. Ett "
+"verifieringsmejl kommer att skickas av Bonuscard till kundens e-postadress."
 
 #. module: bonuscard_odoo
 msgid "Danish"
