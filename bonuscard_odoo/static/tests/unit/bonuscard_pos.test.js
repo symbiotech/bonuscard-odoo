@@ -12,7 +12,7 @@ import { PartnerList } from "@point_of_sale/app/screens/partner_list/partner_lis
 import "../../src/app/bonuscard_pos";
 definePosModels();
 
-test("PartnerList.registerPartnerToBonuscard calls the backend and shows a notification", async () => {
+test("PartnerList.registerPartnerToBonuscard calls the backend, executes the returned action, and refreshes partner status", async () => {
     const partner = { id: 42, name: "New Customer" };
     const calls = [];
     const actions = [];
