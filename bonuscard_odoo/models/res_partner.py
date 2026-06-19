@@ -277,7 +277,7 @@ class ResPartner(models.Model):
                 "params": {
                     "title": self.env._("Success"),
                     "message": self.env._(
-                        "Customer registered successfully. Recruitment code: %s",
+                        "Customer registered successfully. Recruitment code: %s. A verification email will be sent by Bonuscard to the customer's email address.",
                         customer.get("recruitmentCode"),
                     ),
                     "type": "success",
