@@ -127,10 +127,10 @@ msgstr "Bonuscard returnerade flera kundträffar."
 #. module: bonuscard_odoo
 msgid ""
 "Bonuscard returned multiple matches for the customer. Please verify "
-"thepartner details before attempting registration."
+"the partner details before attempting registration."
 msgstr ""
 "Bonuscard returnerade flera träffar för kunden. "
-"Kontrollerapartneruppgifterna innan du försöker registrera."
+"Kontrollera partneruppgifterna innan du försöker registrera."
 
 #. module: bonuscard_odoo
 msgid "Bonuscard service is temporarily unavailable."
