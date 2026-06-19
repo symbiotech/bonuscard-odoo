@@ -15,15 +15,29 @@ definePosModels();
 test("PartnerList.registerPartnerToBonuscard calls the backend and shows a notification", async () => {
     const partner = { id: 42, name: "New Customer" };
     const calls = [];
+    const actions = [];
     const notifications = [];
     const fakeContext = {
         pos: {
             data: {
                 call: async (model, method, args) => {
                     calls.push({ model, method, args });
-                    return { message: "Customer registered successfully.", type: "success" };
+                    if (method === "action_register_to_bonuscard") {
+                        return {
+                            type: "ir.actions.client",
+                            tag: "display_notification",
+                            params: { message: "Customer registered successfully.", type: "success", sticky: false },
+                        };
+                    }
+                    if (method === "get_bonuscard_status_for_pos") {
+                        return { status: "linked", recruitment_code: "REG123", note: "" };
+                    }
+                    throw new Error(`Unexpected RPC: ${model}.${method}`);
                 },
             },
+        },
+        action: {
+            doAction: (action) => actions.push(action),
         },
         notification: {
             add: (message, options) => notifications.push({ message, options }),
