@@ -242,4 +242,6 @@ The **Tests** workflow runs unit tests in an OCA-provided Docker image with Post
 
 ## License
 
-The source code is licensed under [LGPL-3](https://www.gnu.org/licenses/lgpl-3.0)
+The source code is licensed under [LGPL-3](https://www.gnu.org/licenses/lgpl-3.0).
+The Bonuscard name and logo are used with permission from Bonuscard Sverige AB.
+The Bonuscard name, logo, and related branding are not covered by the LGPL-3 license and remain the property of Bonuscard Sverige AB.
