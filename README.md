@@ -150,11 +150,6 @@ Use this module as the integration foundation for the POS purchase lifecycle:
 - Add discount code activation (ActivateDiscountCode)
 - Persist `recruitment_code` alongside each sale for purchase reporting
 
-## Credits
-
-**Author:** Idealskog
-**Website:** [https://github.com/symbiotech/bonuscard-odoo](https://github.com/symbiotech/bonuscard-odoo)
-
 ## Development Setup
 
 This addon is an Odoo 19 module that runs against your main Odoo installation.
@@ -247,4 +242,4 @@ The **Tests** workflow runs unit tests in an OCA-provided Docker image with Post
 
 ## License
 
-[LGPL-3](https://www.gnu.org/licenses/lgpl-3.0) © Idealskog
+The source code is licensed under [LGPL-3](https://www.gnu.org/licenses/lgpl-3.0)
