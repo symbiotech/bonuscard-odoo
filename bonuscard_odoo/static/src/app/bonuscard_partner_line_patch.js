@@ -15,11 +15,3 @@ patch(PartnerLine.prototype, {
     },
 });
 
-patch(PartnerList.prototype, {
-    setup() {
-        const result = super.setup?.(...arguments);
-        this.bonuscardService = useService("bonuscard_registration");
-        this.pos = useService("pos");
-        return result;
-    },
-});
