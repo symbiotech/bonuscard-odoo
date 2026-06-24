@@ -103,8 +103,7 @@ class ResPartner(models.Model):
     def _sync_bonuscard_status(self, raise_if_missing_instance=False):
         self.ensure_one()
         service = self.env["bonuscard.api.service"]
-        partner = self.commercial_partner_id
-        company = partner.company_id or self.env.company
+        company = self.company_id or self.env.company
         instance = service._get_company_instance(company)
         if not instance:
             if raise_if_missing_instance:
@@ -113,60 +112,52 @@ class ResPartner(models.Model):
                         "No active Bonuscard connection is configured for this company."
                     )
                 )
-            values = partner._write_bonuscard_status(
+            self._write_bonuscard_status(
                 "error",
                 note=self.env._("No active Bonuscard connection is configured."),
             )
-            if self != partner:
-                self.write(values)
             return {
-                "status": partner.bonuscard_status,
-                "note": partner.bonuscard_last_lookup_note,
+                "status": self.bonuscard_status,
+                "note": self.bonuscard_last_lookup_note,
             }
 
-        for term in partner._get_bonuscard_search_terms():
+        for term in self._get_bonuscard_search_terms():
             customers = service._search_customers(instance, term)
             if not customers:
                 continue
-            exact_matches = partner._filter_exact_bonuscard_matches(customers)
+            exact_matches = self._filter_exact_bonuscard_matches(customers)
             if len(exact_matches) == 1:
                 customer = exact_matches[0]
-                values = partner._write_bonuscard_status(
+                self._write_bonuscard_status(
                     "linked",
                     customer=customer,
                     note=self.env._("Matched Bonuscard customer using %s.", term),
                 )
-                if self != partner:
-                    self.write(values)
                 return {
                     "status": "linked",
                     "recruitment_code": customer.get("recruitmentCode"),
                     "name": customer.get("name"),
-                    "note": partner.bonuscard_last_lookup_note,
+                    "note": self.bonuscard_last_lookup_note,
                 }
             if len(exact_matches) > 1 or len(customers) > 1:
-                values = partner._write_bonuscard_status(
+                self._write_bonuscard_status(
                     "ambiguous",
                     note=self.env._(
                         "Bonuscard returned multiple customer matches for %s.", term
                     ),
                 )
-                if self != partner:
-                    self.write(values)
                 return {
                     "status": "ambiguous",
-                    "note": partner.bonuscard_last_lookup_note,
+                    "note": self.bonuscard_last_lookup_note,
                 }
 
-        values = partner._write_bonuscard_status(
+        self._write_bonuscard_status(
             "not_found",
             note=self.env._(
                 "No Bonuscard customer matched the available partner details."
             ),
         )
-        if self != partner:
-            self.write(values)
-        return {"status": "not_found", "note": partner.bonuscard_last_lookup_note}
+        return {"status": "not_found", "note": self.bonuscard_last_lookup_note}
 
     def action_refresh_bonuscard_status(self):
         for partner in self:
@@ -175,20 +166,16 @@ class ResPartner(models.Model):
 
     def action_clear_bonuscard_link(self):
         for partner in self:
-            commercial_partner = partner.commercial_partner_id
-            values = commercial_partner._write_bonuscard_status(
+            partner._write_bonuscard_status(
                 "not_checked",
                 note=partner.env._("Bonuscard status reset manually."),
             )
-            if partner != commercial_partner:
-                partner.write(values)
         return True
 
     def action_register_to_bonuscard(self):
         self.ensure_one()
         service = self.env["bonuscard.api.service"]
-        partner = self.commercial_partner_id
-        company = partner.company_id or self.env.company
+        company = self.company_id or self.env.company
         instance = service._get_company_instance(company)
         if not instance:
             raise UserError(
@@ -197,7 +184,7 @@ class ResPartner(models.Model):
                 )
             )
 
-        phone_number = (partner.phone or self.phone or "").strip()
+        phone_number = (self.phone or "").strip()
         if not phone_number:
             raise UserError(
                 self.env._(
@@ -206,9 +193,7 @@ class ResPartner(models.Model):
             )
 
         try:
-            search_result = partner._sync_bonuscard_status(
-                raise_if_missing_instance=True
-            )
+            search_result = self._sync_bonuscard_status(raise_if_missing_instance=True)
             if search_result.get("status") == "linked":
                 return {
                     "type": "ir.actions.client",
@@ -256,11 +241,7 @@ class ResPartner(models.Model):
                 "Successfully registered to Bonuscard on %s.",
                 fields.Datetime.now(),
             )
-            values = partner._write_bonuscard_status(
-                "linked", customer=customer, note=note
-            )
-            if self != partner:
-                self.write(values)
+            self._write_bonuscard_status("linked", customer=customer, note=note)
 
             return {
                 "type": "ir.actions.client",
@@ -280,7 +261,7 @@ class ResPartner(models.Model):
                 raise
             _logger.exception(
                 "Unexpected error during Bonuscard registration for partner %s",
-                partner.id,
+                self.id,
             )
             raise UserError(
                 self.env._("Bonuscard registration failed: %s", str(exc))
@@ -292,9 +273,8 @@ class ResPartner(models.Model):
         if not partner:
             return {"status": "not_found", "note": self.env._("Customer not found.")}
         result = partner._sync_bonuscard_status()
-        commercial_partner = partner.commercial_partner_id
         return {
             "status": result.get("status"),
-            "recruitment_code": commercial_partner.bonuscard_recruitment_code,
-            "note": commercial_partner.bonuscard_last_lookup_note,
+            "recruitment_code": partner.bonuscard_recruitment_code,
+            "note": partner.bonuscard_last_lookup_note,
         }
