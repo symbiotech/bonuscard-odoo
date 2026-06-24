@@ -14,4 +14,3 @@ patch(PartnerLine.prototype, {
         return result;
     },
 });
-
