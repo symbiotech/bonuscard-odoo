@@ -15,6 +15,11 @@ msgstr ""
 "X-Generator: Odoo\n"
 
 #. module: bonuscard_odoo
+#. odoo-javascript
+msgid "A phone number is required to register a customer with Bonuscard."
+msgstr "Ett telefonnummer krävs för att registrera en kund med Bonuscard."
+
+#. module: bonuscard_odoo
 msgid "API Base URL"
 msgstr "API-bas-URL"
 
@@ -287,6 +292,10 @@ msgstr "Ej hittad"
 #. module: bonuscard_odoo
 msgid "OK"
 msgstr ""
+
+#. module: bonuscard_odoo
+msgid "Partner must have a phone number to register with Bonuscard."
+msgstr "Partnern måste ha ett telefonnummer för att registrera med Bonuscard."
 
 #. module: bonuscard_odoo
 msgid "Partner not found."

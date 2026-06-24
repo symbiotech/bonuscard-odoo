@@ -3,6 +3,7 @@
 import { patch } from "@web/core/utils/patch";
 import { _t } from "@web/core/l10n/translation";
 import { sprintf } from "@web/core/utils/strings";
+import { registry } from "@web/core/registry";
 import { AlertDialog } from "@web/core/confirmation_dialog/confirmation_dialog";
 import { logPosMessage } from "@point_of_sale/app/utils/pretty_console_log";
 import { PosOrder } from "@point_of_sale/app/models/pos_order";
@@ -10,7 +11,16 @@ import { PosOrderline } from "@point_of_sale/app/models/pos_order_line";
 import { PosStore } from "@point_of_sale/app/services/pos_store";
 import { OrderSummary } from "@point_of_sale/app/screens/product_screen/order_summary/order_summary";
 import OrderPaymentValidation from "@point_of_sale/app/utils/order_payment_validation";
+import { BonuscardRegistrationService } from "./bonuscard_registration_service";
 import "./bonuscard_partner_line_patch";
+
+// Register the Bonuscard Registration Service
+registry.category("services").add("bonuscard_registration", {
+    dependencies: ["notification", "action"],
+    start(env, { notification, action }) {
+        return new BonuscardRegistrationService(env, { notification, action });
+    },
+});
 
 patch(PosStore.prototype, {
     async setPartnerToCurrentOrder(partner) {

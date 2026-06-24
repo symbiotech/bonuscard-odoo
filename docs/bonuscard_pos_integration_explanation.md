@@ -10,13 +10,14 @@ This document explains how the Bonuscard POS integration works in the `bonuscard
 1. Customer selected in POS
    - `bonuscard_odoo/static/src/app/bonuscard_pos.js` extends `PosStore.setPartnerToCurrentOrder`
    - Calls `res.partner.get_bonuscard_status_for_pos` to resolve Bonuscard status
-   - The backend searches Bonuscard using customer phone, mobile, email, or name
+   - The backend searches Bonuscard using customer phone, email, or name
    - The partner record is updated with `bonuscard_status` and `bonuscard_recruitment_code`
 
 2. Manual partner registration
    - If the lookup returns `not_found`, the partner form shows a `Register to Bonuscard` button
    - `res.partner.action_register_to_bonuscard` re-checks the partner against Bonuscard before registering
    - If still not found, it calls `RegisterCustomer`, writes the returned `recruitmentCode`, and links the partner
+   - Error handling: Client-side service extracts detailed error messages from backend exceptions to show meaningful notifications to the cashier (e.g., "Partner must have a phone number to register with Bonuscard." instead of a generic "Odoo Server Error")
 
 3. Payment starts in POS
    - `PosStore.pay()` checks if the partner has a `bonuscard_recruitment_code`

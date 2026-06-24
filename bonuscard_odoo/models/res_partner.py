@@ -37,10 +37,8 @@ class ResPartner(models.Model):
 
     def _get_bonuscard_search_terms(self):
         self.ensure_one()
-        mobile_value = self._fields.get("mobile") and self.mobile or False
         candidates = [
             self._normalize_phone(self.phone),
-            self._normalize_phone(mobile_value),
         ] + [v.strip() for v in [self.email, self.name] if v]
         terms = []
         for value in candidates:
@@ -55,9 +53,7 @@ class ResPartner(models.Model):
 
     def _filter_exact_bonuscard_matches(self, customers):
         self.ensure_one()
-        mobile_value = self._fields.get("mobile") and self.mobile or False
         partner_phone = self._normalize_phone(self.phone)
-        partner_mobile = self._normalize_phone(mobile_value)
         partner_email = (self.email or "").strip().lower()
         partner_name = (self.name or "").strip().lower()
 
@@ -69,10 +65,7 @@ class ResPartner(models.Model):
             customer_key = (
                 customer.get("id") or customer.get("recruitmentCode") or index
             )
-            if customer_phone and (
-                (partner_phone and partner_phone == customer_phone)
-                or (partner_mobile and partner_mobile == customer_phone)
-            ):
+            if customer_phone and partner_phone and partner_phone == customer_phone:
                 exact_matches[customer_key] = customer
                 continue
             if partner_email and customer_email and partner_email == customer_email:
@@ -204,13 +197,11 @@ class ResPartner(models.Model):
                 )
             )
 
-        phone_number = (
-            partner.phone or (partner._fields.get("mobile") and partner.mobile) or ""
-        ).strip()
+        phone_number = (partner.phone or self.phone or "").strip()
         if not phone_number:
             raise UserError(
                 self.env._(
-                    "Partner must have a phone number or mobile number to register with Bonuscard."
+                    "Partner must have a phone number to register with Bonuscard."
                 )
             )
 
