@@ -3,7 +3,6 @@
 import { patch } from "@web/core/utils/patch";
 import { useService } from "@web/core/utils/hooks";
 import { PartnerLine } from "@point_of_sale/app/screens/partner_list/partner_line/partner_line";
-import { PartnerList } from "@point_of_sale/app/screens/partner_list/partner_list";
 
 patch(PartnerLine.prototype, {
     setup() {
