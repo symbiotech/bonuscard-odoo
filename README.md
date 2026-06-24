@@ -111,11 +111,11 @@ When a customer lookup returns **Not Found** (`not_found`), the partner form sho
 
 The registration flow does the following:
 - re-checks the partner against Bonuscard before registering
-- if the customer is still not found, calls `RegisterCustomer` using the partner's phone or mobile number
+- if the customer is still not found, calls `RegisterCustomer` using the partner's phone number
 - writes the returned `recruitmentCode` and links the partner record
 - if the customer already exists in Bonuscard, the action links the existing customer and shows an info notification
 
-The partner must have a phone number or mobile number to register.
+The partner must have a phone number to register.
 
 You can also call the same endpoint manually in Python:
 

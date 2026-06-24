@@ -105,43 +105,6 @@ class TestResPartnerBonuscard(TransactionCase):
         self.assertEqual(result["status"], "linked")
         self.assertEqual(result["recruitment_code"], "POS123")
 
-    def test_refresh_bonuscard_status_links_by_mobile_when_both_phone_and_mobile_set(
-        self,
-    ):
-        # Ensure this test only runs when the `mobile` field is available so it
-        # truly verifies mobile-based matching rather than falling back to phone.
-        if not self.partner_model._fields.get("mobile"):
-            self.skipTest(
-                "res.partner has no 'mobile' field; cannot test mobile-specific behavior."
-            )
-
-        partner_values = {
-            "name": "Mobile Customer",
-            "phone": "+46701111111",
-            "mobile": "+46709876543",
-            "email": "mobile@example.com",
-        }
-        matched_phone = partner_values["mobile"]
-
-        partner = self.partner_model.create(partner_values)
-
-        with patch(
-            "odoo.addons.bonuscard_odoo.models.bonuscard_api_service.BonuscardApiService._search_customers",
-            return_value=[
-                {
-                    "id": 42,
-                    "name": "Mobile Customer",
-                    "phoneNumber": matched_phone,
-                    "email": "mobile@example.com",
-                    "recruitmentCode": "MOB123",
-                }
-            ],
-        ):
-            partner.action_refresh_bonuscard_status()
-
-        self.assertEqual(partner.bonuscard_status, "linked")
-        self.assertEqual(partner.bonuscard_recruitment_code, "MOB123")
-
     def test_refresh_bonuscard_status_raises_if_no_instance(self):
         self.instance.active = False
         partner = self.partner_model.create(

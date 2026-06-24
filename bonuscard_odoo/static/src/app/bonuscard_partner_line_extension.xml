@@ -2,8 +2,13 @@
 <templates id="template" xml:space="preserve">
 
     <t t-name="bonuscard_odoo.PartnerLineExtension" t-inherit="point_of_sale.PartnerLine" t-inherit-mode="extension">
-        <xpath expr="//t[.//DropdownItem[contains(@onSelected, 'onClickOrders')]]" position="inside">
-            <DropdownItem t-if="props.partner.bonuscard_status == 'not_found' and props.onClickRegisterBonuscard" onSelected="() => props.onClickRegisterBonuscard(props.partner)">
+        <xpath expr="//DropdownItem[last()]" position="after">
+            <DropdownItem t-if="props.partner.bonuscard_status == 'not_found'" onSelected="() => this.bonuscardService.registerPartnerToBonuscard(props.partner, this.pos)">
+                Register with Bonuscard
+            </DropdownItem>
+        </xpath>
+        <xpath expr="//td[hasclass('edit-partner-button-cell')]//DropdownItem[last()]" position="after">
+            <DropdownItem t-if="props.partner.bonuscard_status == 'not_found'" onSelected="() => this.bonuscardService.registerPartnerToBonuscard(props.partner, this.pos)">
                 Register with Bonuscard
             </DropdownItem>
         </xpath>

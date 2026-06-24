@@ -6,45 +6,41 @@ import { definePosModels } from "@point_of_sale/../tests/unit/data/generate_mode
 import { onRpc, patchWithCleanup } from "@web/../tests/web_test_helpers";
 import { OrderSummary } from "@point_of_sale/app/screens/product_screen/order_summary/order_summary";
 import * as makeAwaitableDialog from "@point_of_sale/app/utils/make_awaitable_dialog";
-import { PartnerList } from "@point_of_sale/app/screens/partner_list/partner_list";
+import { BonuscardRegistrationService } from "../../src/app/bonuscard_registration_service";
 
 // Ensure the Bonuscard POS patches are loaded for this test suite.
 import "../../src/app/bonuscard_pos";
 definePosModels();
 
-test("PartnerList.registerPartnerToBonuscard calls the backend, executes the returned action, and refreshes partner status", async () => {
+test("BonuscardRegistrationService.registerPartnerToBonuscard calls the backend, executes the returned action, and refreshes partner status", async () => {
     const partner = { id: 42, name: "New Customer" };
     const calls = [];
     const actions = [];
     const notifications = [];
-    const fakeContext = {
-        pos: {
-            data: {
-                call: async (model, method, args) => {
-                    calls.push({ model, method, args });
-                    if (method === "action_register_to_bonuscard") {
-                        return {
-                            type: "ir.actions.client",
-                            tag: "display_notification",
-                            params: { message: "Customer registered successfully.", type: "success", sticky: false },
-                        };
-                    }
-                    if (method === "get_bonuscard_status_for_pos") {
-                        return { status: "linked", recruitment_code: "REG123", note: "" };
-                    }
-                    throw new Error(`Unexpected RPC: ${model}.${method}`);
-                },
+    const fakeNotification = { add: (message, options) => notifications.push({ message, options }) };
+    const fakeAction = { doAction: (action) => actions.push(action) };
+    const fakeEnv = {};
+    const fakePos = {
+        data: {
+            call: async (model, method, args) => {
+                calls.push({ model, method, args });
+                if (method === "action_register_to_bonuscard") {
+                    return {
+                        type: "ir.actions.client",
+                        tag: "display_notification",
+                        params: { message: "Customer registered successfully.", type: "success", sticky: false },
+                    };
+                }
+                if (method === "get_bonuscard_status_for_pos") {
+                    return { status: "linked", recruitment_code: "REG123", note: "" };
+                }
+                throw new Error(`Unexpected RPC: ${model}.${method}`);
             },
-        },
-        action: {
-            doAction: (action) => actions.push(action),
-        },
-        notification: {
-            add: (message, options) => notifications.push({ message, options }),
         },
     };
 
-    await PartnerList.prototype.registerPartnerToBonuscard.call(fakeContext, partner);
+    const service = new BonuscardRegistrationService(fakeEnv, { notification: fakeNotification, action: fakeAction });
+    await service.registerPartnerToBonuscard(partner, fakePos);
 
     expect(calls).toEqual([
         {
@@ -63,6 +59,43 @@ test("PartnerList.registerPartnerToBonuscard calls the backend, executes the ret
     expect(notifications.length).toBe(0);
     expect(partner.bonuscard_status).toBe("linked");
     expect(partner.bonuscard_recruitment_code).toBe("REG123");
+});
+
+test("BonuscardRegistrationService.registerPartnerToBonuscard shows warning when partner has no phone", async () => {
+    const partner = { id: 99, name: "No Phone Customer" };
+    const notifications = [];
+    const calls = [];
+    const fakeNotification = { add: (message, options) => notifications.push({ message, options }) };
+    const fakeAction = { doAction: () => { } };
+    const fakePos = { data: { call: async (...args) => { calls.push(args); return {}; } } };
+
+    const service = new BonuscardRegistrationService({}, { notification: fakeNotification, action: fakeAction });
+    await service.registerPartnerToBonuscard(partner, fakePos);
+
+    expect(calls.length).toBe(0);
+    expect(notifications.length).toBe(1);
+    expect(notifications[0].options.type).toBe("warning");
+});
+
+test("_extractErrorMessage extracts meaningful error messages from various error formats", () => {
+    const fakeEnv = {};
+    const fakeNotification = { add: () => { } };
+    const service = new BonuscardRegistrationService(fakeEnv, { notification: fakeNotification, action: {} });
+
+    // Direct error message
+    expect(service._extractErrorMessage({ message: "Partner has no phone number" })).toBe("Partner has no phone number");
+
+    // Odoo RPC error data.message
+    expect(service._extractErrorMessage({ data: { message: "No active Bonuscard connection" } })).toBe("No active Bonuscard connection");
+
+    // Odoo exception arguments (first argument)
+    expect(service._extractErrorMessage({ data: { arguments: ["Bonuscard API error (409)"] } })).toBe("Bonuscard API error (409)");
+
+    // Fallback for "Odoo Server Error"
+    expect(service._extractErrorMessage({ message: "Odoo Server Error", data: { message: "Odoo Server Error", arguments: ["Meaningful error text"] } })).toBe("Meaningful error text");
+
+    // Fallback when no error
+    expect(service._extractErrorMessage(null)).toBe("Bonuscard registration failed.");
 });
 
 test("_applyBonuscardDiscountsToOrder applies line discounts for matching identifiers", async () => {

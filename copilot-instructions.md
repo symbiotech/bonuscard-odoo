@@ -71,7 +71,7 @@
 - Mock HTTP interactions in tests and cover both success and failure paths.
 - If integration tests are added, mark them with a dedicated manual tag (for example `bonuscard_integration`) and keep them out of CI defaults.
 - `patch.object(model_instance, "method", ...)` does **not** work for Odoo model methods (attributes are read-only). Always patch by full import path string: `patch("odoo.addons.bonuscard_odoo.models.ClassName.method_name", ...)`.
-- `res.partner.mobile` may not exist in all Odoo 19 builds. Always guard field access with `self._fields.get("mobile")` before reading `self.mobile`.
+- `res.partner` in Odoo 19 base has no `mobile` field. Only `phone` is available.
 
 ## Coding Style and Linting
 
