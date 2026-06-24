@@ -175,7 +175,7 @@ company = (self.company_id or self.commercial_partner_id.company_id or self.env.
     def action_register_to_bonuscard(self):
         self.ensure_one()
         service = self.env["bonuscard.api.service"]
-        company = self.company_id or self.env.company
+company = (self.company_id or self.commercial_partner_id.company_id or self.env.company)
         instance = service._get_company_instance(company)
         if not instance:
             raise UserError(
