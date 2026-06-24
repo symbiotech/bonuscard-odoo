@@ -98,6 +98,17 @@ class ResPartner(models.Model):
                 }
             )
         self.write(values)
+        # Phone is the unique identifier on the Bonuscard side, so a contact and its
+        # commercial partner sharing the same phone number represent the same Bonuscard
+        # entity.  Keep both records in sync to avoid stale status on either record.
+        commercial_partner = self.commercial_partner_id
+        if commercial_partner and commercial_partner != self:
+            company_phone = self._normalize_phone(commercial_partner.phone)
+            self_phone = self._normalize_phone(self.phone)
+            if company_phone and self_phone and company_phone == self_phone:
+                commercial_partner._write_bonuscard_status(
+                    status, customer=customer, note=note
+                )
         return values
 
     def _sync_bonuscard_status(self, raise_if_missing_instance=False):
