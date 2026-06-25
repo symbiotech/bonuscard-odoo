@@ -3,7 +3,7 @@
 import { test, expect } from "@odoo/hoot";
 import { setupPosEnv, getFilledOrder } from "@point_of_sale/../tests/unit/utils";
 import { definePosModels } from "@point_of_sale/../tests/unit/data/generate_model_definitions";
-import { onRpc, patchTranslations, patchWithCleanup } from "@web/../tests/web_test_helpers";
+import { patchTranslations, patchWithCleanup } from "@web/../tests/web_test_helpers";
 import { OrderSummary } from "@point_of_sale/app/screens/product_screen/order_summary/order_summary";
 import * as makeAwaitableDialog from "@point_of_sale/app/utils/make_awaitable_dialog";
 import { BonuscardRegistrationService } from "../../src/app/bonuscard_registration_service";
