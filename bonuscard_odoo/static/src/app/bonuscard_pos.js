@@ -23,8 +23,9 @@ registry.category("services").add("bonuscard_registration", {
 });
 
 patch(PosStore.prototype, {
-    async setPartnerToCurrentOrder(partner) {
-        await super.setPartnerToCurrentOrder(...arguments);
+    async setPartnerToCurrentOrder(partner, ...rest) {
+        // Pass false instead of null to parent, as POS setPartner doesn't handle null
+        await super.setPartnerToCurrentOrder(partner || false, ...rest);
         const order = this.getOrder();
         if (order && order.bonuscard_partner_id !== (partner?.id || false)) {
             if (order.bonuscard_transaction_id) {
@@ -396,8 +397,7 @@ patch(PosStore.prototype, {
         return super.closePos(...arguments);
     },
 
-    async deleteCurrentOrder() {
-        const order = this.getOrder();
+    async onDeleteOrder(order) {
         if (order?.bonuscard_transaction_id) {
             await this.data
                 .call("bonuscard.api.service", "cancel_purchase_for_pos", [
@@ -407,7 +407,7 @@ patch(PosStore.prototype, {
                 .catch((error) => {
                     logPosMessage(
                         "Bonuscard",
-                        "deleteCurrentOrder",
+                        "onDeleteOrder",
                         "Bonuscard cancel failed during order deletion",
                         false,
                         [{ transactionId: order.bonuscard_transaction_id, partnerId: order.bonuscard_partner_id || null, error }]
@@ -417,7 +417,7 @@ patch(PosStore.prototype, {
             order.bonuscard_checkout_items = null;
             order.bonuscard_partner_id = false;
         }
-        return super.deleteCurrentOrder(...arguments);
+        return super.onDeleteOrder(order);
     },
 
     async onClickBackButton() {

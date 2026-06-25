@@ -3,7 +3,7 @@
 import { test, expect } from "@odoo/hoot";
 import { setupPosEnv, getFilledOrder } from "@point_of_sale/../tests/unit/utils";
 import { definePosModels } from "@point_of_sale/../tests/unit/data/generate_model_definitions";
-import { onRpc, patchWithCleanup } from "@web/../tests/web_test_helpers";
+import { patchTranslations, patchWithCleanup } from "@web/../tests/web_test_helpers";
 import { OrderSummary } from "@point_of_sale/app/screens/product_screen/order_summary/order_summary";
 import * as makeAwaitableDialog from "@point_of_sale/app/utils/make_awaitable_dialog";
 import { BonuscardRegistrationService } from "../../src/app/bonuscard_registration_service";
@@ -12,8 +12,17 @@ import { BonuscardRegistrationService } from "../../src/app/bonuscard_registrati
 import "../../src/app/bonuscard_pos";
 definePosModels();
 
+// Mock translations for tests
+patchTranslations({
+    bonuscard_odoo: {
+        "Bonuscard registration failed.": "Bonuscard registration failed.",
+        "A phone number is required to register a customer with Bonuscard.": "A phone number is required to register a customer with Bonuscard.",
+        "Bonuscard registration completed.": "Bonuscard registration completed.",
+    }
+});
+
 test("BonuscardRegistrationService.registerPartnerToBonuscard calls the backend, executes the returned action, and refreshes partner status", async () => {
-    const partner = { id: 42, name: "New Customer" };
+    const partner = { id: 42, name: "New Customer", phone: "+1234567890" };
     const calls = [];
     const actions = [];
     const notifications = [];
@@ -144,7 +153,7 @@ test("_applyBonuscardDiscountsToOrder only consumes the configured quantity acro
     const order = await getFilledOrder(store);
 
     const product = store.models["product.product"].get(5);
-    product.barcode = product.barcode || "TEST-123";
+    product.barcode = "TEST-MULTI-123";
 
     const line1 = await store.addLineToOrder(
         {
@@ -164,6 +173,10 @@ test("_applyBonuscardDiscountsToOrder only consumes the configured quantity acro
         },
         order
     );
+
+    // Initialize discount to 0 to ensure it's a number (not undefined)
+    line1.discount = line1.discount ?? 0;
+    line2.discount = line2.discount ?? 0;
 
     const result = {
         checkoutItems: [
@@ -208,22 +221,37 @@ test("setPartnerToCurrentOrder validates Bonuscard purchase and applies discount
 
     const partner = store.models["res.partner"].create({
         name: "Bonuscard Customer",
-        bonuscard_recruitment_code: "ABC123",
-        bonuscard_status: "linked",
     });
+    partner.bonuscard_recruitment_code = "ABC123";
+    partner.bonuscard_status = "linked";
 
-    onRpc("bonuscard.api.service", "validate_purchase_for_pos", () => ({
-        transactionIdentifier: "TXN1",
-        checkoutItems: [],
-        totalDiscount: 2,
-        resultItems: [
-            {
-                quantity: 1,
-                pricePerItem: -2,
-                relatedIdentifiers: [String(product.id)],
-            },
-        ],
-    }));
+    const originalCall = store.data.call.bind(store.data);
+    patchWithCleanup(store.data, {
+        call: async function (model, method, args) {
+            if (model === "bonuscard.api.service" && method === "validate_purchase_for_pos") {
+                return {
+                    transactionIdentifier: "TXN1",
+                    checkoutItems: [
+                        {
+                            identifier: "ITEM1",
+                            ean: product.barcode,
+                            quantity: 1,
+                            pricePerItem: 10,
+                        },
+                    ],
+                    totalDiscount: 2,
+                    resultItems: [
+                        {
+                            quantity: 1,
+                            pricePerItem: -2,
+                            relatedIdentifiers: ["ITEM1"],
+                        },
+                    ],
+                };
+            }
+            return originalCall(...arguments);
+        },
+    });
 
     await store.setPartnerToCurrentOrder(partner);
 
@@ -249,23 +277,39 @@ test("validatePurchaseForOrder retains existing transactionIdentifier when API r
 
     const partner = store.models["res.partner"].create({
         name: "Bonuscard Customer",
-        bonuscard_recruitment_code: "ABC123",
-        bonuscard_status: "linked",
     });
+    partner.bonuscard_recruitment_code = "ABC123";
+    partner.bonuscard_status = "linked";
     order.setPartner(partner);
 
     order.bonuscard_transaction_id = "TXN1";
-    onRpc("bonuscard.api.service", "validate_purchase_for_pos", () => ({
-        checkoutItems: [],
-        totalDiscount: 2,
-        resultItems: [
-            {
-                quantity: 1,
-                pricePerItem: -2,
-                relatedIdentifiers: [String(product.id)],
-            },
-        ],
-    }));
+
+    const originalCall = store.data.call.bind(store.data);
+    patchWithCleanup(store.data, {
+        call: async function (model, method, args) {
+            if (model === "bonuscard.api.service" && method === "validate_purchase_for_pos") {
+                return {
+                    checkoutItems: [
+                        {
+                            identifier: "ITEM1",
+                            ean: product.barcode,
+                            quantity: 1,
+                            pricePerItem: 10,
+                        },
+                    ],
+                    totalDiscount: 2,
+                    resultItems: [
+                        {
+                            quantity: 1,
+                            pricePerItem: -2,
+                            relatedIdentifiers: ["ITEM1"],
+                        },
+                    ],
+                };
+            }
+            return originalCall(...arguments);
+        },
+    });
 
     const result = await store._validateBonuscardPurchaseForOrder(order);
 
@@ -291,29 +335,44 @@ test("quantity change clears pending Bonuscard transaction", async () => {
 
     const partner = store.models["res.partner"].create({
         name: "Bonuscard Customer",
-        bonuscard_recruitment_code: "ABC123",
-        bonuscard_status: "linked",
     });
+    partner.bonuscard_recruitment_code = "ABC123";
+    partner.bonuscard_status = "linked";
 
-    onRpc("bonuscard.api.service", "validate_purchase_for_pos", () => ({
-        transactionIdentifier: "TXN1",
-        checkoutItems: [],
-        totalDiscount: 2,
-        resultItems: [
-            {
-                quantity: 1,
-                pricePerItem: -2,
-                relatedIdentifiers: [String(product.id)],
-            },
-        ],
-    }));
+    const originalCall = store.data.call.bind(store.data);
+    patchWithCleanup(store.data, {
+        call: async function (model, method, args) {
+            if (model === "bonuscard.api.service" && method === "validate_purchase_for_pos") {
+                return {
+                    transactionIdentifier: "TXN1",
+                    checkoutItems: [
+                        {
+                            identifier: "ITEM1",
+                            ean: product.barcode,
+                            quantity: 1,
+                            pricePerItem: 10,
+                        },
+                    ],
+                    totalDiscount: 2,
+                    resultItems: [
+                        {
+                            quantity: 1,
+                            pricePerItem: -2,
+                            relatedIdentifiers: ["ITEM1"],
+                        },
+                    ],
+                };
+            }
+            return originalCall(...arguments);
+        },
+    });
 
     await store.setPartnerToCurrentOrder(partner);
 
     expect(order.bonuscard_transaction_id).toBe("TXN1");
     line.setQuantity(2);
     expect(order.bonuscard_needs_validation).toBe(true);
-    expect(order.bonuscard_checkout_items).toBeNull();
+    expect(order.bonuscard_checkout_items).toBe(null);
 });
 
 test("removing a line clears pending Bonuscard transaction", async () => {
@@ -334,29 +393,44 @@ test("removing a line clears pending Bonuscard transaction", async () => {
 
     const partner = store.models["res.partner"].create({
         name: "Bonuscard Customer",
-        bonuscard_recruitment_code: "ABC123",
-        bonuscard_status: "linked",
     });
+    partner.bonuscard_recruitment_code = "ABC123";
+    partner.bonuscard_status = "linked";
 
-    onRpc("bonuscard.api.service", "validate_purchase_for_pos", () => ({
-        transactionIdentifier: "TXN1",
-        checkoutItems: [],
-        totalDiscount: 2,
-        resultItems: [
-            {
-                quantity: 1,
-                pricePerItem: -2,
-                relatedIdentifiers: [String(product.id)],
-            },
-        ],
-    }));
+    const originalCall = store.data.call.bind(store.data);
+    patchWithCleanup(store.data, {
+        call: async function (model, method, args) {
+            if (model === "bonuscard.api.service" && method === "validate_purchase_for_pos") {
+                return {
+                    transactionIdentifier: "TXN1",
+                    checkoutItems: [
+                        {
+                            identifier: "ITEM1",
+                            ean: product.barcode,
+                            quantity: 1,
+                            pricePerItem: 10,
+                        },
+                    ],
+                    totalDiscount: 2,
+                    resultItems: [
+                        {
+                            quantity: 1,
+                            pricePerItem: -2,
+                            relatedIdentifiers: ["ITEM1"],
+                        },
+                    ],
+                };
+            }
+            return originalCall(...arguments);
+        },
+    });
 
     await store.setPartnerToCurrentOrder(partner);
 
     expect(order.bonuscard_transaction_id).toBe("TXN1");
     order.removeOrderline(line);
     expect(order.bonuscard_needs_validation).toBe(true);
-    expect(order.bonuscard_checkout_items).toBeNull();
+    expect(order.bonuscard_checkout_items).toBe(null);
 });
 
 test("addLineToOrder validates Bonuscard purchase after customer is selected", async () => {
@@ -367,24 +441,39 @@ test("addLineToOrder validates Bonuscard purchase after customer is selected", a
 
     const partner = store.models["res.partner"].create({
         name: "Bonuscard Customer",
-        bonuscard_recruitment_code: "ABC123",
-        bonuscard_status: "linked",
     });
+    partner.bonuscard_recruitment_code = "ABC123";
+    partner.bonuscard_status = "linked";
 
     await store.setPartnerToCurrentOrder(partner);
 
-    onRpc("bonuscard.api.service", "validate_purchase_for_pos", () => ({
-        transactionIdentifier: "TXN2",
-        checkoutItems: [],
-        totalDiscount: 2,
-        resultItems: [
-            {
-                quantity: 1,
-                pricePerItem: -2,
-                relatedIdentifiers: [String(product.id)],
-            },
-        ],
-    }));
+    const originalCall = store.data.call.bind(store.data);
+    patchWithCleanup(store.data, {
+        call: async function (model, method, args) {
+            if (model === "bonuscard.api.service" && method === "validate_purchase_for_pos") {
+                return {
+                    transactionIdentifier: "TXN2",
+                    checkoutItems: [
+                        {
+                            identifier: "ITEM1",
+                            ean: product.barcode,
+                            quantity: 1,
+                            pricePerItem: 10,
+                        },
+                    ],
+                    totalDiscount: 2,
+                    resultItems: [
+                        {
+                            quantity: 1,
+                            pricePerItem: -2,
+                            relatedIdentifiers: ["ITEM1"],
+                        },
+                    ],
+                };
+            }
+            return originalCall(...arguments);
+        },
+    });
 
     const line = await store.addLineToOrder(
         {
@@ -418,37 +507,54 @@ test("changing partner clears pending Bonuscard transaction and discounts", asyn
 
     const partner1 = store.models["res.partner"].create({
         name: "Bonuscard Customer",
-        bonuscard_recruitment_code: "ABC123",
-        bonuscard_status: "linked",
     });
+    partner1.bonuscard_recruitment_code = "ABC123";
+    partner1.bonuscard_status = "linked";
     const partner2 = store.models["res.partner"].create({
         name: "Other Customer",
     });
 
-    onRpc("bonuscard.api.service", "validate_purchase_for_pos", () => ({
-        transactionIdentifier: "TXN1",
-        checkoutItems: [],
-        totalDiscount: 2,
-        resultItems: [
-            {
-                quantity: 1,
-                pricePerItem: -2,
-                relatedIdentifiers: [String(product.id)],
-            },
-        ],
-    }));
-    onRpc("res.partner", "get_bonuscard_status_for_pos", () => ({
-        status: "not_found",
-        recruitment_code: false,
-        note: "Customer is not linked",
-    }));
+    const originalCall = store.data.call.bind(store.data);
+    patchWithCleanup(store.data, {
+        call: async function (model, method, args) {
+            if (model === "bonuscard.api.service" && method === "validate_purchase_for_pos") {
+                return {
+                    transactionIdentifier: "TXN1",
+                    checkoutItems: [
+                        {
+                            identifier: "ITEM1",
+                            ean: product.barcode,
+                            quantity: 1,
+                            pricePerItem: 10,
+                        },
+                    ],
+                    totalDiscount: 2,
+                    resultItems: [
+                        {
+                            quantity: 1,
+                            pricePerItem: -2,
+                            relatedIdentifiers: ["ITEM1"],
+                        },
+                    ],
+                };
+            }
+            if (model === "res.partner" && method === "get_bonuscard_status_for_pos") {
+                return {
+                    status: "not_found",
+                    recruitment_code: false,
+                    note: "Customer is not linked",
+                };
+            }
+            return originalCall(...arguments);
+        },
+    });
 
     await store.setPartnerToCurrentOrder(partner1);
     expect(order.bonuscard_transaction_id).toBe("TXN1");
     expect(order.lines[0].discount).toBe(20);
 
     await store.setPartnerToCurrentOrder(partner2);
-    expect(order.bonuscard_transaction_id).toBeNull();
+    expect(order.bonuscard_transaction_id).toBe(null);
     expect(order.lines[0].discount).toBe(0);
 });
 
@@ -470,29 +576,38 @@ test("changing partner cancels the open Bonuscard transaction before clearing it
 
     const partner1 = store.models["res.partner"].create({
         name: "Bonuscard Customer",
-        bonuscard_recruitment_code: "ABC123",
-        bonuscard_status: "linked",
     });
+    partner1.bonuscard_recruitment_code = "ABC123";
+    partner1.bonuscard_status = "linked";
     const partner2 = store.models["res.partner"].create({
         name: "Other Customer",
     });
 
-    onRpc("bonuscard.api.service", "validate_purchase_for_pos", () => ({
-        transactionIdentifier: "TXN1",
-        checkoutItems: [],
-        totalDiscount: 0,
-        resultItems: [],
-    }));
-    onRpc("res.partner", "get_bonuscard_status_for_pos", () => ({
-        status: "not_found",
-        recruitment_code: false,
-        note: "Customer is not linked",
-    }));
-
     let cancelledId = null;
-    onRpc("bonuscard.api.service", "cancel_purchase_for_pos", ([txId]) => {
-        cancelledId = txId;
-        return { error: false, messages: [] };
+    const originalCall = store.data.call.bind(store.data);
+    patchWithCleanup(store.data, {
+        call: async function (model, method, args) {
+            if (model === "bonuscard.api.service" && method === "validate_purchase_for_pos") {
+                return {
+                    transactionIdentifier: "TXN1",
+                    checkoutItems: [],
+                    totalDiscount: 0,
+                    resultItems: [],
+                };
+            }
+            if (model === "res.partner" && method === "get_bonuscard_status_for_pos") {
+                return {
+                    status: "not_found",
+                    recruitment_code: false,
+                    note: "Customer is not linked",
+                };
+            }
+            if (model === "bonuscard.api.service" && method === "cancel_purchase_for_pos") {
+                cancelledId = args[0];
+                return { error: false, messages: [] };
+            }
+            return originalCall(...arguments);
+        },
     });
 
     await store.setPartnerToCurrentOrder(partner1);
@@ -500,7 +615,7 @@ test("changing partner cancels the open Bonuscard transaction before clearing it
 
     await store.setPartnerToCurrentOrder(partner2);
     expect(cancelledId).toBe("TXN1");
-    expect(order.bonuscard_transaction_id).toBeNull();
+    expect(order.bonuscard_transaction_id).toBe(null);
 });
 
 test("changing partner clears transaction state even when cancel returns an error", async () => {
@@ -521,35 +636,47 @@ test("changing partner clears transaction state even when cancel returns an erro
 
     const partner1 = store.models["res.partner"].create({
         name: "Bonuscard Customer",
-        bonuscard_recruitment_code: "ABC123",
-        bonuscard_status: "linked",
     });
+    partner1.bonuscard_recruitment_code = "ABC123";
+    partner1.bonuscard_status = "linked";
     const partner2 = store.models["res.partner"].create({
         name: "Other Customer",
     });
 
-    onRpc("bonuscard.api.service", "validate_purchase_for_pos", () => ({
-        transactionIdentifier: "TXN1",
-        checkoutItems: [],
-        totalDiscount: 0,
-        resultItems: [],
-    }));
-    onRpc("res.partner", "get_bonuscard_status_for_pos", () => ({
-        status: "not_found",
-        recruitment_code: false,
-        note: "Customer is not linked",
-    }));
-    onRpc("bonuscard.api.service", "cancel_purchase_for_pos", () => ({
-        error: true,
-        messages: ["Bonuscard service is temporarily unavailable."],
-    }));
+    const originalCall = store.data.call.bind(store.data);
+    patchWithCleanup(store.data, {
+        call: async function (model, method, args) {
+            if (model === "bonuscard.api.service" && method === "validate_purchase_for_pos") {
+                return {
+                    transactionIdentifier: "TXN1",
+                    checkoutItems: [],
+                    totalDiscount: 0,
+                    resultItems: [],
+                };
+            }
+            if (model === "res.partner" && method === "get_bonuscard_status_for_pos") {
+                return {
+                    status: "not_found",
+                    recruitment_code: false,
+                    note: "Customer is not linked",
+                };
+            }
+            if (model === "bonuscard.api.service" && method === "cancel_purchase_for_pos") {
+                return {
+                    error: true,
+                    messages: ["Bonuscard service is temporarily unavailable."],
+                };
+            }
+            return originalCall(...arguments);
+        },
+    });
 
     await store.setPartnerToCurrentOrder(partner1);
     expect(order.bonuscard_transaction_id).toBe("TXN1");
 
     await store.setPartnerToCurrentOrder(partner2);
     // Partner change must proceed regardless of cancel failure.
-    expect(order.bonuscard_transaction_id).toBeNull();
+    expect(order.bonuscard_transaction_id).toBe(null);
     expect(order.bonuscard_partner_id).toBe(partner2.id);
 });
 
@@ -571,21 +698,28 @@ test("removing partner cancels the open Bonuscard transaction before clearing it
 
     const partner = store.models["res.partner"].create({
         name: "Bonuscard Customer",
-        bonuscard_recruitment_code: "ABC123",
-        bonuscard_status: "linked",
     });
-
-    onRpc("bonuscard.api.service", "validate_purchase_for_pos", () => ({
-        transactionIdentifier: "TXN1",
-        checkoutItems: [],
-        totalDiscount: 0,
-        resultItems: [],
-    }));
+    partner.bonuscard_recruitment_code = "ABC123";
+    partner.bonuscard_status = "linked";
 
     let cancelledId = null;
-    onRpc("bonuscard.api.service", "cancel_purchase_for_pos", ([txId]) => {
-        cancelledId = txId;
-        return { error: false, messages: [] };
+    const originalCall = store.data.call.bind(store.data);
+    patchWithCleanup(store.data, {
+        call: async function (model, method, args) {
+            if (model === "bonuscard.api.service" && method === "validate_purchase_for_pos") {
+                return {
+                    transactionIdentifier: "TXN1",
+                    checkoutItems: [],
+                    totalDiscount: 0,
+                    resultItems: [],
+                };
+            }
+            if (model === "bonuscard.api.service" && method === "cancel_purchase_for_pos") {
+                cancelledId = args[0];
+                return { error: false, messages: [] };
+            }
+            return originalCall(...arguments);
+        },
     });
 
     await store.setPartnerToCurrentOrder(partner);
@@ -593,7 +727,7 @@ test("removing partner cancels the open Bonuscard transaction before clearing it
 
     await store.setPartnerToCurrentOrder(null);
     expect(cancelledId).toBe("TXN1");
-    expect(order.bonuscard_transaction_id).toBeNull();
+    expect(order.bonuscard_transaction_id).toBe(null);
 });
 
 test("clearBonuscardDiscounts removes bonuscard discount lines and resets applied discounts", async () => {
@@ -631,7 +765,7 @@ test("clearBonuscardDiscounts removes bonuscard discount lines and resets applie
 
     order.clearBonuscardDiscounts();
 
-    expect(order.lines).not.toContain(discountLine);
+    expect(order.lines.includes(discountLine)).toBe(false);
     expect(line.discount).toBe(0);
     expect(line.uiState?._bonuscardDiscount).toBe(undefined);
 });
@@ -654,9 +788,9 @@ test("pay revalidates Bonuscard purchase when the order needs validation", async
 
     const partner = store.models["res.partner"].create({
         name: "Bonuscard Customer",
-        bonuscard_recruitment_code: "ABC123",
-        bonuscard_status: "linked",
     });
+    partner.bonuscard_recruitment_code = "ABC123";
+    partner.bonuscard_status = "linked";
     order.setPartner(partner);
     order.bonuscard_transaction_id = "TXN1";
     order.bonuscard_needs_validation = true;
@@ -689,18 +823,21 @@ test("pay does not revalidate Bonuscard purchase when no validation is needed", 
 
     const partner = store.models["res.partner"].create({
         name: "Bonuscard Customer",
-        bonuscard_recruitment_code: "ABC123",
-        bonuscard_status: "linked",
     });
+    partner.bonuscard_recruitment_code = "ABC123";
+    partner.bonuscard_status = "linked";
     order.setPartner(partner);
     order.bonuscard_transaction_id = "TXN1";
     order.bonuscard_needs_validation = false;
 
+    let validationCalled = false;
     store._validateBonuscardPurchaseForOrder = async () => {
+        validationCalled = true;
         throw new Error("Unexpected validation call");
     };
 
     await store.pay();
+    expect(validationCalled).toBe(false);
 });
 
 test("OrderSummary revalidates Bonuscard order when quantity changes", async () => {
@@ -721,9 +858,9 @@ test("OrderSummary revalidates Bonuscard order when quantity changes", async () 
 
     const partner = store.models["res.partner"].create({
         name: "Bonuscard Customer",
-        bonuscard_recruitment_code: "ABC123",
-        bonuscard_status: "linked",
     });
+    partner.bonuscard_recruitment_code = "ABC123";
+    partner.bonuscard_status = "linked";
     await store.setPartnerToCurrentOrder(partner);
 
     let called = false;
@@ -782,35 +919,43 @@ test("pay applies Bonuscard discount and does not create a payment line when app
 
     const partner = store.models["res.partner"].create({
         name: "Bonuscard Customer",
-        bonuscard_recruitment_code: "ABC123",
-        bonuscard_status: "linked",
     });
+    partner.bonuscard_recruitment_code = "ABC123";
+    partner.bonuscard_status = "linked";
     await store.setPartnerToCurrentOrder(partner);
 
     patchWithCleanup(makeAwaitableDialog, {
         ask: async () => true,
     });
 
-    onRpc("bonuscard.api.service", "validate_purchase_for_pos", () => ({
-        transactionIdentifier: "TXN1",
-        checkoutItems: [
-            {
-                identifier: "ITEM1",
-                ean: product.barcode,
-                quantity: 1,
-                pricePerItem: 10,
-            },
-        ],
-        totalDiscount: 2,
-        resultItems: [
-            {
-                description: "Discount",
-                quantity: 1,
-                pricePerItem: -2,
-                relatedIdentifiers: ["ITEM1"],
-            },
-        ],
-    }));
+    const originalCall = store.data.call.bind(store.data);
+    patchWithCleanup(store.data, {
+        call: async function (model, method, args) {
+            if (model === "bonuscard.api.service" && method === "validate_purchase_for_pos") {
+                return {
+                    transactionIdentifier: "TXN1",
+                    checkoutItems: [
+                        {
+                            identifier: "ITEM1",
+                            ean: product.barcode,
+                            quantity: 1,
+                            pricePerItem: 10,
+                        },
+                    ],
+                    totalDiscount: 2,
+                    resultItems: [
+                        {
+                            description: "Discount",
+                            quantity: 1,
+                            pricePerItem: -2,
+                            relatedIdentifiers: ["ITEM1"],
+                        },
+                    ],
+                };
+            }
+            return originalCall(...arguments);
+        },
+    });
 
     await store.pay();
 
@@ -818,43 +963,39 @@ test("pay applies Bonuscard discount and does not create a payment line when app
     expect(order.payment_ids.length).toBe(0);
 });
 
-test("deleteCurrentOrder clears bonuscard transaction state after cancelling", async () => {
+test("onDeleteOrder clears bonuscard transaction state after cancelling", async () => {
     const store = await setupPosEnv();
     const order = store.addNewOrder();
-    const product = store.models["product.product"].get(5);
-    product.barcode = product.barcode || "TEST-123";
-
-    await store.addLineToOrder(
-        {
-            product_id: product,
-            product_tmpl_id: product.product_tmpl_id,
-            qty: 1,
-            price_unit: 10,
-        },
-        order
-    );
 
     const partner = store.models["res.partner"].create({
         name: "Bonuscard Customer",
-        bonuscard_recruitment_code: "ABC123",
-        bonuscard_status: "linked",
     });
+    partner.bonuscard_recruitment_code = "ABC123";
+    partner.bonuscard_status = "linked";
     order.setPartner(partner);
     order.bonuscard_transaction_id = "TXN1";
     order.bonuscard_checkout_items = [{ ean: "TEST-123", quantity: 1, pricePerItem: 10 }];
     order.bonuscard_partner_id = partner.id;
 
     let cancelledId = null;
-    onRpc("bonuscard.api.service", "cancel_purchase_for_pos", ([txId]) => {
-        cancelledId = txId;
-        return { error: false, messages: [] };
+    const originalCall = store.data.call.bind(store.data);
+    patchWithCleanup(store.data, {
+        call: async function (model, method, args) {
+            if (model === "bonuscard.api.service" && method === "cancel_purchase_for_pos") {
+                cancelledId = args[0];
+                return { error: false, messages: [] };
+            }
+            if (model === "pos.order" && method === "action_pos_order_cancel") {
+                return true;
+            }
+            return originalCall(...arguments);
+        },
     });
 
-    store.getOrder = () => order;
-    await store.deleteCurrentOrder();
+    await store.onDeleteOrder(order);
 
     expect(cancelledId).toBe("TXN1");
-    expect(order.bonuscard_transaction_id).toBeNull();
-    expect(order.bonuscard_checkout_items).toBeNull();
+    expect(order.bonuscard_transaction_id).toBe(null);
+    expect(order.bonuscard_checkout_items).toBe(null);
     expect(order.bonuscard_partner_id).toBe(false);
 });
