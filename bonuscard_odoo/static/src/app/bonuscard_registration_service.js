@@ -79,6 +79,6 @@ export class BonuscardRegistrationService {
         }
 
         // Fallback message
-        return "Bonuscard registration failed.";
+        return _t("Bonuscard registration failed.");
     }
 }
