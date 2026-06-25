@@ -963,21 +963,9 @@ test("pay applies Bonuscard discount and does not create a payment line when app
     expect(order.payment_ids.length).toBe(0);
 });
 
-test("deleteCurrentOrder clears bonuscard transaction state after cancelling", async () => {
+test("onDeleteOrder clears bonuscard transaction state after cancelling", async () => {
     const store = await setupPosEnv();
     const order = store.addNewOrder();
-    const product = store.models["product.product"].get(5);
-    product.barcode = product.barcode || "TEST-123";
-
-    await store.addLineToOrder(
-        {
-            product_id: product,
-            product_tmpl_id: product.product_tmpl_id,
-            qty: 1,
-            price_unit: 10,
-        },
-        order
-    );
 
     const partner = store.models["res.partner"].create({
         name: "Bonuscard Customer",
@@ -997,22 +985,14 @@ test("deleteCurrentOrder clears bonuscard transaction state after cancelling", a
                 cancelledId = args[0];
                 return { error: false, messages: [] };
             }
+            if (model === "pos.order" && method === "action_pos_order_cancel") {
+                return true;
+            }
             return originalCall(...arguments);
         },
     });
 
-    store.getOrder = () => order;
-
-    // Simulate deleteCurrentOrder behavior
-    if (order?.bonuscard_transaction_id) {
-        await store.data.call("bonuscard.api.service", "cancel_purchase_for_pos", [
-            order.bonuscard_transaction_id,
-            order.bonuscard_partner_id || null,
-        ]);
-    }
-    order.bonuscard_transaction_id = null;
-    order.bonuscard_checkout_items = null;
-    order.bonuscard_partner_id = false;
+    await store.onDeleteOrder(order);
 
     expect(cancelledId).toBe("TXN1");
     expect(order.bonuscard_transaction_id).toBe(null);

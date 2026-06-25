@@ -397,8 +397,7 @@ patch(PosStore.prototype, {
         return super.closePos(...arguments);
     },
 
-    async deleteCurrentOrder() {
-        const order = this.getOrder();
+    async onDeleteOrder(order) {
         if (order?.bonuscard_transaction_id) {
             await this.data
                 .call("bonuscard.api.service", "cancel_purchase_for_pos", [
@@ -408,7 +407,7 @@ patch(PosStore.prototype, {
                 .catch((error) => {
                     logPosMessage(
                         "Bonuscard",
-                        "deleteCurrentOrder",
+                        "onDeleteOrder",
                         "Bonuscard cancel failed during order deletion",
                         false,
                         [{ transactionId: order.bonuscard_transaction_id, partnerId: order.bonuscard_partner_id || null, error }]
@@ -418,7 +417,7 @@ patch(PosStore.prototype, {
             order.bonuscard_checkout_items = null;
             order.bonuscard_partner_id = false;
         }
-        return super.deleteCurrentOrder(...arguments);
+        return super.onDeleteOrder(order);
     },
 
     async onClickBackButton() {
