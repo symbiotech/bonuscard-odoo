@@ -200,7 +200,7 @@ test("setPartnerToCurrentOrder validates Bonuscard purchase and applies discount
     const product = store.models["product.product"].get(5);
     product.barcode = product.barcode || "TEST-123";
 
-    const line = await store.addLineToOrder(
+    await store.addLineToOrder(
         {
             product_id: product,
             product_tmpl_id: product.product_tmpl_id,
