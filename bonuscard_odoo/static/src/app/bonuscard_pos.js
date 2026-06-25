@@ -24,7 +24,8 @@ registry.category("services").add("bonuscard_registration", {
 
 patch(PosStore.prototype, {
     async setPartnerToCurrentOrder(partner) {
-        await super.setPartnerToCurrentOrder(...arguments);
+        // Pass false instead of null to parent, as POS setPartner doesn't handle null
+        await super.setPartnerToCurrentOrder(partner || false);
         const order = this.getOrder();
         if (order && order.bonuscard_partner_id !== (partner?.id || false)) {
             if (order.bonuscard_transaction_id) {
