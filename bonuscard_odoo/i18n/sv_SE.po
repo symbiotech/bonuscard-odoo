@@ -212,7 +212,7 @@ msgstr "Kunden registrerades framgångsrikt."
 #. module: bonuscard_odoo
 msgid ""
 "Customer registered successfully. Recruitment code: %s. The customer will "
-"receive a SMS with a link to complete the registration on the Bonuscard "
+"receive an SMS with a link to complete the registration on the Bonuscard "
 "website."
 msgstr ""
 "Kunden registrerades framgångsrikt. Rekryteringskod: %s. Kunden kommer att "
