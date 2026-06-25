@@ -3,7 +3,7 @@
 import { test, expect } from "@odoo/hoot";
 import { setupPosEnv, getFilledOrder } from "@point_of_sale/../tests/unit/utils";
 import { definePosModels } from "@point_of_sale/../tests/unit/data/generate_model_definitions";
-import { onRpc, patchWithCleanup } from "@web/../tests/web_test_helpers";
+import { onRpc, patchTranslations, patchWithCleanup } from "@web/../tests/web_test_helpers";
 import { OrderSummary } from "@point_of_sale/app/screens/product_screen/order_summary/order_summary";
 import * as makeAwaitableDialog from "@point_of_sale/app/utils/make_awaitable_dialog";
 import { BonuscardRegistrationService } from "../../src/app/bonuscard_registration_service";
@@ -11,6 +11,15 @@ import { BonuscardRegistrationService } from "../../src/app/bonuscard_registrati
 // Ensure the Bonuscard POS patches are loaded for this test suite.
 import "../../src/app/bonuscard_pos";
 definePosModels();
+
+// Mock translations for tests
+patchTranslations({
+    bonuscard_odoo: {
+        "Bonuscard registration failed.": "Bonuscard registration failed.",
+        "A phone number is required to register a customer with Bonuscard.": "A phone number is required to register a customer with Bonuscard.",
+        "Bonuscard registration completed.": "Bonuscard registration completed.",
+    }
+});
 
 test("BonuscardRegistrationService.registerPartnerToBonuscard calls the backend, executes the returned action, and refreshes partner status", async () => {
     const partner = { id: 42, name: "New Customer", phone: "+1234567890" };
@@ -240,7 +249,7 @@ test("setPartnerToCurrentOrder validates Bonuscard purchase and applies discount
                     ],
                 };
             }
-            return originalCall(model, method, args);
+            return originalCall(...arguments);
         },
     });
 
@@ -298,7 +307,7 @@ test("validatePurchaseForOrder retains existing transactionIdentifier when API r
                     ],
                 };
             }
-            return originalCall(model, method, args);
+            return originalCall(...arguments);
         },
     });
 
@@ -354,7 +363,7 @@ test("quantity change clears pending Bonuscard transaction", async () => {
                     ],
                 };
             }
-            return originalCall(model, method, args);
+            return originalCall(...arguments);
         },
     });
 
@@ -412,7 +421,7 @@ test("removing a line clears pending Bonuscard transaction", async () => {
                     ],
                 };
             }
-            return originalCall(model, method, args);
+            return originalCall(...arguments);
         },
     });
 
@@ -462,7 +471,7 @@ test("addLineToOrder validates Bonuscard purchase after customer is selected", a
                     ],
                 };
             }
-            return originalCall(model, method, args);
+            return originalCall(...arguments);
         },
     });
 
@@ -536,7 +545,7 @@ test("changing partner clears pending Bonuscard transaction and discounts", asyn
                     note: "Customer is not linked",
                 };
             }
-            return originalCall(model, method, args);
+            return originalCall(...arguments);
         },
     });
 
@@ -597,7 +606,7 @@ test("changing partner cancels the open Bonuscard transaction before clearing it
                 cancelledId = args[0];
                 return { error: false, messages: [] };
             }
-            return originalCall(model, method, args);
+            return originalCall(...arguments);
         },
     });
 
@@ -658,7 +667,7 @@ test("changing partner clears transaction state even when cancel returns an erro
                     messages: ["Bonuscard service is temporarily unavailable."],
                 };
             }
-            return originalCall(model, method, args);
+            return originalCall(...arguments);
         },
     });
 
@@ -709,7 +718,7 @@ test("removing partner cancels the open Bonuscard transaction before clearing it
                 cancelledId = args[0];
                 return { error: false, messages: [] };
             }
-            return originalCall(model, method, args);
+            return originalCall(...arguments);
         },
     });
 
@@ -944,7 +953,7 @@ test("pay applies Bonuscard discount and does not create a payment line when app
                     ],
                 };
             }
-            return originalCall(model, method, args);
+            return originalCall(...arguments);
         },
     });
 
@@ -988,7 +997,7 @@ test("deleteCurrentOrder clears bonuscard transaction state after cancelling", a
                 cancelledId = args[0];
                 return { error: false, messages: [] };
             }
-            return originalCall(model, method, args);
+            return originalCall(...arguments);
         },
     });
 

@@ -60,7 +60,7 @@ export class BonuscardRegistrationService {
     _extractErrorMessage(error) {
         // Try to extract meaningful error message from various Odoo error formats
         if (!error) {
-            return "Bonuscard registration failed.";
+            return _t("Bonuscard registration failed.");
         }
 
         // Direct error message
