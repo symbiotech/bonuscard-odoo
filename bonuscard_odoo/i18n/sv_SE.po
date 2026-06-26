@@ -99,10 +99,12 @@ msgid "Bonuscard member detected: %s"
 msgstr "Bonuscard-medlem upptäckt: %s"
 
 #. module: bonuscard_odoo
+#. odoo-javascript
 msgid "Bonuscard registration completed."
 msgstr "Bonuscard-registreringen slutfördes."
 
 #. module: bonuscard_odoo
+#. odoo-javascript
 msgid "Bonuscard registration failed."
 msgstr "Bonuscard-registreringen misslyckades."
 
