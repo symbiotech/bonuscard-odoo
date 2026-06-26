@@ -36,6 +36,13 @@ patch(PosStore.prototype, {
                         [order.bonuscard_transaction_id, order.bonuscard_partner_id || null]
                     );
                     if (cancelResult?.error) {
+                        logPosMessage(
+                            "Bonuscard",
+                            "setPartnerToCurrentOrder",
+                            "Bonuscard cancel returned error during partner change",
+                            false,
+                            [{ transactionId: order.bonuscard_transaction_id, partnerId: order.bonuscard_partner_id || null, message: cancelResult.messages?.[0] }]
+                        );
                         this.notification.add(
                             cancelResult.messages?.[0] || _t("Bonuscard cancel failed."),
                             { type: "warning" }
@@ -77,14 +84,35 @@ patch(PosStore.prototype, {
                         { type: "success" }
                     );
                 } else if (result.status === "not_found") {
+                    logPosMessage(
+                        "Bonuscard",
+                        "setPartnerToCurrentOrder",
+                        "Customer not found in Bonuscard",
+                        false,
+                        [{ partnerId: partner?.id }]
+                    );
                     this.notification.add(_t("Customer is not linked to Bonuscard."), {
                         type: "warning",
                     });
                 } else if (result.status === "ambiguous") {
+                    logPosMessage(
+                        "Bonuscard",
+                        "setPartnerToCurrentOrder",
+                        "Bonuscard returned ambiguous customer matches",
+                        false,
+                        [{ partnerId: partner?.id }]
+                    );
                     this.notification.add(_t("Bonuscard returned multiple customer matches."), {
                         type: "warning",
                     });
                 } else if (result.status === "error") {
+                    logPosMessage(
+                        "Bonuscard",
+                        "setPartnerToCurrentOrder",
+                        "Bonuscard lookup returned error status",
+                        false,
+                        [{ partnerId: partner?.id, note: result.note }]
+                    );
                     this.notification.add(result.note || _t("Bonuscard lookup failed."), {
                         type: "danger",
                     });
@@ -180,6 +208,13 @@ patch(PosStore.prototype, {
                 if (result.totalDiscount > 0) {
                     const applied = await this._applyBonuscardDiscountsToOrder(order, result);
                     if (!applied) {
+                        logPosMessage(
+                            "Bonuscard",
+                            "_validateBonuscardPurchaseForOrder",
+                            "Bonuscard discount could not be applied - missing discount product",
+                            false,
+                            [{ partnerId: partner?.id, totalDiscount: result.totalDiscount }]
+                        );
                         this.notification.add(
                             _t(
                                 "Bonuscard returned a discount, but it could not be applied to the order. Please configure a discount product in POS settings."
@@ -196,6 +231,13 @@ patch(PosStore.prototype, {
                 return true;
             }
             const msg = result.messages?.[0] || _t("Bonuscard validation failed.");
+            logPosMessage(
+                "Bonuscard",
+                "_validateBonuscardPurchaseForOrder",
+                "Bonuscard validation returned error response",
+                false,
+                [{ partnerId: partner?.id, message: msg }]
+            );
             this.notification.add(msg, { type: "warning" });
         } catch (error) {
             logPosMessage(
@@ -435,6 +477,13 @@ patch(PosStore.prototype, {
                         order.bonuscard_checkout_items = null;
                         order.bonuscard_partner_id = false;
                     } else {
+                        logPosMessage(
+                            "Bonuscard",
+                            "onClickBackButton",
+                            "Bonuscard cancel returned error during back navigation",
+                            false,
+                            [{ transactionId: order.bonuscard_transaction_id, partnerId: order.bonuscard_partner_id || null, message: result.messages?.[0] }]
+                        );
                         this.notification.add(
                             result.messages?.[0] || _t("Bonuscard cancel failed."),
                             { type: "warning" }
@@ -588,6 +637,13 @@ patch(OrderPaymentValidation.prototype, {
                 ]
             );
             if (result.error) {
+                logPosMessage(
+                    "Bonuscard",
+                    "afterOrderValidation",
+                    "Bonuscard finalization returned error response",
+                    false,
+                    [{ transactionId: order.bonuscard_transaction_id, partnerId: order.bonuscard_partner_id || null, message: result.messages?.[0] }]
+                );
                 this.pos.notification.add(
                     result.messages?.[0] || _t("Bonuscard finalization failed."),
                     { type: "warning" }
