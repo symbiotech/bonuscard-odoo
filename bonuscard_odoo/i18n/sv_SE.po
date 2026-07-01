@@ -16,26 +16,33 @@ msgstr ""
 
 #. module: bonuscard_odoo
 #. odoo-javascript
+#: code:bonuscard_odoo/static/src/app/bonuscard_registration_service.js:0
 msgid "A phone number is required to register a customer with Bonuscard."
 msgstr "Ett telefonnummer krävs för att registrera en kund med Bonuscard."
 
 #. module: bonuscard_odoo
+#: model:ir.model.fields,field_description:bonuscard_odoo.field_bonuscard_connector_instance__api_base_url
 msgid "API Base URL"
 msgstr "API-bas-URL"
 
 #. module: bonuscard_odoo
+#. odoo-python
+#: code:bonuscard_odoo/models/bonuscard_instance.py:0
 msgid "API Base URL must start with http:// or https://"
 msgstr "API-bas-URL måste börja med http:// eller https://"
 
 #. module: bonuscard_odoo
+#: model:ir.model.fields,field_description:bonuscard_odoo.field_bonuscard_connector_instance__api_culture
 msgid "API Culture"
 msgstr "API-kultur"
 
 #. module: bonuscard_odoo
+#: model:ir.model.fields,field_description:bonuscard_odoo.field_bonuscard_connector_instance__api_password
 msgid "API Password"
 msgstr "API-lösenord"
 
 #. module: bonuscard_odoo
+#: model:ir.model.fields,field_description:bonuscard_odoo.field_bonuscard_connector_instance__api_username
 msgid "API Username"
 msgstr "API-användarnamn"
 
@@ -44,30 +51,43 @@ msgid "Bonuscard"
 msgstr ""
 
 #. module: bonuscard_odoo
+#. odoo-python
+#: code:bonuscard_odoo/models/bonuscard_api_service.py:0
 msgid "Bonuscard API HTTP error: %s"
 msgstr "Bonuscard API HTTP-fel: %s"
 
 #. module: bonuscard_odoo
+#. odoo-python
+#: code:bonuscard_odoo/models/bonuscard_api_service.py:0
 msgid "Bonuscard API connection error: %s"
 msgstr "Bonuscard API-anslutningsfel: %s"
 
 #. module: bonuscard_odoo
+#. odoo-python
+#: code:bonuscard_odoo/models/bonuscard_api_service.py:0
 msgid "Bonuscard API error (%s)."
 msgstr "Bonuscard API-fel (%s)."
 
 #. module: bonuscard_odoo
+#. odoo-python
+#: code:bonuscard_odoo/models/bonuscard_api_service.py:0
 msgid "Bonuscard API error (%s): %s"
 msgstr "Bonuscard API-fel (%s): %s"
 
 #. module: bonuscard_odoo
+#: model:ir.model,name:bonuscard_odoo.model_bonuscard_connector_instance
+#: model_terms:ir.ui.view,arch_db:bonuscard_odoo.bonuscard_odoo_instance_view_form
 msgid "Bonuscard Connection"
 msgstr "Bonuscard-anslutning"
 
 #. module: bonuscard_odoo
+#: model_terms:ir.ui.view,arch_db:bonuscard_odoo.bonuscard_odoo_instance_view_list
 msgid "Bonuscard Connections"
 msgstr "Bonuscard-anslutningar"
 
 #. module: bonuscard_odoo
+#. odoo-python
+#: code:bonuscard_odoo/models/bonuscard_api_service.py:0
 msgid "Bonuscard authentication failed. Check the API username and password."
 msgstr ""
 "Bonuscard-autentisering misslyckades. Kontrollera API-användarnamn och "
@@ -75,50 +95,62 @@ msgstr ""
 
 #. module: bonuscard_odoo
 #. odoo-javascript
+#: code:bonuscard_odoo/static/src/app/bonuscard_pos.js:0
 msgid "Bonuscard cancel failed."
 msgstr "Bonuscard-avbokningen misslyckades."
 
 #. module: bonuscard_odoo
 #. odoo-javascript
+#: code:bonuscard_odoo/static/src/app/bonuscard_pos.js:0
 msgid "Bonuscard discount has been applied to the order."
 msgstr "Bonuscard-rabatten har lagts till i ordern."
 
 #. module: bonuscard_odoo
 #. odoo-javascript
+#: code:bonuscard_odoo/static/src/app/bonuscard_pos.js:0
 msgid "Bonuscard finalization failed."
 msgstr "Bonuscard-avslutningen misslyckades."
 
 #. module: bonuscard_odoo
 #. odoo-javascript
+#: code:bonuscard_odoo/static/src/app/bonuscard_pos.js:0
 msgid "Bonuscard lookup failed."
 msgstr "Bonuscard-uppslagningen misslyckades."
 
 #. module: bonuscard_odoo
 #. odoo-javascript
+#: code:bonuscard_odoo/static/src/app/bonuscard_pos.js:0
 msgid "Bonuscard member detected: %s"
 msgstr "Bonuscard-medlem upptäckt: %s"
 
 #. module: bonuscard_odoo
 #. odoo-javascript
+#: code:bonuscard_odoo/static/src/app/bonuscard_registration_service.js:0
 msgid "Bonuscard registration completed."
 msgstr "Bonuscard-registreringen slutfördes."
 
 #. module: bonuscard_odoo
 #. odoo-javascript
+#: code:bonuscard_odoo/static/src/app/bonuscard_registration_service.js:0
 msgid "Bonuscard registration failed."
 msgstr "Bonuscard-registreringen misslyckades."
 
 #. module: bonuscard_odoo
+#. odoo-python
+#: code:bonuscard_odoo/models/res_partner.py:0
 msgid "Bonuscard registration failed: %s"
 msgstr "Bonuscard-registreringen misslyckades: %s"
 
 #. module: bonuscard_odoo
+#. odoo-python
+#: code:bonuscard_odoo/models/res_partner.py:0
 msgid "Bonuscard registration succeeded but no recruitment code was returned."
 msgstr ""
 "Bonuscard-registreringen lyckades men ingen rekryteringskod returnerades."
 
 #. module: bonuscard_odoo
 #. odoo-javascript
+#: code:bonuscard_odoo/static/src/app/bonuscard_pos.js:0
 msgid ""
 "Bonuscard returned a discount, but it could not be applied to the order. "
 "Please configure a discount product in POS settings."
@@ -127,15 +159,20 @@ msgstr ""
 "Konfigurera en rabattprodukt i POS-inställningarna."
 
 #. module: bonuscard_odoo
+#. odoo-python
+#: code:bonuscard_odoo/models/res_partner.py:0
 msgid "Bonuscard returned multiple customer matches for %s."
 msgstr "Bonuscard returnerade flera kundträffar för %s."
 
 #. module: bonuscard_odoo
 #. odoo-javascript
+#: code:bonuscard_odoo/static/src/app/bonuscard_pos.js:0
 msgid "Bonuscard returned multiple customer matches."
 msgstr "Bonuscard returnerade flera kundträffar."
 
 #. module: bonuscard_odoo
+#. odoo-python
+#: code:bonuscard_odoo/models/res_partner.py:0
 msgid ""
 "Bonuscard returned multiple matches for the customer. Please verify the "
 "partner details before attempting registration."
@@ -144,51 +181,70 @@ msgstr ""
 "partneruppgifterna innan du försöker registrera."
 
 #. module: bonuscard_odoo
+#. odoo-python
+#: code:bonuscard_odoo/models/bonuscard_api_service.py:0
 msgid "Bonuscard service is temporarily unavailable."
 msgstr "Bonuscard-tjänsten är tillfälligt otillgänglig."
 
 #. module: bonuscard_odoo
+#. odoo-python
+#: code:bonuscard_odoo/models/res_partner.py:0
 msgid "Bonuscard status reset manually."
 msgstr "Bonuscard-status återställd manuellt."
 
 #. module: bonuscard_odoo
 #. odoo-javascript
+#: code:bonuscard_odoo/static/src/app/bonuscard_pos.js:0
 msgid "Bonuscard validation failed."
 msgstr "Bonuscard-valideringen misslyckades."
 
 #. module: bonuscard_odoo
+#: model_terms:ir.ui.view,arch_db:bonuscard_odoo.view_partner_form_bonuscard
 msgid "Check"
 msgstr "Kontrollera"
 
 #. module: bonuscard_odoo
+#: model_terms:ir.ui.view,arch_db:bonuscard_odoo.view_partner_form_bonuscard
 msgid "Check Bonuscard"
 msgstr "Kontrollera Bonuscard"
 
 #. module: bonuscard_odoo
+#: model:ir.model.fields,field_description:bonuscard_odoo.field_bonuscard_connector_instance__company_id
+#: model_terms:ir.ui.view,arch_db:bonuscard_odoo.bonuscard_odoo_instance_view_search
 msgid "Company"
 msgstr "Företag"
 
 #. module: bonuscard_odoo
+#: model:ir.model.fields,field_description:bonuscard_odoo.field_bonuscard_connector_instance__name
 msgid "Connection Name"
 msgstr "Anslutningsnamn"
 
 #. module: bonuscard_odoo
+#: model:ir.actions.act_window,name:bonuscard_odoo.action_bonuscard_odoo_instance
 msgid "Connections"
 msgstr "Anslutningar"
 
 #. module: bonuscard_odoo
+#. odoo-python
+#: code:bonuscard_odoo/models/res_partner.py:0
 msgid "Could not verify the Bonuscard status before registration: %s"
 msgstr "Kunde inte verifiera Bonuscard-statusen före registrering: %s"
 
 #. module: bonuscard_odoo
+#. odoo-python
+#: code:bonuscard_odoo/models/bonuscard_api_service.py:0
 msgid "Customer does not have a Bonuscard recruitment code."
 msgstr "Kunden har ingen Bonuscard-rekryteringskod."
 
 #. module: bonuscard_odoo
+#. odoo-python
+#: code:bonuscard_odoo/models/res_partner.py:0
 msgid "Customer is already registered in Bonuscard and has been linked."
 msgstr "Kunden är redan registrerad i Bonuscard och har länkats."
 
 #. module: bonuscard_odoo
+#. odoo-python
+#: code:bonuscard_odoo/models/bonuscard_api_service.py:0
 msgid ""
 "Customer is locked to an open transaction. Please try again or restart."
 msgstr ""
@@ -196,22 +252,31 @@ msgstr ""
 
 #. module: bonuscard_odoo
 #. odoo-javascript
+#: code:bonuscard_odoo/static/src/app/bonuscard_pos.js:0
 msgid "Customer is not linked to Bonuscard."
 msgstr "Kunden är inte kopplad till Bonuscard."
 
 #. module: bonuscard_odoo
+#. odoo-python
+#: code:bonuscard_odoo/models/bonuscard_api_service.py:0
 msgid "Customer needs to verify their Bonuscard account before purchasing."
 msgstr "Kunden måste verifiera sitt Bonuscard-konto innan köp."
 
 #. module: bonuscard_odoo
+#. odoo-python
+#: code:bonuscard_odoo/models/bonuscard_api_service.py:0
 msgid "Customer not found."
 msgstr "Kunden hittades inte."
 
 #. module: bonuscard_odoo
+#. odoo-python
+#: code:bonuscard_odoo/models/res_partner.py:0
 msgid "Customer registered successfully."
 msgstr "Kunden registrerades framgångsrikt."
 
 #. module: bonuscard_odoo
+#. odoo-python
+#: code:bonuscard_odoo/models/res_partner.py:0
 msgid ""
 "Customer registered successfully. Recruitment code: %s. The customer will "
 "receive an SMS with a link to complete the registration on the Bonuscard "
@@ -222,74 +287,106 @@ msgstr ""
 "webbplatsen."
 
 #. module: bonuscard_odoo
+#: model:ir.model.fields.selection,name:bonuscard_odoo.selection__bonuscard_connector_instance__api_culture__da-dk
 msgid "Danish"
 msgstr "Danska"
 
 #. module: bonuscard_odoo
+#: model_terms:ir.ui.view,arch_db:bonuscard_odoo.bonuscard_odoo_instance_view_form
 msgid "Diagnostics"
 msgstr "Diagnostik"
 
 #. module: bonuscard_odoo
+#: model:ir.model.fields.selection,name:bonuscard_odoo.selection__bonuscard_connector_instance__api_culture__en-gb
 msgid "English"
 msgstr "Engelska"
 
 #. module: bonuscard_odoo
+#: model:ir.model.fields.selection,name:bonuscard_odoo.selection__bonuscard_connector_instance__connection_status__error
+#: model:ir.model.fields.selection,name:bonuscard_odoo.selection__res_partner__bonuscard_status__error
+#: model_terms:ir.ui.view,arch_db:bonuscard_odoo.bonuscard_odoo_instance_view_search
+#: model_terms:ir.ui.view,arch_db:bonuscard_odoo.view_partner_form_bonuscard
 msgid "Error"
 msgstr "Fel"
 
 #. module: bonuscard_odoo
+#: model:ir.model.fields.selection,name:bonuscard_odoo.selection__bonuscard_connector_instance__api_culture__fi-fi
 msgid "Finnish"
 msgstr "Finska"
 
 #. module: bonuscard_odoo
+#. odoo-python
+#: code:bonuscard_odoo/models/bonuscard_api_service.py:0
 msgid "Invalid order payload from POS."
 msgstr "Ogiltig orderdata från POS."
 
 #. module: bonuscard_odoo
+#: model:ir.model.fields.selection,name:bonuscard_odoo.selection__res_partner__bonuscard_status__linked
+#: model_terms:ir.ui.view,arch_db:bonuscard_odoo.view_partner_form_bonuscard
 msgid "Linked"
 msgstr "Länkad"
 
 #. module: bonuscard_odoo
+#. odoo-python
+#: code:bonuscard_odoo/models/res_partner.py:0
 msgid "Matched Bonuscard customer using %s."
 msgstr "Hittade Bonuscard-kund med hjälp av %s."
 
 #. module: bonuscard_odoo
+#. odoo-python
+#: code:bonuscard_odoo/models/bonuscard_api_service.py:0
 msgid "Missing Bonuscard transaction identifier."
 msgstr "Saknar Bonuscard-transaktionsidentifierare."
 
 #. module: bonuscard_odoo
+#: model_terms:ir.ui.view,arch_db:bonuscard_odoo.view_partner_form_bonuscard
 msgid "Multiple"
 msgstr "Flera"
 
 #. module: bonuscard_odoo
+#. odoo-javascript
+#: code:bonuscard_odoo/static/src/app/bonuscard_partner_line.xml:0
 msgid "Multiple Matches"
 msgstr "Flera träffar"
 
 #. module: bonuscard_odoo
+#. odoo-javascript
+#: code:bonuscard_odoo/static/src/app/bonuscard_partner_line.xml:0
 msgid "No Bonuscard"
 msgstr "Ingen Bonuscard"
 
 #. module: bonuscard_odoo
+#. odoo-python
+#: code:bonuscard_odoo/models/res_partner.py:0
 msgid "No Bonuscard customer matched the available partner details."
 msgstr "Ingen Bonuscard-kund matchade tillgängliga partneruppgifter."
 
 #. module: bonuscard_odoo
+#. odoo-python
+#: code:bonuscard_odoo/models/res_partner.py:0
 msgid "No active Bonuscard connection is configured for this company."
 msgstr "Ingen aktiv Bonuscard-anslutning är konfigurerad för detta företag."
 
 #. module: bonuscard_odoo
+#. odoo-python
+#: code:bonuscard_odoo/models/bonuscard_api_service.py:0
 msgid "No active Bonuscard connection is configured."
 msgstr "Ingen aktiv Bonuscard-anslutning är konfigurerad."
 
 #. module: bonuscard_odoo
+#. odoo-python
+#: code:bonuscard_odoo/models/bonuscard_api_service.py:0
 msgid "No products with a barcode or article number found in the order."
 msgstr "Inga produkter med streckkod eller artikelnummer hittades i ordern."
 
 #. module: bonuscard_odoo
+#: model:ir.model.fields.selection,name:bonuscard_odoo.selection__bonuscard_connector_instance__api_culture__nb-no
 msgid "Norwegian"
 msgstr "Norska"
 
 #. module: bonuscard_odoo
+#: model:ir.model.fields.selection,name:bonuscard_odoo.selection__res_partner__bonuscard_status__not_found
+#: model_terms:ir.ui.view,arch_db:bonuscard_odoo.view_partner_form_bonuscard
 msgid "Not Found"
 msgstr "Ej hittad"
 
@@ -298,38 +395,51 @@ msgid "OK"
 msgstr ""
 
 #. module: bonuscard_odoo
+#. odoo-python
+#: code:bonuscard_odoo/models/res_partner.py:0
 msgid "Partner must have a phone number to register with Bonuscard."
 msgstr "Partnern måste ha ett telefonnummer för att registrera med Bonuscard."
 
 #. module: bonuscard_odoo
+#. odoo-python
+#: code:bonuscard_odoo/models/bonuscard_api_service.py:0
 msgid "Partner not found."
 msgstr "Partnern hittades inte."
 
 #. module: bonuscard_odoo
+#: model_terms:ir.ui.view,arch_db:bonuscard_odoo.bonuscard_odoo_instance_view_form
 msgid "Production Bonuscard"
 msgstr "Produktions-Bonuscard"
 
 #. module: bonuscard_odoo
+#: model_terms:ir.ui.view,arch_db:bonuscard_odoo.view_partner_form_bonuscard
 msgid "Register to Bonuscard"
 msgstr "Registrera till Bonuscard"
 
 #. module: bonuscard_odoo
+#. odoo-javascript
+#: code:bonuscard_odoo/static/src/app/bonuscard_partner_line_extension.xml:0
 msgid "Register with Bonuscard"
 msgstr "Registrera med Bonuscard"
 
 #. module: bonuscard_odoo
+#: model:ir.model.fields,field_description:bonuscard_odoo.field_bonuscard_connector_instance__request_timeout
 msgid "Request Timeout (s)"
 msgstr "Timeout för förfrågan (s)"
 
 #. module: bonuscard_odoo
+#. odoo-python
+#: code:bonuscard_odoo/models/bonuscard_instance.py:0
 msgid "Request timeout must be at least 1 second."
 msgstr "Timeout för förfrågan måste vara minst 1 sekund."
 
 #. module: bonuscard_odoo
+#: model_terms:ir.ui.view,arch_db:bonuscard_odoo.view_partner_form_bonuscard
 msgid "Reset Bonuscard Status"
 msgstr "Återställ Bonuscard-status"
 
 #. module: bonuscard_odoo
+#: model_terms:ir.ui.view,arch_db:bonuscard_odoo.bonuscard_odoo_instance_view_search
 msgid "Search Bonuscard Connections"
 msgstr "Sök Bonuscard-anslutningar"
 
@@ -338,25 +448,34 @@ msgid "Status"
 msgstr ""
 
 #. module: bonuscard_odoo
+#. odoo-python
+#: code:bonuscard_odoo/models/res_partner.py:0
 msgid "Success"
 msgstr "Succé"
 
 #. module: bonuscard_odoo
+#. odoo-python
+#: code:bonuscard_odoo/models/res_partner.py:0
 msgid "Successfully registered to Bonuscard on %s."
 msgstr "Registreringen till Bonuscard lyckades den %s."
 
 #. module: bonuscard_odoo
+#: model:ir.model.fields.selection,name:bonuscard_odoo.selection__bonuscard_connector_instance__api_culture__sv-se
 msgid "Swedish"
 msgstr "Svenska"
 
 #. module: bonuscard_odoo
+#: model_terms:ir.ui.view,arch_db:bonuscard_odoo.bonuscard_odoo_instance_view_form
 msgid "Test Connection"
 msgstr "Testa anslutning"
 
 #. module: bonuscard_odoo
+#: model:ir.model.fields.selection,name:bonuscard_odoo.selection__bonuscard_connector_instance__connection_status__unknown
 msgid "Unknown"
 msgstr "Okänd"
 
 #. module: bonuscard_odoo
+#. odoo-python
+#: code:bonuscard_odoo/models/bonuscard_api_service.py:0
 msgid "unknown"
 msgstr "okänd"
