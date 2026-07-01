@@ -175,7 +175,13 @@ patch(PosStore.prototype, {
         this._clearAppliedBonuscardDiscounts(order);
 
         const orderLines = order.lines
-            .filter((l) => l.qty > 0 && (l.product_id?.barcode || l.product_id?.default_code))
+            .filter(
+                (l) =>
+                    l.qty > 0 &&
+                    l.price_unit > 0 &&
+                    !l.uiState?._bonuscardLine &&
+                    (l.product_id?.barcode || l.product_id?.default_code)
+            )
             .map((l) => ({
                 product_id: l.product_id.id,
                 qty: l.qty,
