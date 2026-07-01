@@ -1089,3 +1089,73 @@ test("onDeleteOrder clears bonuscard transaction state after cancelling", async 
     expect(order.bonuscard_checkout_items).toBe(null);
     expect(order.bonuscard_partner_id).toBe(false);
 });
+
+test("concurrent validations: only the latest call applies its discounts, stale calls are discarded", async () => {
+    const store = await setupPosEnv();
+    const order = store.addNewOrder();
+    const product = store.models["product.product"].get(5);
+    product.barcode = "TEST-CONCURRENT-123";
+
+    // Add a line before setting the partner so no validation fires during setup.
+    await store.addLineToOrder(
+        {
+            product_id: product,
+            product_tmpl_id: product.product_tmpl_id,
+            qty: 1,
+            price_unit: 10,
+        },
+        order
+    );
+
+    const partner = store.models["res.partner"].create({ name: "Bonuscard Customer" });
+    partner.bonuscard_recruitment_code = "ABC123";
+    partner.bonuscard_status = "linked";
+    // Use setPartner directly to avoid triggering validation during setup.
+    order.setPartner(partner);
+
+    let apiCallCount = 0;
+    const resolvers = [];
+    const originalCall = store.data.call.bind(store.data);
+    patchWithCleanup(store.data, {
+        call: async function (model, method, args) {
+            if (model === "bonuscard.api.service" && method === "validate_purchase_for_pos") {
+                apiCallCount++;
+                // Return a manually-controlled promise so we can interleave resolutions.
+                return new Promise((resolve) => resolvers.push(resolve));
+            }
+            return originalCall(...arguments);
+        },
+    });
+
+    // Start two concurrent validations without awaiting either.
+    const p1 = store._validateBonuscardPurchaseForOrder(order);
+    const p2 = store._validateBonuscardPurchaseForOrder(order);
+
+    // Both API calls must have been initiated synchronously before any await settled.
+    expect(apiCallCount).toBe(2);
+    expect(resolvers.length).toBe(2);
+
+    const makeResult = (txnId) => ({
+        transactionIdentifier: txnId,
+        checkoutItems: [
+            { identifier: "ITEM1", ean: product.barcode, quantity: 1, pricePerItem: 10 },
+        ],
+        totalDiscount: 2,
+        resultItems: [{ quantity: 1, pricePerItem: -2, relatedIdentifiers: ["ITEM1"] }],
+    });
+
+    // Resolve the stale call first, then the latest call.
+    resolvers[0](makeResult("TXN-STALE"));
+    resolvers[1](makeResult("TXN-LATEST"));
+
+    await p1;
+    await p2;
+
+    // Only the latest result should have been applied: exactly one discounted line.
+    const discountedLines = order.lines.filter(
+        (l) => l.discount > 0 || l.uiState?._bonuscardLine
+    );
+    expect(discountedLines.length).toBe(1);
+    // The transaction ID must come from the latest call, not the stale one.
+    expect(order.bonuscard_transaction_id).toBe("TXN-LATEST");
+});

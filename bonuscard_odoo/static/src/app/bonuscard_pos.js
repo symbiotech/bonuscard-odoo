@@ -172,6 +172,12 @@ patch(PosStore.prototype, {
             return false;
         }
 
+        // Guard against concurrent calls (e.g. rapid product additions).
+        // Only the latest invocation may apply its result; all earlier in-flight
+        // calls are discarded once a newer one has started.
+        order._bonuscardValidationVersion = (order._bonuscardValidationVersion || 0) + 1;
+        const myVersion = order._bonuscardValidationVersion;
+
         this._clearAppliedBonuscardDiscounts(order);
 
         const orderLines = order.lines
@@ -200,6 +206,12 @@ patch(PosStore.prototype, {
                 "validate_purchase_for_pos",
                 [partner.id, orderLines, order.bonuscard_transaction_id || null]
             );
+
+            // A newer validation was triggered while we were waiting; discard this result
+            // to prevent stale concurrent calls from stacking up discount lines.
+            if (order._bonuscardValidationVersion !== myVersion) {
+                return false;
+            }
 
             if (!result.error) {
                 order.bonuscard_transaction_id =
