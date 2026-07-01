@@ -1015,7 +1015,7 @@ test("validatePurchaseForOrder excludes zero-price lines from the Bonuscard API 
     expect(capturedLines[0].price_unit).toBe(10);
 });
 
-test("validatePurchaseForOrder returns false and skips the API call when all lines have zero or negative price", async () => {
+test("validatePurchaseForOrder returns false and skips the API call when all lines have zero price", async () => {
     const store = await setupPosEnv();
     const order = store.addNewOrder();
     const product = store.models["product.product"].get(5);
