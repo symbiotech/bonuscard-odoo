@@ -981,12 +981,10 @@ test("validatePurchaseForOrder excludes zero-price lines from the Bonuscard API 
     );
 
     // Zero-price line (e.g. a campaign product with price 0)
-    const zeroPriceProduct = store.models["product.product"].get(5);
-    zeroPriceProduct.barcode = "ZERO-PRICE-BARCODE";
     await store.addLineToOrder(
         {
-            product_id: zeroPriceProduct,
-            product_tmpl_id: zeroPriceProduct.product_tmpl_id,
+            product_id: product,
+            product_tmpl_id: product.product_tmpl_id,
             qty: 1,
             price_unit: 0,
         },
