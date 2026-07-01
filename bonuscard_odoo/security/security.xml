@@ -11,4 +11,10 @@
         <field name="implied_ids" eval="[(4, ref('bonuscard_odoo.bonuscard_odoo_group_user'))]"/>
     </record>
 
+    <data noupdate="1">
+        <record id="bonuscard_odoo_group_manager" model="res.groups">
+            <field name="user_ids" eval="[(4, ref('base.user_admin'))]"/>
+        </record>
+    </data>
+
 </odoo>
