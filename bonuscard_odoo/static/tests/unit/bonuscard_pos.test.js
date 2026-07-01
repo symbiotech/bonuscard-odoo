@@ -760,14 +760,58 @@ test("clearBonuscardDiscounts removes bonuscard discount lines and resets applie
         { _bonuscardLine: true },
         false
     );
-    discountLine.uiState = discountLine.uiState || {};
-    discountLine.uiState._bonuscardLine = true;
+    // uiState._bonuscardLine must be set by addLineToOrder automatically — no manual override.
 
     order.clearBonuscardDiscounts();
 
     expect(order.lines.includes(discountLine)).toBe(false);
     expect(line.discount).toBe(0);
     expect(line.uiState?._bonuscardDiscount).toBe(undefined);
+});
+
+test("addLineToOrder marks discount lines so subsequent validation can clear them", async () => {
+    const store = await setupPosEnv();
+    const order = store.addNewOrder();
+    const product = store.models["product.product"].get(5);
+    product.barcode = "TEST-MARK-123";
+
+    // Add a product line before setting partner so no validation fires during setup.
+    await store.addLineToOrder(
+        { product_id: product, product_tmpl_id: product.product_tmpl_id, qty: 1, price_unit: 10 },
+        order
+    );
+
+    const partner = store.models["res.partner"].create({ name: "Bonuscard Customer" });
+    partner.bonuscard_recruitment_code = "ABC123";
+    partner.bonuscard_status = "linked";
+    order.setPartner(partner);
+
+    // Simulate a discount line that a previous validation had applied.
+    // Using _bonuscardLine:true so addLineToOrder returns early without re-triggering validation.
+    const discountLine = await store.addLineToOrder(
+        { product_id: product, product_tmpl_id: product.product_tmpl_id, qty: 1, price_unit: -5 },
+        order,
+        { _bonuscardLine: true },
+        false
+    );
+    // The fix: addLineToOrder must set the flag automatically so clearing can find the line.
+    expect(discountLine?.uiState?._bonuscardLine).toBe(true);
+
+    // Run a second validation (returns no discounts so no new lines are added).
+    const originalCall = store.data.call.bind(store.data);
+    patchWithCleanup(store.data, {
+        call: async function (model, method, args) {
+            if (model === "bonuscard.api.service" && method === "validate_purchase_for_pos") {
+                return { transactionIdentifier: "TXN1", checkoutItems: [], totalDiscount: 0, resultItems: [] };
+            }
+            return originalCall(...arguments);
+        },
+    });
+
+    await store._validateBonuscardPurchaseForOrder(order);
+
+    // The stale discount line from before must have been cleared by _clearAppliedBonuscardDiscounts.
+    expect(order.lines.includes(discountLine)).toBe(false);
 });
 
 test("pay revalidates Bonuscard purchase when the order needs validation", async () => {
