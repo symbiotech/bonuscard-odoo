@@ -963,6 +963,96 @@ test("pay applies Bonuscard discount and does not create a payment line when app
     expect(order.payment_ids.length).toBe(0);
 });
 
+test("validatePurchaseForOrder excludes zero-price lines from the Bonuscard API payload", async () => {
+    const store = await setupPosEnv();
+    const order = store.addNewOrder();
+    const product = store.models["product.product"].get(5);
+    product.barcode = "PRICED-BARCODE";
+
+    // Normal priced line
+    await store.addLineToOrder(
+        {
+            product_id: product,
+            product_tmpl_id: product.product_tmpl_id,
+            qty: 1,
+            price_unit: 10,
+        },
+        order
+    );
+
+    // Zero-price line (e.g. a campaign product with price 0)
+    await store.addLineToOrder(
+        {
+            product_id: product,
+            product_tmpl_id: product.product_tmpl_id,
+            qty: 1,
+            price_unit: 0,
+        },
+        order
+    );
+
+    const partner = store.models["res.partner"].create({ name: "Bonuscard Customer" });
+    partner.bonuscard_recruitment_code = "ABC123";
+    partner.bonuscard_status = "linked";
+    order.setPartner(partner);
+
+    let capturedLines = null;
+    const originalCall = store.data.call.bind(store.data);
+    patchWithCleanup(store.data, {
+        call: async function (model, method, args) {
+            if (model === "bonuscard.api.service" && method === "validate_purchase_for_pos") {
+                capturedLines = args[1];
+                return { transactionIdentifier: "TXN1", checkoutItems: [], totalDiscount: 0, resultItems: [] };
+            }
+            return originalCall(...arguments);
+        },
+    });
+
+    await store._validateBonuscardPurchaseForOrder(order);
+
+    expect(capturedLines).not.toBe(null);
+    expect(capturedLines.length).toBe(1);
+    expect(capturedLines[0].price_unit).toBe(10);
+});
+
+test("validatePurchaseForOrder returns false and skips the API call when all lines have zero price", async () => {
+    const store = await setupPosEnv();
+    const order = store.addNewOrder();
+    const product = store.models["product.product"].get(5);
+    product.barcode = "ZERO-ONLY-BARCODE";
+
+    await store.addLineToOrder(
+        {
+            product_id: product,
+            product_tmpl_id: product.product_tmpl_id,
+            qty: 1,
+            price_unit: 0,
+        },
+        order
+    );
+
+    const partner = store.models["res.partner"].create({ name: "Bonuscard Customer" });
+    partner.bonuscard_recruitment_code = "ABC123";
+    partner.bonuscard_status = "linked";
+    order.setPartner(partner);
+
+    let apiCalled = false;
+    const originalCall = store.data.call.bind(store.data);
+    patchWithCleanup(store.data, {
+        call: async function (model, method, args) {
+            if (model === "bonuscard.api.service" && method === "validate_purchase_for_pos") {
+                apiCalled = true;
+            }
+            return originalCall(...arguments);
+        },
+    });
+
+    const result = await store._validateBonuscardPurchaseForOrder(order);
+
+    expect(result).toBe(false);
+    expect(apiCalled).toBe(false);
+});
+
 test("onDeleteOrder clears bonuscard transaction state after cancelling", async () => {
     const store = await setupPosEnv();
     const order = store.addNewOrder();
