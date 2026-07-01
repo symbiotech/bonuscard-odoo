@@ -137,6 +137,12 @@ patch(PosStore.prototype, {
     async addLineToOrder(vals, order, opts = {}, configure = true) {
         const line = await super.addLineToOrder(vals, order, opts, configure);
         if (opts._bonuscardLine) {
+            // Mark the line so _clearAppliedBonuscardDiscounts can find and delete it
+            // during the next validation cycle.
+            if (line) {
+                line.uiState = line.uiState || {};
+                line.uiState._bonuscardLine = true;
+            }
             return line;
         }
 
