@@ -34,9 +34,9 @@
 ## POS Flow Rules
 
 - Model the first real integration around these API calls:
-  - ValidatePurchase
-  - FinalizePurchase
-  - CancelPurchase
+	- ValidatePurchase
+	- FinalizePurchase
+	- CancelPurchase
 - Preserve the same transaction identifier across the full purchase lifecycle.
 - FinalizePurchase must use the same products and pricing context as ValidatePurchase unless the API documentation explicitly permits a difference.
 - If payment is aborted or the sale is rolled back, ensure the flow can call CancelPurchase.
@@ -53,12 +53,13 @@
 
 ## Test Account Usage
 
-- A Bonuscard test account exists for integration testing against `https://test.bonuscard.com/`.
+- A Bonuscard test account exists for manual integration testing against `https://test.bonuscard.com/`.
 - Treat all received account credentials and test consumer identifiers as secrets.
 - Never write real credentials into repository files, tests, fixtures, commits, or pull request text.
 - Use runtime configuration only (local Odoo records, CI/deployment secrets, or secure parameter stores).
 - Manual integration tests may read `.env` values locally, but `.env` must keep placeholders by default in git-tracked content.
 - For local test execution in this repository, always follow `LOCAL_SETUP.md` rather than ad-hoc test commands in the addon folder. Use the provided Odoo source root command from that file.
+- If `LOCAL_SETUP.md` is not present in the conversation context, ask the user to provide the relevant command before proceeding. Do not guess or substitute ad-hoc commands.
 
 ## Odoo Coding Guidance
 
@@ -79,19 +80,19 @@ This repository uses pre-commit hooks that enforce Odoo 19 and OCA coding standa
 The following rules apply when writing or modifying Python code:
 
 - **Formatting**: Use [ruff](https://docs.astral.sh/ruff/) for formatting and linting
-  (replaces black, isort, flake8). Line length is 88. Import blocks must be sorted.
+	(replaces black, isort, flake8). Line length is 88. Import blocks must be sorted.
 - **Imports**: Standard library imports first, then third-party, then Odoo, then relative.
-  Combine `from . import X` statements on a single line when possible.
+	Combine `from . import X` statements on a single line when possible.
 - **Translations**: Use `self.env._("text")` instead of `_("text")` for all user-facing
-  strings in model methods (Odoo 18+ practice). Use the lazy form
-  `self.env._("text %s", value)` instead of `_("text %s") % value`.
+	strings in model methods (Odoo 18+ practice). Use the lazy form
+	`self.env._("text %s", value)` instead of `_("text %s") % value`.
 - **Pylint**: All code must pass `.pylintrc-mandatory` without warnings. The `.pylintrc`
-  file (loaded by IDEs) also includes optional checks that are non-blocking.
+	file (loaded by IDEs) also includes optional checks that are non-blocking.
 - **OCA hooks**: XML files are validated by `oca-checks-odoo-module`. Avoid deprecated
-  XML nodes and ensure all `<record>` tags have an `id` attribute.
+	XML nodes and ensure all `<record>` tags have an `id` attribute.
 - **No `# noqa` unless justified**: Fix the root cause instead of silencing warnings.
-  The `# pylint: disable=broad-except` in `action_test_connection` is a documented
-  exception for UI-safe error handling.
+	The `# pylint: disable=broad-except` in `action_test_connection` is a documented
+	exception for UI-safe error handling.
 
 To run all checks locally:
 
@@ -110,9 +111,63 @@ pre-commit run --all-files   # run everything now
 5. ~~Implement FinalizePurchase and CancelPurchase lifecycle handling.~~ ✅
 6. ~~Add logging, diagnostics, and retry-safe error handling.~~ ✅
 7. Add follow-up features only after the purchase flow is stable:
-   - RegisterCustomer
-   - ActivateDiscountCode
-   - Sales report import
+	 - ~~RegisterCustomer~~
+	 - ActivateDiscountCode
+	 - Sales report import
+
+## Workflow Rules for This Repo
+
+When multiple protocols apply, follow them in this order: (1) Session Kickoff, (2) Design vs Implementation, (3) Test-Fix, (4) Batch-Fix, (5) Verification. Apply all that are relevant in sequence.
+
+### Session Kickoff Protocol
+
+Start implementation chats by restating these four items in one short block before editing code:
+
+1. Branch goal
+2. Done criteria
+3. Files expected to change
+4. Explicit non-goals
+
+If any item is missing, ask for all missing items in a single message before making edits.
+
+### Test-Fix Protocol (JS/POS)
+
+When user asks to fix failing tests, require this input first:
+
+1. Exact failing test name(s)
+2. Exact error output
+3. Repro command used in this repo
+4. Expected behavior
+
+Then execute this flow:
+
+1. Find root cause in production code first
+2. Patch minimal production code or test seam (no fake-only workaround unless requested)
+3. Update all tests with the same root cause in one pass
+4. Report list of updated tests
+
+### Batch-Fix Rule
+
+If one failure pattern likely affects multiple tests/files, proactively scan and fix all matching cases in the same change instead of waiting for follow-up prompts.
+
+### Design vs Implementation Rule
+
+- If user is still clarifying domain behavior, stay in analysis mode and produce a short decision summary.
+- Start code edits only after behavior is explicit.
+- Re-check implementation against that decision summary before finishing.
+
+### Odoo Security Data Rule
+
+- For `res.groups`, use `user_ids` for membership relations.
+- For default memberships that should not be re-applied on every upgrade, place assignment in `noupdate="1"` data.
+
+### Verification Rule
+
+After edits:
+
+1. Run or suggest the canonical local command path from LOCAL_SETUP.md
+2. Report what was verified and what was not verified
+3. If blocked, provide exact blocker and next command to run
 
 ## When Generating Code
 
