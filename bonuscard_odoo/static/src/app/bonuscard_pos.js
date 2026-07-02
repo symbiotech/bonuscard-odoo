@@ -562,7 +562,7 @@ patch(PosOrderline.prototype, {
     setQuantity(quantity, keep_price) {
         const result = super.setQuantity(...arguments);
         const order = this.order_id;
-        if (result && order && !order._bonuscardApplying) {
+        if (result === true && order && !order._bonuscardApplying) {
             order.bonuscard_checkout_items = null;
             order.bonuscard_needs_validation = true;
         }

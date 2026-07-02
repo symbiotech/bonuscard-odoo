@@ -890,6 +890,10 @@ test("applying Bonuscard discounts does not re-arm needs_validation, so pay skip
     const product = store.models["product.product"].get(5);
     product.barcode = product.barcode || "TEST-123";
 
+    // Configure a discount product so _applyBonuscardDiscountsToOrder can call
+    // addLineToOrder (and thus internally setQuantity) when remaining qty > 0.
+    store.config.discount_product_id = product;
+
     await store.addLineToOrder(
         {
             product_id: product,
@@ -916,9 +920,14 @@ test("applying Bonuscard discounts does not re-arm needs_validation, so pay skip
                     checkoutItems: [
                         { identifier: "ITEM1", ean: product.barcode, quantity: 1, pricePerItem: 10 },
                     ],
-                    totalDiscount: 2,
+                    totalDiscount: 4,
                     resultItems: [
-                        { quantity: 1, pricePerItem: -2, relatedIdentifiers: ["ITEM1"] },
+                        // quantity: 2 exceeds the single orderline's qty: 1, so after
+                        // setDiscount on the matched line the remaining 1 unit is covered
+                        // via addLineToOrder, which internally calls setQuantity.
+                        // Without the _bonuscardApplying guard that would re-arm
+                        // bonuscard_needs_validation and cause a redundant API call on pay().
+                        { quantity: 2, pricePerItem: -2, relatedIdentifiers: ["ITEM1"] },
                     ],
                 };
             }
@@ -929,8 +938,6 @@ test("applying Bonuscard discounts does not re-arm needs_validation, so pay skip
     await store._validateBonuscardPurchaseForOrder(order);
 
     // After a successful validation with discounts applied, needs_validation must remain false.
-    // The _bonuscardApplying guard prevents setQuantity (called internally when adding discount
-    // lines) from flipping it back to true.
     expect(order.bonuscard_needs_validation).toBe(false);
     expect(order.bonuscard_transaction_id).toBe("TXN1");
 
