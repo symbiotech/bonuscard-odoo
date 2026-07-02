@@ -31,7 +31,7 @@ flowchart LR
     B -->|final guard before payment| G
     G -->|checkoutItems + customerIdentifier| L
     L -->|transactionIdentifier + discounts| G
-    G -->|apply discounts to order lines| B
+    G -->|transactionIdentifier + discounts (POS applies discounts to order)| B
 
     C -->|afterOrderValidation| H
     H -->|transactionIdentifier + checkoutItems| M
