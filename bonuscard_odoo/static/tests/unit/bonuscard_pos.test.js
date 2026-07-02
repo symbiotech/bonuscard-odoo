@@ -884,6 +884,74 @@ test("pay does not revalidate Bonuscard purchase when no validation is needed", 
     expect(validationCalled).toBe(false);
 });
 
+test("applying Bonuscard discounts does not re-arm needs_validation, so pay skips revalidation", async () => {
+    const store = await setupPosEnv();
+    const order = store.addNewOrder();
+    const product = store.models["product.product"].get(5);
+    product.barcode = product.barcode || "TEST-123";
+
+    // Configure a discount product so _applyBonuscardDiscountsToOrder can call
+    // addLineToOrder (and thus internally setQuantity) when remaining qty > 0.
+    store.config.discount_product_id = product;
+
+    await store.addLineToOrder(
+        {
+            product_id: product,
+            product_tmpl_id: product.product_tmpl_id,
+            qty: 1,
+            price_unit: 10,
+        },
+        order
+    );
+
+    const partner = store.models["res.partner"].create({
+        name: "Bonuscard Customer",
+    });
+    partner.bonuscard_recruitment_code = "ABC123";
+    partner.bonuscard_status = "linked";
+    order.setPartner(partner);
+
+    const originalCall = store.data.call.bind(store.data);
+    patchWithCleanup(store.data, {
+        call: async function (model, method, args) {
+            if (model === "bonuscard.api.service" && method === "validate_purchase_for_pos") {
+                return {
+                    transactionIdentifier: "TXN1",
+                    checkoutItems: [
+                        { identifier: "ITEM1", ean: product.barcode, quantity: 1, pricePerItem: 10 },
+                    ],
+                    totalDiscount: 4,
+                    resultItems: [
+                        // quantity: 2 exceeds the single orderline's qty: 1, so after
+                        // setDiscount on the matched line the remaining 1 unit is covered
+                        // via addLineToOrder, which internally calls setQuantity.
+                        // Without the _bonuscardApplying guard that would re-arm
+                        // bonuscard_needs_validation and cause a redundant API call on pay().
+                        { quantity: 2, pricePerItem: -2, relatedIdentifiers: ["ITEM1"] },
+                    ],
+                };
+            }
+            return originalCall(...arguments);
+        },
+    });
+
+    await store._validateBonuscardPurchaseForOrder(order);
+
+    // After a successful validation with discounts applied, needs_validation must remain false.
+    expect(order.bonuscard_needs_validation).toBe(false);
+    expect(order.bonuscard_transaction_id).toBe("TXN1");
+
+    // Confirm pay() respects the flag and does not trigger a redundant API call.
+    let revalidationCalled = false;
+    store._validateBonuscardPurchaseForOrder = async () => {
+        revalidationCalled = true;
+        throw new Error("Unexpected revalidation during pay");
+    };
+
+    await store.pay();
+    expect(revalidationCalled).toBe(false);
+});
+
 test("OrderSummary revalidates Bonuscard order when quantity changes", async () => {
     const store = await setupPosEnv();
     const order = store.addNewOrder();
