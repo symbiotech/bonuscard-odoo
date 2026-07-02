@@ -230,7 +230,13 @@ patch(PosStore.prototype, {
                 order.bonuscard_needs_validation = false;
 
                 if (result.totalDiscount > 0) {
-                    const applied = await this._applyBonuscardDiscountsToOrder(order, result);
+                    order._bonuscardApplying = true;
+                    let applied;
+                    try {
+                        applied = await this._applyBonuscardDiscountsToOrder(order, result);
+                    } finally {
+                        order._bonuscardApplying = false;
+                    }
                     if (!applied) {
                         logPosMessage(
                             "Bonuscard",
@@ -556,7 +562,7 @@ patch(PosOrderline.prototype, {
     setQuantity(quantity, keep_price) {
         const result = super.setQuantity(...arguments);
         const order = this.order_id;
-        if (result && order) {
+        if (result && order && !order._bonuscardApplying) {
             order.bonuscard_checkout_items = null;
             order.bonuscard_needs_validation = true;
         }
@@ -566,7 +572,7 @@ patch(PosOrderline.prototype, {
     delete(...args) {
         const order = this.order_id;
         const result = super.delete(...args);
-        if (order) {
+        if (order && !order._bonuscardApplying) {
             order.bonuscard_checkout_items = null;
             order.bonuscard_needs_validation = true;
         }
