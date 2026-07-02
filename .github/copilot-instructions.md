@@ -169,8 +169,27 @@ After edits:
 2. Report what was verified and what was not verified
 3. If blocked, provide exact blocker and next command to run
 
+## Documentation Maintenance Rule
+
+When any code change affects observable behaviour, update the relevant docs in the same change. The three docs that must stay in sync with the code are:
+
+| Doc | What it covers | Update when… |
+|---|---|---|
+| `README.md` | Features list, usage guide, roadmap | A feature is added, changed, or completed |
+| `docs/bonuscard_pos_integration_explanation.md` | Step-by-step POS flow, patched methods, backend components, tracked state | Any POS patch is added/renamed/removed; any `bonuscard.api.service` or `res.partner` method changes |
+| `docs/bonuscard_pos_integration_diagram.mmd` | Architecture flowchart | The trigger points or data-flow arrows between POS and backend change |
+
+Concrete checks before finishing a code change:
+
+1. If a POS method is patched or renamed, update the method name in explanation.md and the diagram.
+2. If a new validation trigger is added (e.g. a new hook that calls `_validateBonuscardPurchaseForOrder`), add it to step 3 of explanation.md and the diagram.
+3. If a new cancel path is added, add it to step 5 of explanation.md.
+4. If a Roadmap item in README.md is implemented, mark it ✓ in the same PR.
+5. If a new end-to-end feature is added, add a bullet to the **Features** section of README.md.
+6. Never describe a flow as "(Foundation)" once it is fully implemented.
+
 ## When Generating Code
 
 - Prefer root-cause fixes over view-only or field-only patches.
 - If the API documentation and the current code disagree, flag the mismatch and fix the design before adding more functionality.
-- Keep README and tests aligned with any meaningful behavior change.
+- Keep README, explanation.md, diagram.mmd, and tests aligned with any meaningful behavior change.
