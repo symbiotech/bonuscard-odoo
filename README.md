@@ -27,6 +27,7 @@ This module is designed as an independent, production-ready Odoo 19 addon.
 - **POS badge**: status indicators on the partner-selection screen in Point of Sale
 - **Smart button**: one-click Bonuscard status check directly from the partner form
 - **Manual registration**: register a customer from the partner form when Bonuscard lookup returns `not_found`
+- **Automatic discount application**: Bonuscard discounts are applied automatically to the POS order as line-level percentage discounts or separate discount lines; previous discounts are cleared before each re-validation
 
 ## Installation
 
@@ -133,18 +134,18 @@ The API accepts a unique phone number and returns a new customer object with:
 The partner action `action_register_to_bonuscard` is exposed in the partner form when Bonuscard status is `not_found` (Not Found).
 It re-checks the partner before registering, links the returned customer, and stores `bonuscard_recruitment_code` on the partner.
 
-### Purchase Lifecycle (Foundation)
+### Purchase Lifecycle
 
-Use this module as the integration foundation for the POS purchase lifecycle:
+The full Bonuscard purchase lifecycle is implemented in POS:
 
-- ValidatePurchase before payment
-- FinalizePurchase after successful payment
-- CancelPurchase if checkout is aborted
+- **ValidatePurchase** — called when a linked customer is selected, when products are added or quantities change, and as a final check before payment; discounts are applied automatically to the order
+- **FinalizePurchase** — called after a successful payment via `afterOrderValidation`
+- **CancelPurchase** — called when the cashier presses Back on the payment screen, deletes the order, changes the customer mid-order, or closes the POS
 
 ## Known Issues / Roadmap
 
-- Add endpoint-specific POS service wrappers for purchase validation and finalization
-- Add transaction identifier persistence and retry-safe lifecycle handling
+- ✓ Add endpoint-specific POS service wrappers for purchase validation and finalization
+- ✓ Add transaction identifier persistence and retry-safe lifecycle handling
 - Add follow-up features for customers, discount codes, and sales reports
 - ✓ Add manual customer registration from the partner form when no match is found
 - Add discount code activation (ActivateDiscountCode)

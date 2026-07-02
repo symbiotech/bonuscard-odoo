@@ -26,11 +26,12 @@ flowchart LR
     F -->|search terms: phone/email/name| K
     K -->|match result| F
     F -->|status/recruitment_code| A
+    A -->|status=linked: auto-validate| G
 
-    B -->|partner has bonuscard_recruitment_code| G
+    B -->|final guard before payment| G
     G -->|checkoutItems + customerIdentifier| L
     L -->|transactionIdentifier + discounts| G
-    G -->|store transaction state| B
+    G -->|transactionIdentifier + discounts (POS applies discounts to order)| B
 
     C -->|afterOrderValidation| H
     H -->|transactionIdentifier + checkoutItems| M
