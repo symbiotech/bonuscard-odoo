@@ -171,7 +171,7 @@ After edits:
 
 ## Documentation Maintenance Rule
 
-When any code change affects observable behaviour, update the relevant docs in the same change. The three docs that must stay in sync with the code are:
+When any code change affects observable behavior, update the relevant docs in the same change. The three docs that must stay in sync with the code are:
 
 | Doc | What it covers | Update when… |
 |---|---|---|
