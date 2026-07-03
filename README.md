@@ -5,29 +5,25 @@
 
 ## Description
 
-Bonuscard Connector adds a configurable connection layer between Odoo and the
-Bonuscard API for POS-oriented loyalty and discount workflows.
+Bonuscard Connector is an Odoo 19 addon that integrates Odoo POS with the
+Bonuscard API for loyalty and discount workflows.
 
-## Purpose
+## Canonical Docs
 
-This module is designed as an independent, production-ready Odoo 19 addon.
+For addon behavior, configuration, and usage, use
+[bonuscard_odoo/README.rst](bonuscard_odoo/README.rst).
 
-- Keep Bonuscard integration logic self-contained inside a dedicated addon repository
-- Provide secure, explicit Basic-auth credential and endpoint configuration per company
-- Offer a stable base for Bonuscard purchase validation, finalization, and cancellation
+## Documentation Structure
 
-## Features
+To avoid duplicate docs drift, this repository uses a split canonical model:
 
-- Connection model with API base URL, Basic-auth credentials, culture, timeout, and diagnostics
-- Reusable service layer for Bonuscard HTTP requests and response error handling
-- Test Connection server action from the form view
-- Security groups and ACLs for user and manager roles
-- **Customer lookup**: automatically search Bonuscard by phone, email, and name when a customer is selected in POS
-- **Partner integration**: Bonuscard status fields and sync controls on the `res.partner` form (`linked`, `not_found`, `ambiguous`, `error`)
-- **POS badge**: status indicators on the partner-selection screen in Point of Sale
-- **Smart button**: one-click Bonuscard status check directly from the partner form
-- **Manual registration**: register a customer from the partner form when Bonuscard lookup returns `not_found`
-- **Automatic discount application**: Bonuscard discounts are applied automatically to the POS order as line-level percentage discounts or separate discount lines; previous discounts are cleared before each re-validation
+- **Addon behavior and usage (canonical):** [bonuscard_odoo/README.rst](bonuscard_odoo/README.rst)
+- **POS integration flow narrative:** [docs/bonuscard_pos_integration_explanation.md](docs/bonuscard_pos_integration_explanation.md)
+- **POS integration architecture diagram:** [docs/bonuscard_pos_integration_diagram.mmd](docs/bonuscard_pos_integration_diagram.mmd)
+- **API reference notes:** [docs/bonuscard-api.md](docs/bonuscard-api.md)
+- **Development workflow and contribution rules:** this file and [CONTRIBUTING.md](CONTRIBUTING.md)
+
+If content overlaps, update the module README first and link to it from here.
 
 ## Installation
 
@@ -42,114 +38,14 @@ This module is designed as an independent, production-ready Odoo 19 addon.
 
 ## Configuration
 
-1. Go to `Bonuscard > Connections`.
-2. Create a connection record and set API URL, username, password, and culture.
-3. Set the test-site base URL manually if you want to work against `https://test.bonuscard.com/`.
-4. Click `Test Connection`.
+Configuration and functional usage are documented in
+[bonuscard_odoo/README.rst](bonuscard_odoo/README.rst).
 
-Once a connection is active, the POS will automatically attempt to look up the Bonuscard
-status of any customer selected at checkout. The lookup searches by phone, email, and name
-and writes the result back to the partner record.
+## Functional References
 
-## Test Environment Setup
-
-Use the Bonuscard test account details you received by email and configure them only in your local or test Odoo database.
-
-- Login URL: `https://test.bonuscard.com/Account/Login`
-- API base URL: `https://test.bonuscard.com/api/`
-- Company context: IdeelSkog AB (same EAN as production, per Bonuscard guidance)
-
-Security rules for this repository:
-
-- Never commit real usernames or passwords to git.
-- Keep credentials in Odoo records on non-production databases or inject them through deployment secrets.
-- Keep automated tests mocked. Do not call Bonuscard live or test APIs from CI.
-
-If Bonuscard has provided a dedicated test consumer for purchase registration, store that identifier in local configuration and use it in manual end-to-end verification of the purchase flow.
-
-## Integration Tests (Manual)
-
-This repository now includes a manual integration test in `tests/test_bonuscard_integration.py`.
-
-1. Fill local credentials in `.env` (already gitignored).
-2. Run tests with the integration tag only.
-
-Example Odoo test tag:
-
-```bash
---test-tags bonuscard_integration
-```
-
-Notes:
-
-- Integration tests are skipped automatically if required environment values are missing.
-- Unit tests remain mocked and should stay safe for CI.
-
-## Usage
-
-### Customer Lookup in POS
-
-When a cashier selects a customer in Point of Sale, the module automatically calls
-`SearchCustomers` on the Bonuscard API using the partner's phone, email, and name.
-The result is stored on the partner record and displayed as a status badge in the
-partner list:
-
-| Status | Meaning |
-|---|---|
-| Not Checked | Lookup has not been run yet |
-| Linked | A single Bonuscard customer was matched |
-| Not Found | No Bonuscard customer matched the partner details |
-| Multiple Matches | More than one customer matched — manual review required |
-| Error | No active Bonuscard connection is configured |
-
-You can also check or reset the status directly from the partner form view using the
-**Bonuscard** smart button or the **Check Bonuscard** / **Reset Bonuscard Status** buttons
-in the Bonuscard section.
-
-### Customer Registration
-
-When a customer lookup returns **Not Found** (`not_found`), the partner form shows a **Register to Bonuscard** button in the Bonuscard section.
-
-The registration flow does the following:
-- re-checks the partner against Bonuscard before registering
-- if the customer is still not found, calls `RegisterCustomer` using the partner's phone number
-- writes the returned `recruitmentCode` and links the partner record
-- if the customer already exists in Bonuscard, the action links the existing customer and shows an info notification
-
-The partner must have a phone number to register.
-
-You can also call the same endpoint manually in Python:
-
-```python
-service = self.env['bonuscard.api.service']
-instance = service._get_company_instance(company)
-result = service._register_customer(instance, phone_number="+46707654321")
-```
-
-The API accepts a unique phone number and returns a new customer object with:
-- `customer`: newly created customer with `id`, `phoneNumber`, and `recruitmentCode`
-- `error`: `false` on success
-- `messages`: status messages from the API
-
-The partner action `action_register_to_bonuscard` is exposed in the partner form when Bonuscard status is `not_found` (Not Found).
-It re-checks the partner before registering, links the returned customer, and stores `bonuscard_recruitment_code` on the partner.
-
-### Purchase Lifecycle
-
-The full Bonuscard purchase lifecycle is implemented in POS:
-
-- **ValidatePurchase** — called when a linked customer is selected, when products are added or quantities change, and as a final check before payment; discounts are applied automatically to the order
-- **FinalizePurchase** — called after a successful payment via `afterOrderValidation`
-- **CancelPurchase** — called when the cashier presses Back on the payment screen, deletes the order, changes the customer mid-order, or closes the POS
-
-## Known Issues / Roadmap
-
-- ✓ Add endpoint-specific POS service wrappers for purchase validation and finalization
-- ✓ Add transaction identifier persistence and retry-safe lifecycle handling
-- Add follow-up features for customers, discount codes, and sales reports
-- ✓ Add manual customer registration from the partner form when no match is found
-- Add discount code activation (ActivateDiscountCode)
-- Persist `recruitment_code` alongside each sale for purchase reporting
+- [bonuscard_odoo/README.rst](bonuscard_odoo/README.rst)
+- [docs/bonuscard_pos_integration_explanation.md](docs/bonuscard_pos_integration_explanation.md)
+- [docs/bonuscard_pos_integration_diagram.mmd](docs/bonuscard_pos_integration_diagram.mmd)
 
 ## Development Setup
 
@@ -207,7 +103,7 @@ python -m odoo \
 Ensure `odoo.conf` includes this addon's **parent directory** (the repo root, not the addon folder itself) in `addons_path`. Example:
 
 ```
-addons_path = e:\lucru\odoo\19.0\odoo\addons,e:\lucru\idealskog\odoo_dev\bonuscard_odoo
+addons_path = C:\XXX\odoo\19.0\odoo\addons,C:\XXX\odoo_dev\bonuscard_odoo
 ```
 
 ### Code Quality
