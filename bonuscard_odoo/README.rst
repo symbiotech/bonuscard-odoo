@@ -41,7 +41,7 @@ Configuration
 
 1. Go to **Bonuscard > Connections**.
 2. Create a connection record with API URL, username, password, and culture.
-3. Optionally set the test URL to ``https://test.bonuscard.com/``.
+3. Optionally set the test API base URL to ``https://test.bonuscard.com/api/``.
 4. Click **Test Connection**.
 
 Usage
