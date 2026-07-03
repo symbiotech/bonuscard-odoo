@@ -12,7 +12,7 @@ Thanks for helping improve this Odoo 19 addon.
 ## Before You Start
 
 1. Read the project overview in README.md.
-2. Use LOCAL_SETUP.md for your machine-specific Odoo paths and commands.
+2. Copy `LOCAL_SETUP.example.md` to `LOCAL_SETUP.md` and set your machine-specific Odoo paths and commands.
 3. Confirm your branch has a single clear goal.
 
 ## Local Setup
