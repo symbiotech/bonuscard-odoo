@@ -155,6 +155,11 @@ The full Bonuscard purchase lifecycle is implemented in POS:
 
 This addon is an Odoo 19 module that runs against your main Odoo installation.
 
+## Contributing
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for contribution workflow, coding standards,
+testing expectations, and pull request checklist.
+
 ### Prerequisites
 
 - Odoo 19.0 source code with a configured Python environment
