@@ -1165,6 +1165,151 @@ test("validatePurchaseForOrder returns false and skips the API call when all lin
     expect(apiCalled).toBe(false);
 });
 
+test("_cancelBonuscardPurchaseForOrder makes exactly two cancel API calls when retries is 1 and cancel always fails", async () => {
+    const store = await setupPosEnv();
+    const order = store.addNewOrder();
+    order.bonuscard_transaction_id = "TXN-RETRY";
+    order.bonuscard_partner_id = false;
+
+    let cancelCallCount = 0;
+    patchWithCleanup(store.data, {
+        call: async function (model, method) {
+            if (model === "bonuscard.api.service" && method === "cancel_purchase_for_pos") {
+                cancelCallCount++;
+                return { error: true, messages: ["Temporary failure"] };
+            }
+            return {};
+        },
+    });
+
+    const result = await store._cancelBonuscardPurchaseForOrder(order, { retries: 1 });
+
+    // retries: 1 means one initial attempt plus one retry = 2 total calls.
+    expect(cancelCallCount).toBe(2);
+    expect(result.success).toBe(false);
+});
+
+test("onDeleteOrder blocks order deletion, keeps transaction state, and adds sticky warning when cancel fails", async () => {
+    const store = await setupPosEnv();
+    const order = store.addNewOrder();
+    order.bonuscard_transaction_id = "TXN1";
+    order.bonuscard_checkout_items = [{ ean: "TEST-123", quantity: 1, pricePerItem: 10 }];
+    order.bonuscard_partner_id = 42;
+
+    const notifications = [];
+    patchWithCleanup(store.notification, {
+        add: (message, options) => notifications.push({ message, options }),
+    });
+
+    const originalCall = store.data.call.bind(store.data);
+    patchWithCleanup(store.data, {
+        call: async function (model, method, args) {
+            if (model === "bonuscard.api.service" && method === "cancel_purchase_for_pos") {
+                return { error: true, messages: ["Bonuscard service unavailable"] };
+            }
+            return originalCall(...arguments);
+        },
+    });
+
+    await store.onDeleteOrder(order);
+
+    // Order deletion is blocked: the early return prevents super.onDeleteOrder from running,
+    // so transaction state must remain intact.
+    expect(order.bonuscard_transaction_id).toBe("TXN1");
+    expect(order.bonuscard_checkout_items).not.toBe(null);
+    // A sticky warning notification must have been shown.
+    expect(notifications.length).toBe(1);
+    expect(notifications[0].options.type).toBe("warning");
+    expect(notifications[0].options.sticky).toBe(true);
+});
+
+test("onDeleteOrder retries cancel once (two API calls total) before blocking deletion", async () => {
+    const store = await setupPosEnv();
+    const order = store.addNewOrder();
+    order.bonuscard_transaction_id = "TXN1";
+    order.bonuscard_partner_id = false;
+
+    let cancelCallCount = 0;
+    const originalCall = store.data.call.bind(store.data);
+    patchWithCleanup(store.data, {
+        call: async function (model, method, args) {
+            if (model === "bonuscard.api.service" && method === "cancel_purchase_for_pos") {
+                cancelCallCount++;
+                return { error: true, messages: ["fail"] };
+            }
+            return originalCall(...arguments);
+        },
+    });
+
+    await store.onDeleteOrder(order);
+
+    // onDeleteOrder passes retries: 1, so the helper must attempt cancellation twice.
+    expect(cancelCallCount).toBe(2);
+    // Deletion must still be blocked.
+    expect(order.bonuscard_transaction_id).toBe("TXN1");
+});
+
+test("closePos keeps transaction state and adds sticky warning when cancel fails", async () => {
+    const store = await setupPosEnv();
+    const order = store.addNewOrder();
+    order.bonuscard_transaction_id = "TXN1";
+    order.bonuscard_checkout_items = [{ ean: "TEST-123", quantity: 1, pricePerItem: 10 }];
+    order.bonuscard_partner_id = 42;
+
+    const notifications = [];
+    patchWithCleanup(store.notification, {
+        add: (message, options) => notifications.push({ message, options }),
+    });
+
+    // Stub the cancel helper to return failure; this isolates the closePos
+    // failure-handling logic from the _cancelBonuscardPurchaseForOrder internals.
+    store._cancelBonuscardPurchaseForOrder = async () => ({
+        success: false,
+        message: "Bonuscard service unavailable",
+    });
+
+    // Stub all data.call responses so super.closePos() does not throw in the
+    // test environment. The Bonuscard logic runs before super.closePos(), so
+    // returning an empty object for every RPC is sufficient to keep the test
+    // focused without needing a broad catch-all.
+    patchWithCleanup(store.data, {
+        call: async () => ({}),
+    });
+
+    await store.closePos();
+
+    // State must NOT have been cleared — the transaction lock must remain intact.
+    expect(order.bonuscard_transaction_id).toBe("TXN1");
+    // A sticky warning notification must have been shown.
+    expect(notifications.length).toBe(1);
+    expect(notifications[0].options.type).toBe("warning");
+    expect(notifications[0].options.sticky).toBe(true);
+});
+
+test("closePos retries cancel once (two API calls total) before continuing with POS close", async () => {
+    const store = await setupPosEnv();
+    const order = store.addNewOrder();
+    order.bonuscard_transaction_id = "TXN1";
+    order.bonuscard_partner_id = false;
+
+    let cancelCallCount = 0;
+    patchWithCleanup(store.data, {
+        call: async function (model, method) {
+            if (model === "bonuscard.api.service" && method === "cancel_purchase_for_pos") {
+                cancelCallCount++;
+                return { error: true, messages: ["fail"] };
+            }
+            // Return a safe stub for all other RPC calls made by super.closePos().
+            return {};
+        },
+    });
+
+    await store.closePos();
+
+    // closePos passes retries: 1, so the helper must attempt cancellation twice.
+    expect(cancelCallCount).toBe(2);
+});
+
 test("onDeleteOrder clears bonuscard transaction state after cancelling", async () => {
     const store = await setupPosEnv();
     const order = store.addNewOrder();
