@@ -249,7 +249,7 @@ test("_applyBonuscardDiscountsToOrder only consumes the configured quantity acro
 
 test("_applyBonuscardDiscountsToOrder applies proportional line discount when quantity exceeds discount coverage and no discount product is configured", async () => {
     const store = await setupPosEnv();
-    const order = await getFilledOrder(store);
+    const order = store.addNewOrder();
     store.config.discount_product_id = false;
 
     const product = store.models["product.product"].get(5);
