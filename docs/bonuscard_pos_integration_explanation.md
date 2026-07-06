@@ -70,7 +70,7 @@ This document explains how the Bonuscard POS integration works in the `bonuscard
     - `bonuscard_last_synced_at`
     - `bonuscard_last_lookup_note`
   - Implements search/match logic and status synchronization
-  - Keeps commercial partner and child contact in sync when phone numbers match
+  - When status is written for a contact, the same status is also written to its commercial partner if both share the same phone number
   - Adds `action_register_to_bonuscard`, `action_refresh_bonuscard_status`, and `action_clear_bonuscard_link`
 
 ## Important state tracked in POS
