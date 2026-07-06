@@ -549,6 +549,9 @@ test("changing partner clears pending Bonuscard transaction and discounts", asyn
                     note: "Customer is not linked",
                 };
             }
+            if (model === "bonuscard.api.service" && method === "cancel_purchase_for_pos") {
+                return { error: false, messages: [] };
+            }
             return originalCall(...arguments);
         },
     });
