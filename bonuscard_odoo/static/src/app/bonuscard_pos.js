@@ -549,7 +549,7 @@ patch(PosStore.prototype, {
                 logPosMessage(
                     "Bonuscard",
                     "onDeleteOrder",
-                    "Bonuscard cancel failed during order deletion — transaction lock may remain active",
+                    "Bonuscard cancel failed during order deletion — order deletion blocked to allow retry",
                     false,
                     [
                         {
@@ -562,13 +562,13 @@ patch(PosStore.prototype, {
                 this.notification.add(
                     cancelResult.message ||
                         _t(
-                            "Could not cancel the pending Bonuscard transaction. It may remain locked until it expires."
+                            "Could not cancel the pending Bonuscard transaction. The order has been kept so you can retry cancellation."
                         ),
                     { type: "warning", sticky: true }
                 );
-            } else {
-                this._clearBonuscardPurchaseState(order);
+                return;
             }
+            this._clearBonuscardPurchaseState(order);
         }
         return super.onDeleteOrder(order);
     },
