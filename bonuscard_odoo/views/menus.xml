@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8" ?>
 <odoo>
 
-    <menuitem id="menu_bonuscard_odoo_root" name="Bonuscard" sequence="40" groups="bonuscard_odoo.bonuscard_odoo_group_user"/>
+    <menuitem id="menu_bonuscard_odoo_root" name="Bonuscard" sequence="40" web_icon="bonuscard_odoo,static/description/icon.png" groups="bonuscard_odoo.bonuscard_odoo_group_user"/>
 
     <menuitem id="menu_bonuscard_odoo_connections" name="Connections" parent="menu_bonuscard_odoo_root" action="action_bonuscard_odoo_instance" sequence="10" groups="bonuscard_odoo.bonuscard_odoo_group_user"/>
 
