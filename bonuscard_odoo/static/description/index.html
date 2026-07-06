@@ -3,16 +3,17 @@
 <head><meta charset="utf-8"/></head>
 <body>
     <h2>Bonuscard Connector</h2>
-    <p>Connect Odoo POS to the Bonuscard API with Basic-auth credentials, customer lookup, and diagnostics.</p>
+    <p>Connect Odoo POS to the Bonuscard API with Basic-auth credentials, customer lookup, purchase validation, and automatic discount application.</p>
     <h3>Highlights</h3>
     <ul>
-        <li>Per-company API connection records</li>
-        <li>Basic-auth request service with Bonuscard error handling</li>
+        <li>Per-company API connection records with diagnostics and Test Connection</li>
+        <li>Basic-auth request service with Bonuscard error handling and HTTP retry</li>
         <li>Automatic customer lookup in POS: searches by phone, email, and name when a customer is selected</li>
         <li>Bonuscard status fields on partner form (Linked, Not Found, Multiple Matches, Error)</li>
         <li>Smart button and manual check/reset controls on the partner form</li>
         <li>Status badges in the POS partner selection screen</li>
-        <li>Ready for ValidatePurchase, FinalizePurchase, and CancelPurchase flows</li>
+        <li>Register customers from the partner form or POS partner list when not found in Bonuscard</li>
+        <li>ValidatePurchase, FinalizePurchase, and CancelPurchase lifecycle with automatic POS discount application</li>
     </ul>
 </body>
 </html>

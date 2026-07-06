@@ -1,6 +1,7 @@
 flowchart LR
     subgraph POS Frontend
         A[Select Customer in POS]
+        R[Register with Bonuscard\npartner list menu]
         B[Start Payment]
         C[Payment Validation]
         D[Payment Success]
@@ -9,6 +10,7 @@ flowchart LR
 
     subgraph Odoo Backend
         F[res.partner.get_bonuscard_status_for_pos]
+        O[res.partner.action_register_to_bonuscard]
         G[bonuscard.api.service.validate_purchase_for_pos]
         H[bonuscard.api.service.finalize_purchase_for_pos]
         I[bonuscard.api.service.cancel_purchase_for_pos]
@@ -17,6 +19,7 @@ flowchart LR
 
     subgraph Bonuscard API
         K[SearchCustomers]
+        P[RegisterCustomer]
         L[ValidatePurchase]
         M[FinalizePurchase]
         N[CancelPurchase]
@@ -27,6 +30,11 @@ flowchart LR
     K -->|match result| F
     F -->|status/recruitment_code| A
     A -->|status=linked: auto-validate| G
+
+    R -->|not_found partner| O
+    O -->|re-check then register by phone| P
+    P -->|recruitmentCode| O
+    O -->|refresh partner status| A
 
     B -->|final guard before payment| G
     G -->|checkoutItems + customerIdentifier| L
@@ -44,6 +52,7 @@ flowchart LR
     I -->|clear order bonuscard state| E
 
     J -->|used by search/status sync| F
+    J -->|used by register| O
     J -->|used by validate/finalize/cancel| G
     J -->|used by validate/finalize/cancel| H
     J -->|used by validate/finalize/cancel| I

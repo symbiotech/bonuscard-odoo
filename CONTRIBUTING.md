@@ -83,15 +83,17 @@ For security XML data:
 
 If behavior changes, update docs in the same PR:
 
-- README.md (features, usage, roadmap)
-- docs/bonuscard_pos_integration_explanation.md
-- docs/bonuscard_pos_integration_diagram.mmd
+- `bonuscard_odoo/README.rst` (features, configuration, usage)
+- `README.md` (roadmap, when scope changes)
+- `bonuscard_odoo/static/description/index.html` (Apps listing highlights)
+- `docs/bonuscard_pos_integration_explanation.md`
+- `docs/bonuscard_pos_integration_diagram.mmd`
 
 Examples:
 
 - New POS hook or renamed method: update explanation and diagram.
 - New cancel/validation path: update flow steps in docs.
-- Completed roadmap item: mark it done in README.md.
+- Completed roadmap item: mark it Done in README.md.
 
 ## Pull Request Checklist
 
