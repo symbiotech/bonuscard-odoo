@@ -18,6 +18,10 @@ patchTranslations({
         "Bonuscard registration failed.": "Bonuscard registration failed.",
         "A phone number is required to register a customer with Bonuscard.": "A phone number is required to register a customer with Bonuscard.",
         "Bonuscard registration completed.": "Bonuscard registration completed.",
+        "Could not cancel the pending Bonuscard transaction. The order has been kept so you can retry cancellation.":
+            "Could not cancel the pending Bonuscard transaction. The order has been kept so you can retry cancellation.",
+        "Could not cancel the pending Bonuscard transaction before closing. It may remain locked until it expires.":
+            "Could not cancel the pending Bonuscard transaction before closing. It may remain locked until it expires.",
     }
 });
 
@@ -1342,6 +1346,176 @@ test("onDeleteOrder clears bonuscard transaction state after cancelling", async 
     await store.onDeleteOrder(order);
 
     expect(cancelledId).toBe("TXN1");
+    expect(order.bonuscard_transaction_id).toBe(null);
+    expect(order.bonuscard_checkout_items).toBe(null);
+    expect(order.bonuscard_partner_id).toBe(false);
+});
+
+test("onDeleteOrder keeps order and transaction state when cancel fails after retry", async () => {
+    const store = await setupPosEnv();
+    const order = store.addNewOrder();
+
+    const partner = store.models["res.partner"].create({
+        name: "Bonuscard Customer",
+    });
+    partner.bonuscard_recruitment_code = "ABC123";
+    partner.bonuscard_status = "linked";
+    order.setPartner(partner);
+    order.bonuscard_transaction_id = "TXN1";
+    order.bonuscard_checkout_items = [{ ean: "TEST-123", quantity: 1, pricePerItem: 10 }];
+    order.bonuscard_partner_id = partner.id;
+
+    let cancelCallCount = 0;
+    let orderCancelCalled = false;
+    const notifications = [];
+    patchWithCleanup(store.notification, {
+        add: (message, options) => notifications.push({ message, options }),
+    });
+
+    const originalCall = store.data.call.bind(store.data);
+    patchWithCleanup(store.data, {
+        call: async function (model, method, args) {
+            if (model === "bonuscard.api.service" && method === "cancel_purchase_for_pos") {
+                cancelCallCount++;
+                return {
+                    error: true,
+                    messages: ["Bonuscard service is temporarily unavailable."],
+                };
+            }
+            if (model === "pos.order" && method === "action_pos_order_cancel") {
+                orderCancelCalled = true;
+                return true;
+            }
+            return originalCall(...arguments);
+        },
+    });
+
+    await store.onDeleteOrder(order);
+
+    expect(cancelCallCount).toBe(2);
+    expect(order.bonuscard_transaction_id).toBe("TXN1");
+    expect(order.bonuscard_checkout_items).not.toBe(null);
+    expect(order.bonuscard_partner_id).toBe(partner.id);
+    expect(orderCancelCalled).toBe(false);
+    expect(notifications.length).toBe(1);
+    expect(notifications[0].options.type).toBe("warning");
+    expect(notifications[0].options.sticky).toBe(true);
+});
+
+test("onDeleteOrder retries cancel once before clearing transaction state", async () => {
+    const store = await setupPosEnv();
+    const order = store.addNewOrder();
+
+    const partner = store.models["res.partner"].create({
+        name: "Bonuscard Customer",
+    });
+    partner.bonuscard_recruitment_code = "ABC123";
+    partner.bonuscard_status = "linked";
+    order.setPartner(partner);
+    order.bonuscard_transaction_id = "TXN1";
+    order.bonuscard_checkout_items = [{ ean: "TEST-123", quantity: 1, pricePerItem: 10 }];
+    order.bonuscard_partner_id = partner.id;
+
+    let cancelCallCount = 0;
+    let orderCancelCalled = false;
+    const originalCall = store.data.call.bind(store.data);
+    patchWithCleanup(store.data, {
+        call: async function (model, method, args) {
+            if (model === "bonuscard.api.service" && method === "cancel_purchase_for_pos") {
+                cancelCallCount++;
+                if (cancelCallCount === 1) {
+                    return { error: true, messages: ["Temporary Bonuscard outage."] };
+                }
+                return { error: false, messages: [] };
+            }
+            if (model === "pos.order" && method === "action_pos_order_cancel") {
+                orderCancelCalled = true;
+                return true;
+            }
+            return originalCall(...arguments);
+        },
+    });
+
+    await store.onDeleteOrder(order);
+
+    expect(cancelCallCount).toBe(2);
+    expect(order.bonuscard_transaction_id).toBe(null);
+    expect(order.bonuscard_checkout_items).toBe(null);
+    expect(order.bonuscard_partner_id).toBe(false);
+    expect(orderCancelCalled).toBe(true);
+});
+
+test("closePos keeps transaction state when cancel fails after retry", async () => {
+    const store = await setupPosEnv();
+    const order = store.addNewOrder();
+
+    const partner = store.models["res.partner"].create({
+        name: "Bonuscard Customer",
+    });
+    order.bonuscard_transaction_id = "TXN-CLOSE";
+    order.bonuscard_checkout_items = [{ ean: "TEST-456", quantity: 1, pricePerItem: 10 }];
+    order.bonuscard_partner_id = partner.id;
+
+    let cancelCallCount = 0;
+    const notifications = [];
+    patchWithCleanup(store.notification, {
+        add: (message, options) => notifications.push({ message, options }),
+    });
+
+    const originalCall = store.data.call.bind(store.data);
+    patchWithCleanup(store.data, {
+        call: async function (model, method, args) {
+            if (model === "bonuscard.api.service" && method === "cancel_purchase_for_pos") {
+                cancelCallCount++;
+                return {
+                    error: true,
+                    messages: ["Bonuscard service is temporarily unavailable."],
+                };
+            }
+            return originalCall(...arguments);
+        },
+    });
+
+    await store.closePos();
+
+    expect(cancelCallCount).toBe(2);
+    expect(order.bonuscard_transaction_id).toBe("TXN-CLOSE");
+    expect(order.bonuscard_checkout_items).not.toBe(null);
+    expect(order.bonuscard_partner_id).toBe(partner.id);
+    expect(notifications.length).toBe(1);
+    expect(notifications[0].options.type).toBe("warning");
+    expect(notifications[0].options.sticky).toBe(true);
+});
+
+test("closePos retries cancel once before clearing transaction state", async () => {
+    const store = await setupPosEnv();
+    const order = store.addNewOrder();
+
+    const partner = store.models["res.partner"].create({
+        name: "Bonuscard Customer",
+    });
+    order.bonuscard_transaction_id = "TXN-CLOSE-RETRY";
+    order.bonuscard_checkout_items = [{ ean: "TEST-789", quantity: 1, pricePerItem: 10 }];
+    order.bonuscard_partner_id = partner.id;
+
+    let cancelCallCount = 0;
+    const originalCall = store.data.call.bind(store.data);
+    patchWithCleanup(store.data, {
+        call: async function (model, method, args) {
+            if (model === "bonuscard.api.service" && method === "cancel_purchase_for_pos") {
+                cancelCallCount++;
+                if (cancelCallCount === 1) {
+                    return { error: true, messages: ["Temporary Bonuscard outage."] };
+                }
+                return { error: false, messages: [] };
+            }
+            return originalCall(...arguments);
+        },
+    });
+
+    await store.closePos();
+
+    expect(cancelCallCount).toBe(2);
     expect(order.bonuscard_transaction_id).toBe(null);
     expect(order.bonuscard_checkout_items).toBe(null);
     expect(order.bonuscard_partner_id).toBe(false);
