@@ -36,10 +36,10 @@ patch(PosStore.prototype, {
                     "cancel_purchase_for_pos",
                     [order.bonuscard_transaction_id, order.bonuscard_partner_id || null]
                 );
-                if (!result?.error) {
+                if (result?.error === false) {
                     return { success: true };
                 }
-                lastMessage = result.messages?.[0] || null;
+                lastMessage = result?.messages?.[0] || null;
             } catch (error) {
                 logPosMessage(
                     "Bonuscard",
