@@ -22,6 +22,7 @@ To avoid duplicate docs drift, this repository uses a split canonical model:
 - **POS integration architecture diagram:** [docs/bonuscard_pos_integration_diagram.mmd](docs/bonuscard_pos_integration_diagram.mmd)
 - **API reference notes:** [docs/bonuscard-api.md](docs/bonuscard-api.md)
 - **Development workflow and contribution rules:** this file and [CONTRIBUTING.md](CONTRIBUTING.md)
+- **AI agent instructions (canonical):** [.github/copilot-instructions.md](.github/copilot-instructions.md) with Cursor rules in [`.cursor/rules/`](.cursor/rules/) and entry point [AGENTS.md](AGENTS.md)
 
 If content overlaps, update the module README first and link to it from here.
 

@@ -1,4 +1,9 @@
-# Copilot Instructions for bonuscard_odoo
+# AI Agent Instructions for bonuscard_odoo
+
+> **Canonical source** for GitHub Copilot, Cursor, and other AI coding assistants.
+> Cursor loads condensed rules from `.cursor/rules/`; see `AGENTS.md` for the doc map.
+> When updating agent guidance, edit this file first, then sync `AGENTS.md` and
+> `.cursor/rules/` if the condensed rules need the same change.
 
 ## Product Context
 

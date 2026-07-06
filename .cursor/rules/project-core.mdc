@@ -1,0 +1,45 @@
+---
+description: Core project context, architecture, and workflow for bonuscard_odoo
+alwaysApply: true
+---
+
+# Bonuscard Odoo — Core Rules
+
+Canonical instructions: `.github/copilot-instructions.md` (read for full detail).
+
+## Product
+
+Odoo 19 addon integrating POS with Bonuscard (loyalty/discount). Primary surface:
+Point of Sale. Purchase lifecycle: ValidatePurchase → FinalizePurchase / CancelPurchase.
+
+## Architecture
+
+- Connection config per company; Basic auth via `bonuscard.connector.instance._build_headers`.
+- HTTP/payload mapping in `BonuscardApiService`; keep transport separate from Odoo business logic.
+- Bonuscard status on **commercial partner** (`partner.commercial_partner_id`), propagated to contacts.
+- Partner lookup: phone (digits-only), email, name — dedupe by Bonuscard `id` or `recruitmentCode`.
+- Keep all Bonuscard logic in this addon. Configure a POS discount product for unmatched discounts.
+
+## Secrets & Testing
+
+- Never write real credentials into repo files, tests, commits, or PR text.
+- Mock HTTP in automated tests. No live or test API calls in CI/default test runs.
+- Use `LOCAL_SETUP.md` for Odoo commands. If missing from context, ask the user — do not guess.
+
+## Workflow
+
+Before code edits, confirm: branch goal, done criteria, expected files, non-goals.
+If domain behavior is unclear, stay in analysis mode first.
+After edits: run/suggest commands from `LOCAL_SETUP.md`; report verified vs not verified.
+
+When fixing tests: get failing test name, error output, repro command, expected behavior.
+Fix root cause in production code first; batch-fix matching patterns across files.
+
+## Code Quality
+
+```bash
+uv sync --group dev --no-install-project
+pre-commit run --all-files
+```
+
+Behavior changes require doc updates — see `documentation.mdc` or copilot instructions.
