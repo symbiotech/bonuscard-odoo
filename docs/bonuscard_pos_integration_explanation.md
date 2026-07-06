@@ -33,8 +33,8 @@ This document explains how the Bonuscard POS integration works in the `bonuscard
    - Calls `bonuscard.api.service.validate_purchase_for_pos`
    - Stores `order.bonuscard_transaction_id`, `order.bonuscard_checkout_items`, and `order.bonuscard_partner_id`
    - Clears `bonuscard_needs_validation` on successful validation
-   - If discounts are returned (`totalDiscount > 0`), they are applied automatically to the order via `_applyBonuscardDiscountsToOrder` — as percentage discounts on matched order lines, or as separate discount lines using the POS discount product when partial coverage remains; when no POS discount product is configured, partial coverage is applied as a proportional line discount instead
-   - If the POS discount product is not configured, the cashier sees a warning and discounts may not apply
+  - If discounts are returned (`totalDiscount > 0`), they are applied automatically to the order via `_applyBonuscardDiscountsToOrder` — as percentage discounts on matched order lines, or as separate discount lines using the POS discount product when partial coverage remains; when no POS discount product is configured, partial coverage is applied as a proportional line discount instead
+  - If the POS discount product is not configured, the cashier sees a warning; proportional discounts can still apply to matched lines, but discounts that cannot be matched to a line may not apply
    - Concurrent calls are guarded by a version counter; stale results are discarded
    - Previous discounts are cleared (`_clearAppliedBonuscardDiscounts`) before each new validation
 
