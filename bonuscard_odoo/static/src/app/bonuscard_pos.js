@@ -85,8 +85,9 @@ patch(PosStore.prototype, {
     async setPartnerToCurrentOrder(partner, ...rest) {
         const order = this.getOrder();
         const newPartnerId = partner?.id || false;
+        const bonuscardPartnerChanged = order && order.bonuscard_partner_id !== newPartnerId;
 
-        if (order && order.bonuscard_partner_id !== newPartnerId) {
+        if (bonuscardPartnerChanged) {
             const cancelResult = await this._cancelBonuscardPurchaseForOrder(order, {
                 logMethod: "setPartnerToCurrentOrder",
             });
@@ -120,7 +121,7 @@ patch(PosStore.prototype, {
         // Pass false instead of null to parent, as POS setPartner doesn't handle null
         await super.setPartnerToCurrentOrder(partner || false, ...rest);
 
-        if (order) {
+        if (bonuscardPartnerChanged) {
             order.bonuscard_partner_id = newPartnerId;
             order.bonuscard_needs_validation = true;
         }
@@ -188,7 +189,7 @@ patch(PosStore.prototype, {
             }
         }
 
-        if (partner.bonuscard_status === "linked") {
+        if (partner.bonuscard_status === "linked" && bonuscardPartnerChanged) {
             await this._validateBonuscardPurchaseForOrder(order);
         }
     },

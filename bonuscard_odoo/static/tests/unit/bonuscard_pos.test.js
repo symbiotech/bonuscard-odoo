@@ -285,6 +285,63 @@ test("setPartnerToCurrentOrder validates Bonuscard purchase and applies discount
     expect(order.bonuscard_transaction_id).toBe("TXN1");
 });
 
+test("setPartnerToCurrentOrder skips re-validation when the same customer is re-selected", async () => {
+    const store = await setupPosEnv();
+    const order = store.addNewOrder();
+    const product = store.models["product.product"].get(5);
+    product.barcode = product.barcode || "TEST-123";
+
+    await store.addLineToOrder(
+        {
+            product_id: product,
+            product_tmpl_id: product.product_tmpl_id,
+            qty: 1,
+            price_unit: 10,
+        },
+        order
+    );
+
+    const partner = store.models["res.partner"].create({
+        name: "Bonuscard Customer",
+    });
+    partner.bonuscard_recruitment_code = "ABC123";
+    partner.bonuscard_status = "linked";
+
+    let validateCallCount = 0;
+    const originalCall = store.data.call.bind(store.data);
+    patchWithCleanup(store.data, {
+        call: async function (model, method, args) {
+            if (model === "bonuscard.api.service" && method === "validate_purchase_for_pos") {
+                validateCallCount++;
+                return {
+                    transactionIdentifier: "TXN1",
+                    checkoutItems: [
+                        {
+                            identifier: "ITEM1",
+                            ean: product.barcode,
+                            quantity: 1,
+                            pricePerItem: 10,
+                        },
+                    ],
+                    totalDiscount: 0,
+                    resultItems: [],
+                };
+            }
+            return originalCall(...arguments);
+        },
+    });
+
+    await store.setPartnerToCurrentOrder(partner);
+    expect(validateCallCount).toBe(1);
+    expect(order.bonuscard_needs_validation).toBe(false);
+
+    await store.setPartnerToCurrentOrder(partner);
+
+    expect(validateCallCount).toBe(1);
+    expect(order.bonuscard_needs_validation).toBe(false);
+    expect(order.bonuscard_transaction_id).toBe("TXN1");
+});
+
 test("validatePurchaseForOrder retains existing transactionIdentifier when API response omits it", async () => {
     const store = await setupPosEnv();
     const order = store.addNewOrder();
