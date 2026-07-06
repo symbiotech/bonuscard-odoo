@@ -48,6 +48,10 @@ This document explains how the Bonuscard POS integration works in the `bonuscard
    - `setPartnerToCurrentOrder` cancels an open transaction **before** changing the partner; if cancel fails, the partner change is blocked to avoid orphaning the Bonuscard lock
    - All cancel paths call `bonuscard.api.service.cancel_purchase_for_pos`
    - `closePos` and `onDeleteOrder` retry cancel once; local transaction state is cleared only after a successful cancel
+   - After cancel failure (including after the single retry), cashier-facing sticky warnings are shown:
+     - **Partner change** (`setPartnerToCurrentOrder`): blocked; current customer and transaction state are kept
+     - **Order deletion** (`onDeleteOrder`): blocked; the order is kept so cancellation can be retried
+     - **POS close** (`closePos`): close continues, but transaction state is kept locally and the cashier is warned the Bonuscard lock may remain until it expires
    - `PosOrder.removeOrderline` clears `bonuscard_checkout_items` and sets `bonuscard_needs_validation` so the next action re-validates
    - `PosOrderline.setQuantity` and `PosOrderline.delete` also set `bonuscard_needs_validation` when called outside of the discount-application cycle
 
