@@ -190,7 +190,7 @@ patch(PosStore.prototype, {
         }
 
         if (partner.bonuscard_status === "linked" && bonuscardPartnerChanged) {
-            await this._validateBonuscardPurchaseForOrder(order);
+            await this._validateBonuscardPurchaseForOrder(order, { notifyOnDiscount: true });
         }
     },
 
@@ -229,7 +229,7 @@ patch(PosStore.prototype, {
         order.bonuscard_needs_validation = true;
     },
 
-    async _validateBonuscardPurchaseForOrder(order) {
+    async _validateBonuscardPurchaseForOrder(order, { notifyOnDiscount = false } = {}) {
         if (!order) {
             return false;
         }
@@ -311,7 +311,7 @@ patch(PosStore.prototype, {
                             ),
                             { type: "warning" }
                         );
-                    } else {
+                    } else if (notifyOnDiscount) {
                         this.notification.add(
                             _t("Bonuscard discount has been applied to the order."),
                             { type: "success" }
@@ -511,7 +511,7 @@ patch(PosStore.prototype, {
             partner?.bonuscard_recruitment_code &&
             (!order?.bonuscard_transaction_id || order?.bonuscard_needs_validation)
         ) {
-            await this._validateBonuscardPurchaseForOrder(order);
+            await this._validateBonuscardPurchaseForOrder(order, { notifyOnDiscount: true });
         }
 
         return super.pay(...arguments);
