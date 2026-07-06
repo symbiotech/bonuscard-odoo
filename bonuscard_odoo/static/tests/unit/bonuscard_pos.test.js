@@ -25,6 +25,28 @@ patchTranslations({
     }
 });
 
+function stubSuperClosePosSideEffects(store) {
+    // Unit-test demo session is in opening_control; super.closePos() then calls ORM
+    // methods (e.g. delete_opening_control_session) that the mock server lacks.
+    store.session.state = "opened";
+    patchWithCleanup(store, {
+        pushOrdersWithClosingPopup: async () => true,
+        redirectToBackend: () => {},
+    });
+}
+
+function patchBonuscardCancelCall(store, handler) {
+    patchWithCleanup(store.data, {
+        call: async (model, method, args, kwargs) => {
+            const result = await handler(model, method, args, kwargs);
+            if (result !== undefined) {
+                return result;
+            }
+            return {};
+        },
+    });
+}
+
 test("BonuscardRegistrationService.registerPartnerToBonuscard calls the backend, executes the returned action, and refreshes partner status", async () => {
     const partner = { id: 42, name: "New Customer", phone: "+1234567890" };
     const calls = [];
@@ -1275,10 +1297,7 @@ test("closePos keeps transaction state and adds sticky warning when cancel fails
         message: "Bonuscard service unavailable",
     });
 
-    // Stub all data.call responses so super.closePos() does not throw in the
-    // test environment. The Bonuscard logic runs before super.closePos(), so
-    // returning an empty object for every RPC is sufficient to keep the test
-    // focused without needing a broad catch-all.
+    stubSuperClosePosSideEffects(store);
     patchWithCleanup(store.data, {
         call: async () => ({}),
     });
@@ -1300,15 +1319,12 @@ test("closePos retries cancel once (two API calls total) before continuing with 
     order.bonuscard_partner_id = false;
 
     let cancelCallCount = 0;
-    patchWithCleanup(store.data, {
-        call: async function (model, method) {
-            if (model === "bonuscard.api.service" && method === "cancel_purchase_for_pos") {
-                cancelCallCount++;
-                return { error: true, messages: ["fail"] };
-            }
-            // Return a safe stub for all other RPC calls made by super.closePos().
-            return {};
-        },
+    stubSuperClosePosSideEffects(store);
+    patchBonuscardCancelCall(store, (model, method) => {
+        if (model === "bonuscard.api.service" && method === "cancel_purchase_for_pos") {
+            cancelCallCount++;
+            return { error: true, messages: ["fail"] };
+        }
     });
 
     await store.closePos();
@@ -1369,7 +1385,6 @@ test("onDeleteOrder keeps order and transaction state when cancel fails after re
     order.bonuscard_partner_id = partner.id;
 
     let cancelCallCount = 0;
-    let orderCancelCalled = false;
     const notifications = [];
     patchWithCleanup(store.notification, {
         add: (message, options) => notifications.push({ message, options }),
@@ -1385,21 +1400,17 @@ test("onDeleteOrder keeps order and transaction state when cancel fails after re
                     messages: ["Bonuscard service is temporarily unavailable."],
                 };
             }
-            if (model === "pos.order" && method === "action_pos_order_cancel") {
-                orderCancelCalled = true;
-                return true;
-            }
             return originalCall(...arguments);
         },
     });
 
-    await store.onDeleteOrder(order);
+    const deleted = await store.onDeleteOrder(order);
 
     expect(cancelCallCount).toBe(2);
     expect(order.bonuscard_transaction_id).toBe("TXN1");
     expect(order.bonuscard_checkout_items).not.toBe(null);
     expect(order.bonuscard_partner_id).toBe(partner.id);
-    expect(orderCancelCalled).toBe(false);
+    expect(deleted).toBe(undefined);
     expect(notifications.length).toBe(1);
     expect(notifications[0].options.type).toBe("warning");
     expect(notifications[0].options.sticky).toBe(true);
@@ -1420,7 +1431,6 @@ test("onDeleteOrder retries cancel once before clearing transaction state", asyn
     order.bonuscard_partner_id = partner.id;
 
     let cancelCallCount = 0;
-    let orderCancelCalled = false;
     const originalCall = store.data.call.bind(store.data);
     patchWithCleanup(store.data, {
         call: async function (model, method, args) {
@@ -1431,21 +1441,18 @@ test("onDeleteOrder retries cancel once before clearing transaction state", asyn
                 }
                 return { error: false, messages: [] };
             }
-            if (model === "pos.order" && method === "action_pos_order_cancel") {
-                orderCancelCalled = true;
-                return true;
-            }
             return originalCall(...arguments);
         },
     });
 
-    await store.onDeleteOrder(order);
+    const deleted = await store.onDeleteOrder(order);
 
     expect(cancelCallCount).toBe(2);
     expect(order.bonuscard_transaction_id).toBe(null);
     expect(order.bonuscard_checkout_items).toBe(null);
     expect(order.bonuscard_partner_id).toBe(false);
-    expect(orderCancelCalled).toBe(true);
+    expect(deleted).toBe(true);
+    expect(order.uiState.displayed).toBe(false);
 });
 
 test("closePos keeps transaction state when cancel fails after retry", async () => {
@@ -1465,18 +1472,15 @@ test("closePos keeps transaction state when cancel fails after retry", async () 
         add: (message, options) => notifications.push({ message, options }),
     });
 
-    const originalCall = store.data.call.bind(store.data);
-    patchWithCleanup(store.data, {
-        call: async function (model, method, args) {
-            if (model === "bonuscard.api.service" && method === "cancel_purchase_for_pos") {
-                cancelCallCount++;
-                return {
-                    error: true,
-                    messages: ["Bonuscard service is temporarily unavailable."],
-                };
-            }
-            return originalCall(...arguments);
-        },
+    stubSuperClosePosSideEffects(store);
+    patchBonuscardCancelCall(store, (model, method) => {
+        if (model === "bonuscard.api.service" && method === "cancel_purchase_for_pos") {
+            cancelCallCount++;
+            return {
+                error: true,
+                messages: ["Bonuscard service is temporarily unavailable."],
+            };
+        }
     });
 
     await store.closePos();
@@ -1502,18 +1506,15 @@ test("closePos retries cancel once before clearing transaction state", async () 
     order.bonuscard_partner_id = partner.id;
 
     let cancelCallCount = 0;
-    const originalCall = store.data.call.bind(store.data);
-    patchWithCleanup(store.data, {
-        call: async function (model, method, args) {
-            if (model === "bonuscard.api.service" && method === "cancel_purchase_for_pos") {
-                cancelCallCount++;
-                if (cancelCallCount === 1) {
-                    return { error: true, messages: ["Temporary Bonuscard outage."] };
-                }
-                return { error: false, messages: [] };
+    stubSuperClosePosSideEffects(store);
+    patchBonuscardCancelCall(store, (model, method) => {
+        if (model === "bonuscard.api.service" && method === "cancel_purchase_for_pos") {
+            cancelCallCount++;
+            if (cancelCallCount === 1) {
+                return { error: true, messages: ["Temporary Bonuscard outage."] };
             }
-            return originalCall(...arguments);
-        },
+            return { error: false, messages: [] };
+        }
     });
 
     await store.closePos();
