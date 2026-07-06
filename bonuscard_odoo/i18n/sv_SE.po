@@ -102,6 +102,16 @@ msgstr "Bonuscard-avbokningen misslyckades."
 #. module: bonuscard_odoo
 #. odoo-javascript
 #: code:bonuscard_odoo/static/src/app/bonuscard_pos.js:0
+msgid ""
+"Bonuscard cancel failed. The customer could not be changed while a Bonuscard"
+" transaction is pending."
+msgstr ""
+"Bonuscard-avbokningen misslyckades. Kunden kunde inte bytas medan en "
+"Bonuscard-transaktion väntar."
+
+#. module: bonuscard_odoo
+#. odoo-javascript
+#: code:bonuscard_odoo/static/src/app/bonuscard_pos.js:0
 msgid "Bonuscard discount has been applied to the order."
 msgstr "Bonuscard-rabatten har lagts till i ordern."
 
@@ -223,6 +233,26 @@ msgstr "Anslutningsnamn"
 #: model:ir.actions.act_window,name:bonuscard_odoo.action_bonuscard_odoo_instance
 msgid "Connections"
 msgstr "Anslutningar"
+
+#. module: bonuscard_odoo
+#. odoo-javascript
+#: code:bonuscard_odoo/static/src/app/bonuscard_pos.js:0
+msgid ""
+"Could not cancel the pending Bonuscard transaction before closing. It may "
+"remain locked until it expires."
+msgstr ""
+"Kunde inte avbryta den väntande Bonuscard-transaktionen före stängning. Den "
+"kan förbli låst tills den löper ut."
+
+#. module: bonuscard_odoo
+#. odoo-javascript
+#: code:bonuscard_odoo/static/src/app/bonuscard_pos.js:0
+msgid ""
+"Could not cancel the pending Bonuscard transaction. The order has been kept "
+"so you can retry cancellation."
+msgstr ""
+"Kunde inte avbryta den väntande Bonuscard-transaktionen. Ordern har "
+"behållits så att du kan försöka avbryta igen."
 
 #. module: bonuscard_odoo
 #. odoo-python

@@ -86,7 +86,17 @@ The POS integration supports:
 
 * ``ValidatePurchase`` before payment and after order changes
 * ``FinalizePurchase`` after successful payment
-* ``CancelPurchase`` when the order is aborted
+* ``CancelPurchase`` when the order is aborted, the customer is changed, the
+  order is deleted, or the POS session is closed
+
+Cancel requests are retried once on ``onDeleteOrder`` and ``closePos``. Local
+transaction fields are cleared only after Bonuscard confirms cancellation.
+If cancel still fails:
+
+* Changing the customer is blocked while a transaction is pending.
+* Deleting the order is blocked so the cashier can retry cancellation.
+* Closing the POS shows a warning and may leave the Bonuscard lock active
+  until it expires on the Bonuscard side.
 
 Only order lines with a barcode or article number and a positive unit price are
 sent to Bonuscard. Returned discounts are applied as line percentages or as
