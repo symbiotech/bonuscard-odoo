@@ -247,6 +247,49 @@ test("_applyBonuscardDiscountsToOrder only consumes the configured quantity acro
     expect([line1.discount, line2.discount].filter((discount) => discount > 0).length).toBe(1);
 });
 
+test("_applyBonuscardDiscountsToOrder applies proportional line discount when quantity exceeds discount coverage and no discount product is configured", async () => {
+    const store = await setupPosEnv();
+    const order = await getFilledOrder(store);
+    store.config.discount_product_id = false;
+
+    const product = store.models["product.product"].get(5);
+    product.barcode = "TEST-PARTIAL-123";
+
+    const line = await store.addLineToOrder(
+        {
+            product_id: product,
+            product_tmpl_id: product.product_tmpl_id,
+            qty: 5,
+            price_unit: 10,
+        },
+        order
+    );
+    line.discount = 0;
+
+    const result = {
+        checkoutItems: [
+            {
+                identifier: "ITEM1",
+                ean: product.barcode,
+                quantity: 5,
+                pricePerItem: 10,
+            },
+        ],
+        resultItems: [
+            {
+                quantity: 2,
+                pricePerItem: -2,
+                relatedIdentifiers: ["ITEM1"],
+            },
+        ],
+    };
+
+    const applied = await store._applyBonuscardDiscountsToOrder(order, result);
+
+    expect(applied).toBe(true);
+    expect(line.discount).toBe(8);
+});
+
 test("setPartnerToCurrentOrder validates Bonuscard purchase and applies discount before payment", async () => {
     const store = await setupPosEnv();
     const order = store.addNewOrder();
