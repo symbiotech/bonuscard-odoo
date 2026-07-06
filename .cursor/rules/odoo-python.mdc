@@ -1,0 +1,39 @@
+---
+description: Odoo 19 Python conventions and test patterns for bonuscard_odoo
+globs: "**/*.py"
+alwaysApply: false
+---
+
+# Odoo Python
+
+Follow conventions in `.github/copilot-instructions.md` and existing repo code.
+
+## Style & Linting
+
+- **Ruff**: formatting + linting, line length 88, sorted imports (stdlib → third-party → Odoo → relative).
+- **Translations**: `self.env._("text")` in model methods (not bare `_()`). Lazy form: `self.env._("text %s", value)`.
+- **Pylint**: must pass `.pylintrc-mandatory`. Avoid `# noqa` / pylint disables unless justified.
+- **XML** (in Python-adjacent changes): all `<record>` tags need `id`; pass `oca-checks-odoo-module`.
+
+## Odoo 19 Specifics
+
+- `res.partner` has `phone` only — no `mobile` field.
+- Security: `res.groups` membership via `user_ids`; default memberships in `noupdate="1"` data.
+
+## Testing
+
+- Mock HTTP — cover HTTP failures and API-level business errors in payload.
+- Manual integration tests: tag `bonuscard_integration`, exclude from CI defaults.
+- Patch Odoo model methods by **import path string**, not `patch.object`:
+
+```python
+# ✅ GOOD
+patch("odoo.addons.bonuscard_odoo.models.bonuscard_api_service.BonuscardApiService.method", ...)
+
+# ❌ BAD — Odoo model attrs are read-only
+patch.object(model_instance, "method", ...)
+```
+
+## New Capabilities
+
+Add fields, views, security, and tests together. Prefer root-cause fixes over view-only patches.

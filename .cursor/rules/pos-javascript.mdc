@@ -1,0 +1,29 @@
+---
+description: POS and JavaScript integration rules for Bonuscard purchase lifecycle
+globs: "bonuscard_odoo/static/**/*.{js,xml,scss}"
+alwaysApply: false
+---
+
+# POS / JavaScript
+
+Full flow docs: `docs/bonuscard_pos_integration_explanation.md` and `.github/copilot-instructions.md`.
+
+## Purchase Lifecycle
+
+- Preserve the same transaction identifier across ValidatePurchase → FinalizePurchase / CancelPurchase.
+- FinalizePurchase must match ValidatePurchase products/pricing unless API docs say otherwise.
+- On payment abort or rollback, call CancelPurchase. Design for idempotency and retry safety.
+- Bonuscard can return errors in JSON payload even on HTTP 200 — handle both layers.
+
+## Patching Conventions
+
+- `setPartnerToCurrentOrder` is already patched in `bonuscard_pos.js` — **extend** that patch, do not add a second patch on the same method.
+- New partner fields for POS: add via `_load_pos_data_fields` on `res.partner`.
+
+## Key Files
+
+- `bonuscard_odoo/static/src/app/bonuscard_pos.js` — POS store patches
+- `bonuscard_odoo/static/tests/unit/bonuscard_pos.test.js` — JS unit tests
+
+When adding/renaming POS hooks, update `docs/bonuscard_pos_integration_explanation.md`
+and `docs/bonuscard_pos_integration_diagram.mmd` in the same change.
