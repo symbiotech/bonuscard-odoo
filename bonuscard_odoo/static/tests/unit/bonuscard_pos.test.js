@@ -26,8 +26,40 @@ patchTranslations({
             "Could not cancel the pending Bonuscard transaction before closing. It may remain locked until it expires.",
         "Payment succeeded but Bonuscard could not commit the discount. The loyalty transaction is still pending.":
             "Payment succeeded but Bonuscard could not commit the discount. The loyalty transaction is still pending.",
+        "Bonuscard discount has been applied to the order.":
+            "Bonuscard discount has been applied to the order.",
     }
 });
+
+function mockValidatePurchaseWithDiscount(store, product) {
+    const originalCall = store.data.call.bind(store.data);
+    patchWithCleanup(store.data, {
+        call: async function (model, method, args) {
+            if (model === "bonuscard.api.service" && method === "validate_purchase_for_pos") {
+                return {
+                    transactionIdentifier: "TXN1",
+                    checkoutItems: [
+                        {
+                            identifier: "ITEM1",
+                            ean: product.barcode,
+                            quantity: 1,
+                            pricePerItem: 10,
+                        },
+                    ],
+                    totalDiscount: 2,
+                    resultItems: [
+                        {
+                            quantity: 1,
+                            pricePerItem: -2,
+                            relatedIdentifiers: ["ITEM1"],
+                        },
+                    ],
+                };
+            }
+            return originalCall(...arguments);
+        },
+    });
+}
 
 function stubSuperClosePosSideEffects(store) {
     // Unit-test demo session is in opening_control; super.closePos() then calls ORM
@@ -627,6 +659,86 @@ test("removing a line clears pending Bonuscard transaction", async () => {
     order.removeOrderline(line);
     expect(order.bonuscard_needs_validation).toBe(true);
     expect(order.bonuscard_checkout_items).toBe(null);
+});
+
+test("addLineToOrder re-validation does not show discount success toast", async () => {
+    const store = await setupPosEnv();
+    const order = store.addNewOrder();
+    const product = store.models["product.product"].get(5);
+    product.barcode = product.barcode || "TEST-123";
+
+    const partner = store.models["res.partner"].create({
+        name: "Bonuscard Customer",
+    });
+    partner.bonuscard_recruitment_code = "ABC123";
+    partner.bonuscard_status = "linked";
+    order.setPartner(partner);
+
+    mockValidatePurchaseWithDiscount(store, product);
+
+    const notifications = [];
+    patchWithCleanup(store.notification, {
+        add: (message, options) => notifications.push({ message, options }),
+    });
+
+    const line = await store.addLineToOrder(
+        {
+            product_id: product,
+            product_tmpl_id: product.product_tmpl_id,
+            qty: 1,
+            price_unit: 10,
+        },
+        order
+    );
+
+    expect(line.discount).toBe(20);
+    expect(
+        notifications.filter(
+            (n) =>
+                n.message === "Bonuscard discount has been applied to the order." &&
+                n.options.type === "success"
+        )
+    ).toEqual([]);
+});
+
+test("setPartnerToCurrentOrder shows discount success toast when discount is applied", async () => {
+    const store = await setupPosEnv();
+    const order = store.addNewOrder();
+    const product = store.models["product.product"].get(5);
+    product.barcode = product.barcode || "TEST-123";
+
+    await store.addLineToOrder(
+        {
+            product_id: product,
+            product_tmpl_id: product.product_tmpl_id,
+            qty: 1,
+            price_unit: 10,
+        },
+        order
+    );
+
+    const partner = store.models["res.partner"].create({
+        name: "Bonuscard Customer",
+    });
+    partner.bonuscard_recruitment_code = "ABC123";
+    partner.bonuscard_status = "linked";
+
+    mockValidatePurchaseWithDiscount(store, product);
+
+    const notifications = [];
+    patchWithCleanup(store.notification, {
+        add: (message, options) => notifications.push({ message, options }),
+    });
+
+    await store.setPartnerToCurrentOrder(partner);
+
+    expect(
+        notifications.filter(
+            (n) =>
+                n.message === "Bonuscard discount has been applied to the order." &&
+                n.options.type === "success"
+        ).length
+    ).toBe(1);
 });
 
 test("addLineToOrder validates Bonuscard purchase after customer is selected", async () => {
