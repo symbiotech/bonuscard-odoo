@@ -12,7 +12,7 @@ This document explains how the Bonuscard POS integration works in the `bonuscard
    - Calls `res.partner.get_bonuscard_status_for_pos` to resolve Bonuscard status **unless** the partner already has status `linked` or `not_found` (cached from a prior lookup)
    - The backend searches Bonuscard using customer phone, email, or name
    - The partner record is updated with `bonuscard_status` and `bonuscard_recruitment_code`
-   - Status badges are rendered by `bonuscard_partner_line.xml`; ambiguous and error statuses show POS notifications
+   - Status badges are rendered by `bonuscard_partner_line.xml`; status changes trigger POS notifications (success for `linked`, warnings for `not_found`/`ambiguous`, danger for `error`)
 
 2. Manual partner registration
    - If the lookup returns `not_found`, registration is available from two entry points:
