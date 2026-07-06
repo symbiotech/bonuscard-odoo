@@ -45,9 +45,9 @@ This document explains how the Bonuscard POS integration works in the `bonuscard
 
 5. Cancel or rollback flows
    - `PosStore.onClickBackButton()` (only when on the Payment Screen), `onDeleteOrder()`, and `closePos()` cancel pending Bonuscard transactions
-   - `setPartnerToCurrentOrder` also cancels an open transaction when the partner is changed mid-order
+   - `setPartnerToCurrentOrder` cancels an open transaction **before** changing the partner; if cancel fails, the partner change is blocked to avoid orphaning the Bonuscard lock
    - All cancel paths call `bonuscard.api.service.cancel_purchase_for_pos`
-   - Cancellation is best-effort: network failures are caught and logged; the POS flow continues regardless
+   - `closePos` and `onDeleteOrder` retry cancel once; local transaction state is cleared only after a successful cancel
    - `PosOrder.removeOrderline` clears `bonuscard_checkout_items` and sets `bonuscard_needs_validation` so the next action re-validates
    - `PosOrderline.setQuantity` and `PosOrderline.delete` also set `bonuscard_needs_validation` when called outside of the discount-application cycle
 

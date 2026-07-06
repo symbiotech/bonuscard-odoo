@@ -618,7 +618,7 @@ test("changing partner cancels the open Bonuscard transaction before clearing it
     expect(order.bonuscard_transaction_id).toBe(null);
 });
 
-test("changing partner clears transaction state even when cancel returns an error", async () => {
+test("changing partner keeps transaction state when cancel returns an error", async () => {
     const store = await setupPosEnv();
     const order = store.addNewOrder();
     const product = store.models["product.product"].get(5);
@@ -675,9 +675,9 @@ test("changing partner clears transaction state even when cancel returns an erro
     expect(order.bonuscard_transaction_id).toBe("TXN1");
 
     await store.setPartnerToCurrentOrder(partner2);
-    // Partner change must proceed regardless of cancel failure.
-    expect(order.bonuscard_transaction_id).toBe(null);
-    expect(order.bonuscard_partner_id).toBe(partner2.id);
+    // Cancel failure must block the partner change to avoid orphaning the Bonuscard lock.
+    expect(order.bonuscard_transaction_id).toBe("TXN1");
+    expect(order.bonuscard_partner_id).toBe(partner1.id);
 });
 
 test("removing partner cancels the open Bonuscard transaction before clearing it", async () => {
