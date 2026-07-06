@@ -111,7 +111,7 @@ patch(PosStore.prototype, {
                         _t(
                             "Bonuscard cancel failed. The customer could not be changed while a Bonuscard transaction is pending."
                         ),
-                    { type: "warning" }
+                    { type: "warning", sticky: true }
                 );
                 return;
             }
