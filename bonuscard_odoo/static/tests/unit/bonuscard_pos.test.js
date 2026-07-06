@@ -1709,6 +1709,41 @@ test("afterOrderValidation keeps transaction state when finalize fails after ret
     expect(notifications[0].options.sticky).toBe(true);
 });
 
+test("afterOrderValidation shows payment-succeeded warning without API detail when finalize returns no message", async () => {
+    const store = await setupPosEnv();
+    const order = store.addNewOrder();
+    order.bonuscard_partner_id = 42;
+    order.bonuscard_transaction_id = "TXN-FINALIZE-NO-MSG";
+    order.bonuscard_checkout_items = [{ ean: "TEST-000", quantity: 1, pricePerItem: 10 }];
+
+    const notifications = [];
+    patchWithCleanup(store.notification, {
+        add: (message, options) => notifications.push({ message, options }),
+    });
+
+    const originalCall = store.data.call.bind(store.data);
+    patchWithCleanup(store.data, {
+        call: async function (model, method, args) {
+            if (model === "bonuscard.api.service" && method === "finalize_purchase_for_pos") {
+                return { error: true, messages: [] };
+            }
+            return originalCall(...arguments);
+        },
+    });
+
+    stubAfterOrderValidationSideEffects(store);
+    const validation = createPaymentValidation(store, order);
+    const finalizePromise = validation.afterOrderValidation();
+    await runAllTimers();
+    await finalizePromise;
+
+    expect(order.bonuscard_transaction_id).toBe("TXN-FINALIZE-NO-MSG");
+    expect(notifications.length).toBe(1);
+    expect(notifications[0].message).toBe(
+        "Payment succeeded but Bonuscard could not commit the discount. The loyalty transaction is still pending."
+    );
+});
+
 test("afterOrderValidation retries finalize once when the RPC throws", async () => {
     const store = await setupPosEnv();
     const order = store.addNewOrder();
