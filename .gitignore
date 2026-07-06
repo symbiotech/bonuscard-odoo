@@ -8,3 +8,5 @@ __pycache__/
 *.egg-info/
 .ruff_cache/
 LOCAL_SETUP.md
+.jcodemunch.jsonc
+.cursor/rules/jcodemunch.mdc
