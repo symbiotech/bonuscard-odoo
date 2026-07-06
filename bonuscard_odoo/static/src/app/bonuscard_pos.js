@@ -784,7 +784,7 @@ patch(OrderPaymentValidation.prototype, {
                 await new Promise((resolve) => setTimeout(resolve, 500));
                 continue;
             }
-            return { success: false, message: lastMessage };
+            break;
         }
         return { success: false, message: lastMessage };
     },
