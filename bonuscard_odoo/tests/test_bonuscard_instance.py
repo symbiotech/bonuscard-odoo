@@ -1,5 +1,6 @@
 from unittest.mock import MagicMock, patch
 from urllib.error import HTTPError
+from urllib.request import Request
 
 from odoo.addons.bonuscard_odoo.models.bonuscard_api_service import BonuscardHttpError
 from odoo.exceptions import UserError, ValidationError
@@ -287,3 +288,60 @@ class TestBonuscardInstance(TransactionCase):
             result = service._request(record)
 
         self.assertEqual(result, {"success": True})
+
+    def test_request_rebuilds_request_object_on_http_retry(self):
+        """Each retry builds a fresh Request so POST body is not consumed."""
+        record = self.instance_model.create(
+            {
+                "name": "Retry HTTP",
+                "api_base_url": "https://web.bonuscard.com/api/",
+                "api_username": "demo-user",
+                "api_password": "demo-pass",
+            }
+        )
+        service = self.env["bonuscard.api.service"]
+        payload = {"transactionIdentifier": "tx-123"}
+
+        response = MagicMock()
+        response.read.return_value = b'{"success": true}'
+        urlopen_context = MagicMock()
+        urlopen_context.__enter__.return_value = response
+        urlopen_context.__exit__.return_value = False
+
+        http_err = HTTPError(
+            url="https://web.bonuscard.com/api/CancelPurchase",
+            code=503,
+            msg="Service Unavailable",
+            hdrs={},
+            fp=MagicMock(read=lambda: b""),
+        )
+
+        requests_created = []
+
+        def track_request(*args, **kwargs):
+            req = Request(*args, **kwargs)
+            requests_created.append(req)
+            return req
+
+        with (
+            patch(
+                "odoo.addons.bonuscard_odoo.models.bonuscard_api_service.Request",
+                side_effect=track_request,
+            ),
+            patch(
+                "odoo.addons.bonuscard_odoo.models.bonuscard_api_service.urlopen",
+                side_effect=[http_err, urlopen_context],
+            ) as mock_urlopen,
+            patch("odoo.addons.bonuscard_odoo.models.bonuscard_api_service.time.sleep"),
+        ):
+            result = service._request(
+                record,
+                endpoint="CancelPurchase",
+                method="POST",
+                payload=payload,
+            )
+
+        self.assertEqual(result, {"success": True})
+        self.assertEqual(len(requests_created), 2)
+        self.assertIsNot(requests_created[0], requests_created[1])
+        self.assertEqual(mock_urlopen.call_count, 2)
