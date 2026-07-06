@@ -81,6 +81,43 @@ class TestResPartnerBonuscard(TransactionCase):
 
         self.assertEqual(partner.bonuscard_status, "ambiguous")
 
+    def test_refresh_bonuscard_status_does_not_link_on_name_only_when_contact_details_differ(
+        self,
+    ):
+        partner = self.partner_model.create({"name": "John Smith"})
+
+        with patch(
+            "odoo.addons.bonuscard_odoo.models.bonuscard_api_service.BonuscardApiService._search_customers",
+            return_value=[
+                {
+                    "id": 1,
+                    "name": "John Smith",
+                    "phoneNumber": "+46701111111",
+                }
+            ],
+        ):
+            partner.action_refresh_bonuscard_status()
+
+        self.assertEqual(partner.bonuscard_status, "not_found")
+
+    def test_refresh_bonuscard_status_links_on_name_when_no_contact_details_exist(self):
+        partner = self.partner_model.create({"name": "Walk In Customer"})
+
+        with patch(
+            "odoo.addons.bonuscard_odoo.models.bonuscard_api_service.BonuscardApiService._search_customers",
+            return_value=[
+                {
+                    "id": 2,
+                    "name": "Walk In Customer",
+                    "recruitmentCode": "WALK1",
+                }
+            ],
+        ):
+            partner.action_refresh_bonuscard_status()
+
+        self.assertEqual(partner.bonuscard_status, "linked")
+        self.assertEqual(partner.bonuscard_recruitment_code, "WALK1")
+
     def test_get_bonuscard_status_for_pos_returns_serializable_payload(self):
         partner = self.partner_model.create(
             {
