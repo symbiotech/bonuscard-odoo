@@ -139,11 +139,11 @@ class BonuscardApiService(models.AbstractModel):
             body = json.dumps(payload).encode("utf-8")
             headers["Content-Type"] = "application/json"
 
-        request = Request(url=url, data=body, headers=headers, method=method)
         timeout = int(instance.request_timeout or 20)
 
         attempt = 0
         while True:
+            request = Request(url=url, data=body, headers=headers, method=method)
             try:
                 with urlopen(request, timeout=timeout) as response:
                     decoded_response = self._decode_response(response)
