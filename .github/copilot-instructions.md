@@ -9,15 +9,14 @@
 ## Confirmed Initial Scope
 
 - Primary Odoo surface: Point of Sale.
-- First release goal: purchase validation flow.
-- Authentication: Basic auth.
-- **Implemented**: SearchCustomers lookup triggered from POS partner selection, Bonuscard status fields on `res.partner`, smart button on partner form, OWL badge in POS partner list.
+- Authentication: Basic auth via `bonuscard.connector.instance._build_headers`.
+- **Implemented**: SearchCustomers lookup from POS partner selection; Bonuscard status fields on `res.partner`; smart button and manual check/reset on partner form; OWL badges in POS partner list; ValidatePurchase / FinalizePurchase / CancelPurchase lifecycle with automatic discount application; RegisterCustomer from partner form and POS partner list.
 
 ## Immediate Planning Constraints
 
-- Treat the current bearer-token assumption in the code as outdated unless explicit evidence shows the account uses a different auth mode.
-- Before adding more endpoints, align connection settings and request-building with Basic auth credentials.
+- Keep connection settings and request-building aligned with Basic auth credentials.
 - Keep the integration isolated inside this addon. Do not spread Bonuscard-specific logic across unrelated modules unless explicitly requested.
+- Configure a POS discount product — unmatched Bonuscard discounts are added as separate discount lines.
 
 ## Architecture Expectations
 
@@ -110,8 +109,8 @@ pre-commit run --all-files   # run everything now
 4. ~~Implement POS-oriented ValidatePurchase support.~~ ✅
 5. ~~Implement FinalizePurchase and CancelPurchase lifecycle handling.~~ ✅
 6. ~~Add logging, diagnostics, and retry-safe error handling.~~ ✅
-7. Add follow-up features only after the purchase flow is stable:
-	 - ~~RegisterCustomer~~
+7. ~~RegisterCustomer (partner form and POS partner list).~~ ✅
+8. Add follow-up features only after the purchase flow is stable:
 	 - ActivateDiscountCode
 	 - Sales report import
 
@@ -171,11 +170,13 @@ After edits:
 
 ## Documentation Maintenance Rule
 
-When any code change affects observable behavior, update the relevant docs in the same change. The three docs that must stay in sync with the code are:
+When any code change affects observable behavior, update the relevant docs in the same change:
 
 | Doc | What it covers | Update when… |
 |---|---|---|
-| `README.md` | Features list, usage guide, roadmap | A feature is added, changed, or completed |
+| `bonuscard_odoo/README.rst` | Features list, configuration, usage (canonical addon docs) | A feature is added, changed, or completed |
+| `README.md` | Repo setup, roadmap, development workflow | Roadmap status changes or dev/CI instructions change |
+| `bonuscard_odoo/static/description/index.html` | Odoo Apps listing highlights | User-visible features change |
 | `docs/bonuscard_pos_integration_explanation.md` | Step-by-step POS flow, patched methods, backend components, tracked state | Any POS patch is added/renamed/removed; any `bonuscard.api.service` or `res.partner` method changes |
 | `docs/bonuscard_pos_integration_diagram.mmd` | Architecture flowchart | The trigger points or data-flow arrows between POS and backend change |
 
@@ -184,12 +185,12 @@ Concrete checks before finishing a code change:
 1. If a POS method is patched or renamed, update the method name in explanation.md and the diagram.
 2. If a new validation trigger is added (e.g. a new hook that calls `_validateBonuscardPurchaseForOrder`), add it to step 3 of explanation.md and the diagram.
 3. If a new cancel path is added, add it to step 5 of explanation.md.
-4. If a Roadmap item in README.md is implemented, mark it ✓ in the same PR.
-5. If a new end-to-end feature is added, add a bullet to the **Features** section of README.md.
-6. Never describe a flow as "(Foundation)" once it is fully implemented.
+4. If a Roadmap item in README.md is implemented, mark it Done in the same PR.
+5. If a new end-to-end feature is added, add a bullet to the **Features** section of `bonuscard_odoo/README.rst` and update `static/description/index.html`.
+6. Never describe a flow as "(Foundation)" or "Ready for" once it is fully implemented.
 
 ## When Generating Code
 
 - Prefer root-cause fixes over view-only or field-only patches.
 - If the API documentation and the current code disagree, flag the mismatch and fix the design before adding more functionality.
-- Keep README, explanation.md, diagram.mmd, and tests aligned with any meaningful behavior change.
+- Keep `bonuscard_odoo/README.rst`, explanation.md, diagram.mmd, and tests aligned with any meaningful behavior change.

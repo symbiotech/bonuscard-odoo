@@ -47,6 +47,18 @@ Configuration and functional usage are documented in
 - [docs/bonuscard_pos_integration_explanation.md](docs/bonuscard_pos_integration_explanation.md)
 - [docs/bonuscard_pos_integration_diagram.mmd](docs/bonuscard_pos_integration_diagram.mmd)
 
+## Roadmap
+
+| Item | Status |
+|------|--------|
+| Basic-auth connection and API service layer | Done |
+| POS customer lookup and status badges | Done |
+| ValidatePurchase / FinalizePurchase / CancelPurchase in POS | Done |
+| Automatic discount application in POS | Done |
+| RegisterCustomer (partner form and POS) | Done |
+| ActivateDiscountCode | Planned |
+| Sales report import | Planned |
+
 ## Development Setup
 
 This addon is an Odoo 19 module that runs against your main Odoo installation.
@@ -85,9 +97,12 @@ Activate your Odoo virtual environment and run tests:
 # From your Odoo source directory
 source .venv/bin/activate  # or .\.venv\Scripts\activate on Windows
 
-# Run addon tests
+# Run Python addon tests
 python -m odoo -c odoo.conf -d your_db --test-tags bonuscard_odoo --stop-after-init
 ```
+
+JS unit tests for POS logic are run via the Odoo web test runner. See
+`LOCAL_SETUP.example.md` for URLs and filter options (`?filter=bonuscard`).
 
 Or for a fresh installation test:
 
