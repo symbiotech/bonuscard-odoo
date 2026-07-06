@@ -7,6 +7,8 @@ import { patchTranslations, patchWithCleanup } from "@web/../tests/web_test_help
 import { OrderSummary } from "@point_of_sale/app/screens/product_screen/order_summary/order_summary";
 import * as makeAwaitableDialog from "@point_of_sale/app/utils/make_awaitable_dialog";
 import { BonuscardRegistrationService } from "../../src/app/bonuscard_registration_service";
+import OrderPaymentValidation from "@point_of_sale/app/utils/order_payment_validation";
+import { runAllTimers } from "@odoo/hoot-mock";
 
 // Ensure the Bonuscard POS patches are loaded for this test suite.
 import "../../src/app/bonuscard_pos";
@@ -22,6 +24,10 @@ patchTranslations({
             "Could not cancel the pending Bonuscard transaction. The order has been kept so you can retry cancellation.",
         "Could not cancel the pending Bonuscard transaction before closing. It may remain locked until it expires.":
             "Could not cancel the pending Bonuscard transaction before closing. It may remain locked until it expires.",
+        "Payment succeeded but Bonuscard could not commit the discount. The loyalty transaction is still pending.":
+            "Payment succeeded but Bonuscard could not commit the discount. The loyalty transaction is still pending.",
+        "Payment succeeded but Bonuscard finalization failed. The loyalty transaction is still pending.":
+            "Payment succeeded but Bonuscard finalization failed. The loyalty transaction is still pending.",
     }
 });
 
@@ -44,6 +50,20 @@ function patchBonuscardCancelCall(store, handler) {
             }
             return {};
         },
+    });
+}
+
+function stubAfterOrderValidationSideEffects(store) {
+    patchWithCleanup(store, {
+        checkPreparationStateAndSentOrderInPreparation: () => {},
+        printReceipt: async () => {},
+    });
+}
+
+function createPaymentValidation(store, order) {
+    return new OrderPaymentValidation({
+        pos: store,
+        orderUuid: order.uuid,
     });
 }
 
@@ -1580,6 +1600,112 @@ test("closePos retries cancel once before clearing transaction state", async () 
     expect(order.bonuscard_transaction_id).toBe(null);
     expect(order.bonuscard_checkout_items).toBe(null);
     expect(order.bonuscard_partner_id).toBe(false);
+});
+
+test("afterOrderValidation clears Bonuscard transaction state on successful finalize", async () => {
+    const store = await setupPosEnv();
+    const order = store.addNewOrder();
+    order.bonuscard_partner_id = 42;
+    order.bonuscard_transaction_id = "TXN-FINALIZE";
+    order.bonuscard_checkout_items = [{ ean: "TEST-123", quantity: 1, pricePerItem: 10 }];
+
+    let finalizedArgs = null;
+    const originalCall = store.data.call.bind(store.data);
+    patchWithCleanup(store.data, {
+        call: async function (model, method, args) {
+            if (model === "bonuscard.api.service" && method === "finalize_purchase_for_pos") {
+                finalizedArgs = args;
+                return { error: false, messages: [] };
+            }
+            return originalCall(...arguments);
+        },
+    });
+
+    stubAfterOrderValidationSideEffects(store);
+    const validation = createPaymentValidation(store, order);
+    await validation.afterOrderValidation();
+
+    expect(finalizedArgs).toEqual([
+        42,
+        "TXN-FINALIZE",
+        [{ ean: "TEST-123", quantity: 1, pricePerItem: 10 }],
+    ]);
+    expect(order.bonuscard_transaction_id).toBe(null);
+    expect(order.bonuscard_checkout_items).toBe(null);
+});
+
+test("afterOrderValidation retries finalize once before clearing transaction state", async () => {
+    const store = await setupPosEnv();
+    const order = store.addNewOrder();
+    order.bonuscard_partner_id = 42;
+    order.bonuscard_transaction_id = "TXN-FINALIZE-RETRY";
+    order.bonuscard_checkout_items = [{ ean: "TEST-456", quantity: 1, pricePerItem: 10 }];
+
+    let finalizeCallCount = 0;
+    const originalCall = store.data.call.bind(store.data);
+    patchWithCleanup(store.data, {
+        call: async function (model, method, args) {
+            if (model === "bonuscard.api.service" && method === "finalize_purchase_for_pos") {
+                finalizeCallCount++;
+                if (finalizeCallCount === 1) {
+                    return { error: true, messages: ["Temporary Bonuscard outage."] };
+                }
+                return { error: false, messages: [] };
+            }
+            return originalCall(...arguments);
+        },
+    });
+
+    stubAfterOrderValidationSideEffects(store);
+    const validation = createPaymentValidation(store, order);
+    const finalizePromise = validation.afterOrderValidation();
+    await runAllTimers();
+    await finalizePromise;
+
+    expect(finalizeCallCount).toBe(2);
+    expect(order.bonuscard_transaction_id).toBe(null);
+    expect(order.bonuscard_checkout_items).toBe(null);
+});
+
+test("afterOrderValidation keeps transaction state when finalize fails after retry", async () => {
+    const store = await setupPosEnv();
+    const order = store.addNewOrder();
+    order.bonuscard_partner_id = 42;
+    order.bonuscard_transaction_id = "TXN-FINALIZE-FAIL";
+    order.bonuscard_checkout_items = [{ ean: "TEST-789", quantity: 1, pricePerItem: 10 }];
+
+    const notifications = [];
+    patchWithCleanup(store.notification, {
+        add: (message, options) => notifications.push({ message, options }),
+    });
+
+    let finalizeCallCount = 0;
+    const originalCall = store.data.call.bind(store.data);
+    patchWithCleanup(store.data, {
+        call: async function (model, method, args) {
+            if (model === "bonuscard.api.service" && method === "finalize_purchase_for_pos") {
+                finalizeCallCount++;
+                return {
+                    error: true,
+                    messages: ["Bonuscard service is temporarily unavailable."],
+                };
+            }
+            return originalCall(...arguments);
+        },
+    });
+
+    stubAfterOrderValidationSideEffects(store);
+    const validation = createPaymentValidation(store, order);
+    const finalizePromise = validation.afterOrderValidation();
+    await runAllTimers();
+    await finalizePromise;
+
+    expect(finalizeCallCount).toBe(2);
+    expect(order.bonuscard_transaction_id).toBe("TXN-FINALIZE-FAIL");
+    expect(order.bonuscard_checkout_items).not.toBe(null);
+    expect(notifications.length).toBe(1);
+    expect(notifications[0].options.type).toBe("warning");
+    expect(notifications[0].options.sticky).toBe(true);
 });
 
 test("concurrent validations: only the latest call applies its discounts, stale calls are discarded", async () => {

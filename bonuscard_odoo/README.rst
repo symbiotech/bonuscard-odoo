@@ -85,9 +85,14 @@ Purchase Lifecycle
 The POS integration supports:
 
 * ``ValidatePurchase`` before payment and after order changes
-* ``FinalizePurchase`` after successful payment
+* ``FinalizePurchase`` after successful payment (retried once on failure)
 * ``CancelPurchase`` when the order is aborted, the customer is changed, the
   order is deleted, or the POS session is closed
+
+``FinalizePurchase`` is retried once after payment. Local transaction fields are
+cleared only after Bonuscard confirms finalization. If finalization still fails,
+payment remains complete but a sticky warning is shown and the transaction
+fields are kept so the loyalty lock can be recovered manually.
 
 Cancel requests are retried once on ``onDeleteOrder`` and ``closePos``. Local
 transaction fields are cleared only after Bonuscard confirms cancellation.
