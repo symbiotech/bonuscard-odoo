@@ -26,8 +26,6 @@ patchTranslations({
             "Could not cancel the pending Bonuscard transaction before closing. It may remain locked until it expires.",
         "Payment succeeded but Bonuscard could not commit the discount. The loyalty transaction is still pending.":
             "Payment succeeded but Bonuscard could not commit the discount. The loyalty transaction is still pending.",
-        "Payment succeeded but Bonuscard finalization failed. The loyalty transaction is still pending.":
-            "Payment succeeded but Bonuscard finalization failed. The loyalty transaction is still pending.",
     }
 });
 
@@ -1704,8 +1702,45 @@ test("afterOrderValidation keeps transaction state when finalize fails after ret
     expect(order.bonuscard_transaction_id).toBe("TXN-FINALIZE-FAIL");
     expect(order.bonuscard_checkout_items).not.toBe(null);
     expect(notifications.length).toBe(1);
+    expect(notifications[0].message).toContain(
+        "Payment succeeded but Bonuscard could not commit the discount. The loyalty transaction is still pending."
+    );
+    expect(notifications[0].message).toContain("Bonuscard service is temporarily unavailable.");
     expect(notifications[0].options.type).toBe("warning");
     expect(notifications[0].options.sticky).toBe(true);
+});
+
+test("afterOrderValidation retries finalize once when the RPC throws", async () => {
+    const store = await setupPosEnv();
+    const order = store.addNewOrder();
+    order.bonuscard_partner_id = 42;
+    order.bonuscard_transaction_id = "TXN-FINALIZE-THROW";
+    order.bonuscard_checkout_items = [{ ean: "TEST-321", quantity: 1, pricePerItem: 10 }];
+
+    let finalizeCallCount = 0;
+    const originalCall = store.data.call.bind(store.data);
+    patchWithCleanup(store.data, {
+        call: async function (model, method, args) {
+            if (model === "bonuscard.api.service" && method === "finalize_purchase_for_pos") {
+                finalizeCallCount++;
+                if (finalizeCallCount === 1) {
+                    throw new Error("Network error");
+                }
+                return { error: false, messages: [] };
+            }
+            return originalCall(...arguments);
+        },
+    });
+
+    stubAfterOrderValidationSideEffects(store);
+    const validation = createPaymentValidation(store, order);
+    const finalizePromise = validation.afterOrderValidation();
+    await runAllTimers();
+    await finalizePromise;
+
+    expect(finalizeCallCount).toBe(2);
+    expect(order.bonuscard_transaction_id).toBe(null);
+    expect(order.bonuscard_checkout_items).toBe(null);
 });
 
 test("concurrent validations: only the latest call applies its discounts, stale calls are discarded", async () => {

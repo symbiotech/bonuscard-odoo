@@ -447,16 +447,6 @@ msgstr ""
 "Lojalitetstransaktionen väntar fortfarande."
 
 #. module: bonuscard_odoo
-#. odoo-javascript
-#: code:bonuscard_odoo/static/src/app/bonuscard_pos.js:0
-msgid ""
-"Payment succeeded but Bonuscard finalization failed. The loyalty transaction"
-" is still pending."
-msgstr ""
-"Betalningen lyckades men Bonuscard-avslutningen misslyckades. "
-"Lojalitetstransaktionen väntar fortfarande."
-
-#. module: bonuscard_odoo
 #: model_terms:ir.ui.view,arch_db:bonuscard_odoo.bonuscard_odoo_instance_view_form
 msgid "Production Bonuscard"
 msgstr "Produktions-Bonuscard"
