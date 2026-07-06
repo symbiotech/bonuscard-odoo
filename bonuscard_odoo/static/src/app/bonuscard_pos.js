@@ -730,6 +730,29 @@ patch(OrderSummary.prototype, {
 });
 
 patch(OrderPaymentValidation.prototype, {
+    async _finalizeBonuscardPurchaseForOrder(order, attempt = 0) {
+        const result = await this.pos.data.call(
+            "bonuscard.api.service",
+            "finalize_purchase_for_pos",
+            [
+                order.bonuscard_partner_id,
+                order.bonuscard_transaction_id,
+                order.bonuscard_checkout_items,
+            ]
+        );
+        if (!result.error) {
+            return { success: true };
+        }
+        if (attempt < 1) {
+            await new Promise((resolve) => setTimeout(resolve, 500));
+            return this._finalizeBonuscardPurchaseForOrder(order, attempt + 1);
+        }
+        return {
+            success: false,
+            message: result.messages?.[0] || _t("Bonuscard finalization failed."),
+        };
+    },
+
     async afterOrderValidation() {
         await super.afterOrderValidation(...arguments);
         const order = this.order;
@@ -739,31 +762,32 @@ patch(OrderPaymentValidation.prototype, {
         }
 
         try {
-            const result = await this.pos.data.call(
-                "bonuscard.api.service",
-                "finalize_purchase_for_pos",
-                [
-                    order.bonuscard_partner_id,
-                    order.bonuscard_transaction_id,
-                    order.bonuscard_checkout_items,
-                ]
-            );
-            if (result.error) {
+            const finalizeResult = await this._finalizeBonuscardPurchaseForOrder(order);
+            if (!finalizeResult.success) {
                 logPosMessage(
                     "Bonuscard",
                     "afterOrderValidation",
-                    "Bonuscard finalization returned error response",
+                    "Bonuscard finalization failed after payment",
                     false,
-                    [{ transactionId: order.bonuscard_transaction_id, partnerId: order.bonuscard_partner_id || null, message: result.messages?.[0] }]
+                    [
+                        {
+                            transactionId: order.bonuscard_transaction_id,
+                            partnerId: order.bonuscard_partner_id || null,
+                            message: finalizeResult.message,
+                        },
+                    ]
                 );
                 this.pos.notification.add(
-                    result.messages?.[0] || _t("Bonuscard finalization failed."),
-                    { type: "warning" }
+                    finalizeResult.message ||
+                        _t(
+                            "Payment succeeded but Bonuscard could not commit the discount. The loyalty transaction is still pending."
+                        ),
+                    { type: "warning", sticky: true }
                 );
-            } else {
-                order.bonuscard_transaction_id = null;
-                order.bonuscard_checkout_items = null;
+                return;
             }
+            order.bonuscard_transaction_id = null;
+            order.bonuscard_checkout_items = null;
         } catch (error) {
             logPosMessage(
                 "Bonuscard",
@@ -773,7 +797,12 @@ patch(OrderPaymentValidation.prototype, {
                 [{ transactionId: order.bonuscard_transaction_id, partnerId: order.bonuscard_partner_id || null, error }]
             );
             // Do not interrupt the POS payment flow if Bonuscard finalization fails.
-            this.pos.notification.add(_t("Bonuscard finalization failed."), { type: "warning" });
+            this.pos.notification.add(
+                _t(
+                    "Payment succeeded but Bonuscard finalization failed. The loyalty transaction is still pending."
+                ),
+                { type: "warning", sticky: true }
+            );
         }
     },
 });
