@@ -1702,10 +1702,9 @@ test("afterOrderValidation keeps transaction state when finalize fails after ret
     expect(order.bonuscard_transaction_id).toBe("TXN-FINALIZE-FAIL");
     expect(order.bonuscard_checkout_items).not.toBe(null);
     expect(notifications.length).toBe(1);
-    expect(notifications[0].message).toContain(
-        "Payment succeeded but Bonuscard could not commit the discount. The loyalty transaction is still pending."
+    expect(notifications[0].message).toBe(
+        "Payment succeeded but Bonuscard could not commit the discount. The loyalty transaction is still pending. (Bonuscard service is temporarily unavailable.)"
     );
-    expect(notifications[0].message).toContain("Bonuscard service is temporarily unavailable.");
     expect(notifications[0].options.type).toBe("warning");
     expect(notifications[0].options.sticky).toBe(true);
 });
