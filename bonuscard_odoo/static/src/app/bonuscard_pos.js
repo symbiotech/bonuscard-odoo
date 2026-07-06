@@ -449,6 +449,22 @@ patch(PosStore.prototype, {
                             remainingQuantity -= lineQuantity;
                         }
                     } else {
+                        if (!discountProductRecord) {
+                            const unitPrice = Math.abs(line.price_unit);
+                            const lineTotal = lineQuantity * unitPrice;
+                            const discountAmount = remainingQuantity * Math.abs(itemPricePerItem);
+                            const discountPercent = Math.min(
+                                100,
+                                lineTotal > 0 ? (discountAmount / lineTotal) * 100 : 0
+                            );
+                            if (discountPercent > 0) {
+                                line.setDiscount(discountPercent);
+                                line.uiState = line.uiState || {};
+                                line.uiState._bonuscardDiscount = true;
+                                appliedForItem = true;
+                                remainingQuantity = 0;
+                            }
+                        }
                         break;
                     }
                 }
