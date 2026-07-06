@@ -71,7 +71,15 @@ class ResPartner(models.Model):
             if partner_email and customer_email and partner_email == customer_email:
                 exact_matches[customer_key] = customer
                 continue
-            if partner_name and customer_name and partner_name == customer_name:
+            if (
+                not partner_phone
+                and not partner_email
+                and not customer_phone
+                and not customer_email
+                and partner_name
+                and customer_name
+                and partner_name == customer_name
+            ):
                 exact_matches[customer_key] = customer
         return list(exact_matches.values())
 

@@ -55,8 +55,10 @@ Customer Lookup in POS
 
 When a cashier selects a customer in Point of Sale, the addon calls
 ``SearchCustomers`` using phone, email, and name — unless the partner already
-has status ``linked`` or ``not_found`` (cached from a previous lookup). The
-result is written back to the partner and shown as a badge in the partner list.
+has status ``linked`` or ``not_found`` (cached from a previous lookup). Exact
+matches prefer phone and email; name is used only when neither side has phone
+or email details. The result is written back to the partner and shown as a
+badge in the partner list.
 Use **Check Bonuscard** on the partner form to force a fresh lookup.
 
 Customer Registration
