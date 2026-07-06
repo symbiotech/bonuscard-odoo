@@ -355,3 +355,29 @@ class TestResPartnerBonuscard(TransactionCase):
         self.assertIn("Already registered to Bonuscard.", str(exc.exception))
         # When an exception is raised, the transaction rolls back, so status remains unchanged
         self.assertEqual(partner.bonuscard_status, "not_checked")
+
+    def test_register_to_bonuscard_sanitizes_unexpected_exception(self):
+        partner = self.partner_model.create(
+            {
+                "name": "Register Unexpected Error",
+                "phone": "+46707654321",
+            }
+        )
+
+        with (
+            patch(
+                "odoo.addons.bonuscard_odoo.models.bonuscard_api_service.BonuscardApiService._search_customers",
+                return_value=[],
+            ),
+            patch(
+                "odoo.addons.bonuscard_odoo.models.bonuscard_api_service.BonuscardApiService._register_customer",
+                side_effect=RuntimeError("secret internal error"),
+            ),
+        ):
+            with self.assertRaises(UserError) as exc:
+                partner.action_register_to_bonuscard()
+
+        message = str(exc.exception)
+        self.assertIn("Bonuscard registration failed", message)
+        self.assertIn("Please try again or contact support", message)
+        self.assertNotIn("secret internal error", message)

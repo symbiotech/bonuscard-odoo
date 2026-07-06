@@ -287,7 +287,9 @@ class ResPartner(models.Model):
                 self.id,
             )
             raise UserError(
-                self.env._("Bonuscard registration failed: %s", str(exc))
+                self.env._(
+                    "Bonuscard registration failed. Please try again or contact support."
+                )
             ) from exc
 
     @api.model
