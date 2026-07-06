@@ -290,6 +290,58 @@ test("_applyBonuscardDiscountsToOrder applies proportional line discount when qu
     expect(line.discount).toBe(8);
 });
 
+test("_applyBonuscardDiscountsToOrder adds discount product line for partial coverage when discount product is configured", async () => {
+    const store = await setupPosEnv();
+    const order = store.addNewOrder();
+
+    const product = store.models["product.product"].get(5);
+    const discountProduct = store.models["product.product"].get(6);
+    product.barcode = "TEST-PARTIAL-DP-123";
+    store.config.discount_product_id = discountProduct;
+
+    const line = await store.addLineToOrder(
+        {
+            product_id: product,
+            product_tmpl_id: product.product_tmpl_id,
+            qty: 5,
+            price_unit: 10,
+        },
+        order
+    );
+    line.discount = 0;
+
+    const result = {
+        checkoutItems: [
+            {
+                identifier: "ITEM1",
+                ean: product.barcode,
+                quantity: 5,
+                pricePerItem: 10,
+            },
+        ],
+        resultItems: [
+            {
+                quantity: 2,
+                pricePerItem: -2,
+                relatedIdentifiers: ["ITEM1"],
+            },
+        ],
+    };
+
+    const applied = await store._applyBonuscardDiscountsToOrder(order, result);
+
+    expect(applied).toBe(true);
+    expect(line.discount).toBe(0);
+
+    const bonuscardDiscountLines = order.lines.filter(
+        (orderLine) =>
+            orderLine.uiState?._bonuscardLine && orderLine.product_id?.id === discountProduct.id
+    );
+    expect(bonuscardDiscountLines.length).toBe(1);
+    expect(bonuscardDiscountLines[0].qty).toBe(2);
+    expect(bonuscardDiscountLines[0].price_unit).toBe(-2);
+});
+
 test("setPartnerToCurrentOrder validates Bonuscard purchase and applies discount before payment", async () => {
     const store = await setupPosEnv();
     const order = store.addNewOrder();
