@@ -35,5 +35,5 @@ jobs:
         if: failure()
         with:
           name: Screenshots of failed JS tests
-          path: /tmp/odoo_tests/${{ env.PGDATABASE }}
+          path: /tmp/odoo_tests/${{ env.PGDATABASE }}/screenshots
           if-no-files-found: ignore

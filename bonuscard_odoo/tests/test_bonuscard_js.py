@@ -1,10 +1,6 @@
 import odoo.tests
+from odoo.addons.web.tests.test_js import unit_test_error_checker
 from odoo.tests import HttpCase, tagged
-
-
-def _unit_test_error_checker(message):
-    # Ignore per-test HOOT log lines; fail only on explicit HOOT errors.
-    return "[HOOT]" not in message
 
 
 @tagged("post_install", "-at_install")
@@ -19,5 +15,5 @@ class TestBonuscardJs(HttpCase):
             login="admin",
             timeout=3600,
             success_signal="[HOOT] Test suite succeeded",
-            error_checker=_unit_test_error_checker,
+            error_checker=unit_test_error_checker,
         )
