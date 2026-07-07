@@ -9,6 +9,7 @@ import { logPosMessage } from "@point_of_sale/app/utils/pretty_console_log";
 import { PosOrder } from "@point_of_sale/app/models/pos_order";
 import { PosOrderline } from "@point_of_sale/app/models/pos_order_line";
 import { PosStore } from "@point_of_sale/app/services/pos_store";
+import { uuidv4 } from "@point_of_sale/utils";
 import { OrderSummary } from "@point_of_sale/app/screens/product_screen/order_summary/order_summary";
 import OrderPaymentValidation from "@point_of_sale/app/utils/order_payment_validation";
 import { BonuscardRegistrationService } from "./bonuscard_registration_service";
@@ -23,8 +24,16 @@ registry.category("services").add("bonuscard_registration", {
 });
 
 patch(PosStore.prototype, {
+    // A transaction is "pending" when the POS either received a transaction ID
+    // from Bonuscard (confirmed) or generated one client-side and may already
+    // have sent it in a validation request (unconfirmed candidate).
+    _bonuscardPendingTransactionId(order) {
+        return order?.bonuscard_transaction_id || order?._bonuscardCandidateTxId || null;
+    },
+
     async _cancelBonuscardPurchaseForOrder(order, { retries = 0, logMethod = "cancel" } = {}) {
-        if (!order?.bonuscard_transaction_id) {
+        const transactionId = this._bonuscardPendingTransactionId(order);
+        if (!transactionId) {
             return { success: true };
         }
 
@@ -34,7 +43,7 @@ patch(PosStore.prototype, {
                 const result = await this.data.call(
                     "bonuscard.api.service",
                     "cancel_purchase_for_pos",
-                    [order.bonuscard_transaction_id, order.bonuscard_partner_id || null]
+                    [transactionId, order.bonuscard_partner_id || null]
                 );
                 if (result?.error === false) {
                     return { success: true };
@@ -48,7 +57,7 @@ patch(PosStore.prototype, {
                     false,
                     [
                         {
-                            transactionId: order.bonuscard_transaction_id,
+                            transactionId,
                             partnerId: order.bonuscard_partner_id || null,
                             attempt: attempt + 1,
                             error,
@@ -63,10 +72,7 @@ patch(PosStore.prototype, {
             if (attempt < retries) {
                 continue;
             }
-            return {
-                success: false,
-                message: lastMessage || _t("Bonuscard cancel failed."),
-            };
+            break;
         }
         return { success: false, message: lastMessage || _t("Bonuscard cancel failed.") };
     },
@@ -76,10 +82,115 @@ patch(PosStore.prototype, {
             return;
         }
         order.bonuscard_transaction_id = null;
+        order._bonuscardCandidateTxId = null;
         order.bonuscard_checkout_items = null;
         order.bonuscard_partner_id = false;
         order.bonuscard_needs_validation = true;
         order.clearBonuscardDiscounts?.();
+    },
+
+    _isBonuscardCustomerLockError(result) {
+        if (!result?.error) {
+            return false;
+        }
+        if (Number(result.errorCode) === 2) {
+            return true;
+        }
+        const message = (result.messages?.[0] || "").toLowerCase();
+        return message.includes("locked") && message.includes("transaction");
+    },
+
+    async _cancelBonuscardPurchaseWhenLeavingOrder(order, logMethod) {
+        if (!this._bonuscardPendingTransactionId(order)) {
+            return { success: true };
+        }
+        const cancelResult = await this._cancelBonuscardPurchaseForOrder(order, {
+            retries: 1,
+            logMethod,
+        });
+        if (cancelResult.success) {
+            this._clearBonuscardPurchaseState(order);
+            return cancelResult;
+        }
+        logPosMessage(
+            "Bonuscard",
+            logMethod,
+            "Bonuscard cancel failed while leaving order — customer may remain locked",
+            false,
+            [
+                {
+                    transactionId: this._bonuscardPendingTransactionId(order),
+                    partnerId: order.bonuscard_partner_id || null,
+                    message: cancelResult.message,
+                },
+            ]
+        );
+        this.notification.add(
+            cancelResult.message ||
+                _t(
+                    "Could not cancel the pending Bonuscard transaction before switching orders. The customer may remain locked until it expires."
+                ),
+            { type: "warning", sticky: true }
+        );
+        return cancelResult;
+    },
+
+    async _cancelOrphanedBonuscardTransactionsForPartner(partnerId, excludeOrder) {
+        if (!partnerId) {
+            return false;
+        }
+        const orders = this.models["pos.order"]?.getAll?.() ?? [];
+        let cancelledAny = false;
+        for (const other of orders) {
+            if (other === excludeOrder || other.finalized) {
+                continue;
+            }
+            if (
+                other.bonuscard_partner_id !== partnerId ||
+                !this._bonuscardPendingTransactionId(other)
+            ) {
+                continue;
+            }
+            const cancelResult = await this._cancelBonuscardPurchaseForOrder(other, {
+                retries: 1,
+                logMethod: "recoverOrphanedLock",
+            });
+            if (cancelResult.success) {
+                this._clearBonuscardPurchaseState(other);
+                cancelledAny = true;
+            }
+        }
+        return cancelledAny;
+    },
+
+    // Note: addNewOrder and setOrder must stay synchronous — core callers
+    // (e.g. the openOrder getter) use their return values directly. The
+    // cancellation of the order being left runs in the background; failures
+    // surface via the sticky warning in _cancelBonuscardPurchaseWhenLeavingOrder.
+    addNewOrder(data = {}) {
+        const previousOrder = this.getOrder();
+        const order = super.addNewOrder(data);
+        if (
+            previousOrder &&
+            previousOrder !== order &&
+            this._bonuscardPendingTransactionId(previousOrder)
+        ) {
+            this._cancelBonuscardPurchaseWhenLeavingOrder(previousOrder, "addNewOrder");
+        }
+        return order;
+    },
+
+    setOrder(order) {
+        const previousOrder = this.getOrder();
+        const result = super.setOrder(order);
+        if (
+            previousOrder &&
+            previousOrder !== order &&
+            this._bonuscardPendingTransactionId(previousOrder)
+        ) {
+            this._cancelBonuscardPurchaseWhenLeavingOrder(previousOrder, "setOrder");
+        }
+        return result;
     },
 
     async setPartnerToCurrentOrder(partner, ...rest) {
@@ -99,7 +210,7 @@ patch(PosStore.prototype, {
                     false,
                     [
                         {
-                            transactionId: order.bonuscard_transaction_id,
+                            transactionId: this._bonuscardPendingTransactionId(order),
                             partnerId: order.bonuscard_partner_id || null,
                             newPartnerId,
                             message: cancelResult.message,
@@ -229,7 +340,10 @@ patch(PosStore.prototype, {
         order.bonuscard_needs_validation = true;
     },
 
-    async _validateBonuscardPurchaseForOrder(order, { notifyOnDiscount = false } = {}) {
+    async _validateBonuscardPurchaseForOrder(
+        order,
+        { notifyOnDiscount = false, _lockRecoveryAttempt = false } = {}
+    ) {
         if (!order) {
             return false;
         }
@@ -266,22 +380,41 @@ patch(PosStore.prototype, {
             return false;
         }
 
+        // Generate the transaction identifier client-side (the API prefers a
+        // GUID without dashes). This guarantees that concurrent validations —
+        // e.g. adding a product then immediately editing its quantity — all
+        // send the SAME identifier. Without it, a second request racing the
+        // first would arrive without an identifier while the customer is
+        // already locked, producing Bonuscard error 2 and orphaning the lock.
+        if (!order.bonuscard_transaction_id && !order._bonuscardCandidateTxId) {
+            order._bonuscardCandidateTxId = uuidv4().replace(/-/g, "");
+        }
+        const transactionIdentifier =
+            order.bonuscard_transaction_id || order._bonuscardCandidateTxId;
+
         try {
             const result = await this.data.call(
                 "bonuscard.api.service",
                 "validate_purchase_for_pos",
-                [partner.id, orderLines, order.bonuscard_transaction_id || null]
+                [partner.id, orderLines, transactionIdentifier]
             );
 
             // A newer validation was triggered while we were waiting; discard this result
             // to prevent stale concurrent calls from stacking up discount lines.
             if (order._bonuscardValidationVersion !== myVersion) {
+                // Never lose the transaction ID, otherwise the customer lock
+                // becomes orphaned and impossible to cancel.
+                if (!result?.error && result?.transactionIdentifier && !order.bonuscard_transaction_id) {
+                    order.bonuscard_transaction_id = result.transactionIdentifier;
+                    order._bonuscardCandidateTxId = null;
+                }
                 return false;
             }
 
             if (!result.error) {
                 order.bonuscard_transaction_id =
-                    result.transactionIdentifier || order.bonuscard_transaction_id;
+                    result.transactionIdentifier || transactionIdentifier;
+                order._bonuscardCandidateTxId = null;
                 order.bonuscard_checkout_items =
                     Array.isArray(result.checkoutItems) && result.checkoutItems.length
                         ? result.checkoutItems
@@ -320,6 +453,34 @@ patch(PosStore.prototype, {
                 }
                 return true;
             }
+            if (!_lockRecoveryAttempt && this._isBonuscardCustomerLockError(result)) {
+                // The lock may belong to this order's own (stale) transaction
+                // or to an abandoned draft order for the same customer. Cancel
+                // both before retrying.
+                let recovered = false;
+                if (this._bonuscardPendingTransactionId(order)) {
+                    const cancelResult = await this._cancelBonuscardPurchaseForOrder(order, {
+                        retries: 1,
+                        logMethod: "recoverLock",
+                    });
+                    if (cancelResult.success) {
+                        this._clearBonuscardPurchaseState(order);
+                        recovered = true;
+                    }
+                }
+                const orphanCancelled =
+                    await this._cancelOrphanedBonuscardTransactionsForPartner(
+                        partner.id,
+                        order
+                    );
+                recovered = recovered || orphanCancelled;
+                if (recovered) {
+                    return this._validateBonuscardPurchaseForOrder(order, {
+                        notifyOnDiscount,
+                        _lockRecoveryAttempt: true,
+                    });
+                }
+            }
             const msg = result.messages?.[0] || _t("Bonuscard validation failed.");
             logPosMessage(
                 "Bonuscard",
@@ -335,7 +496,7 @@ patch(PosStore.prototype, {
                 "_validateBonuscardPurchaseForOrder",
                 "Bonuscard validation request failed",
                 false,
-                [{ partnerId: partner?.id, transactionId: order.bonuscard_transaction_id, error }]
+                [{ partnerId: partner?.id, transactionId: transactionIdentifier, error }]
             );
             this.notification.add(_t("Bonuscard validation failed."), { type: "warning" });
         }
@@ -520,7 +681,7 @@ patch(PosStore.prototype, {
     async closePos() {
         const orders = this.models["pos.order"]?.getAll?.() ?? [];
         for (const order of orders) {
-            if (!order?.bonuscard_transaction_id) {
+            if (!this._bonuscardPendingTransactionId(order)) {
                 continue;
             }
 
@@ -536,7 +697,7 @@ patch(PosStore.prototype, {
                     false,
                     [
                         {
-                            transactionId: order.bonuscard_transaction_id,
+                            transactionId: this._bonuscardPendingTransactionId(order),
                             partnerId: order.bonuscard_partner_id || null,
                             message: cancelResult.message,
                         },
@@ -557,7 +718,7 @@ patch(PosStore.prototype, {
     },
 
     async onDeleteOrder(order) {
-        if (order?.bonuscard_transaction_id) {
+        if (this._bonuscardPendingTransactionId(order)) {
             const cancelResult = await this._cancelBonuscardPurchaseForOrder(order, {
                 retries: 1,
                 logMethod: "onDeleteOrder",
@@ -570,7 +731,7 @@ patch(PosStore.prototype, {
                     false,
                     [
                         {
-                            transactionId: order.bonuscard_transaction_id,
+                            transactionId: this._bonuscardPendingTransactionId(order),
                             partnerId: order.bonuscard_partner_id || null,
                             message: cancelResult.message,
                         },
@@ -593,15 +754,19 @@ patch(PosStore.prototype, {
     async onClickBackButton() {
         if (this.router.state.current === "PaymentScreen") {
             const order = this.getOrder();
-            if (order?.bonuscard_transaction_id) {
+            if (this._bonuscardPendingTransactionId(order)) {
                 try {
                     const result = await this.data.call(
                         "bonuscard.api.service",
                         "cancel_purchase_for_pos",
-                        [order.bonuscard_transaction_id, order.bonuscard_partner_id || null]
+                        [
+                            this._bonuscardPendingTransactionId(order),
+                            order.bonuscard_partner_id || null,
+                        ]
                     );
                     if (!result?.error) {
                         order.bonuscard_transaction_id = null;
+                        order._bonuscardCandidateTxId = null;
                         order.bonuscard_checkout_items = null;
                         order.bonuscard_partner_id = false;
                     } else {
@@ -610,7 +775,7 @@ patch(PosStore.prototype, {
                             "onClickBackButton",
                             "Bonuscard cancel returned error during back navigation",
                             false,
-                            [{ transactionId: order.bonuscard_transaction_id, partnerId: order.bonuscard_partner_id || null, message: result.messages?.[0] }]
+                            [{ transactionId: this._bonuscardPendingTransactionId(order), partnerId: order.bonuscard_partner_id || null, message: result.messages?.[0] }]
                         );
                         this.notification.add(
                             result.messages?.[0] || _t("Bonuscard cancel failed."),
@@ -623,7 +788,7 @@ patch(PosStore.prototype, {
                         "onClickBackButton",
                         "Bonuscard cancel failed during back navigation",
                         false,
-                        [{ transactionId: order.bonuscard_transaction_id, partnerId: order.bonuscard_partner_id || null, error }]
+                        [{ transactionId: this._bonuscardPendingTransactionId(order), partnerId: order.bonuscard_partner_id || null, error }]
                     );
                     this.notification.add(_t("Bonuscard cancel failed."), { type: "warning" });
                 }
@@ -783,7 +948,7 @@ patch(OrderPaymentValidation.prototype, {
                     false,
                     [
                         {
-                            transactionId: order.bonuscard_transaction_id,
+                            transactionId: this.pos._bonuscardPendingTransactionId(order),
                             partnerId: order.bonuscard_partner_id || null,
                             attempt: attempt + 1,
                             error,
@@ -822,7 +987,7 @@ patch(OrderPaymentValidation.prototype, {
                 false,
                 [
                     {
-                        transactionId: order.bonuscard_transaction_id,
+                        transactionId: this.pos._bonuscardPendingTransactionId(order),
                         partnerId: order.bonuscard_partner_id || null,
                         message: finalizeResult.message,
                     },

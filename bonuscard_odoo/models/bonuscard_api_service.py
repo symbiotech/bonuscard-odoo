@@ -394,13 +394,21 @@ class BonuscardApiService(models.AbstractModel):
                 transaction_identifier=transaction_identifier,
             )
         except BonuscardApiError as exc:
+            error_code = exc.error_code
+            try:
+                error_code = int(error_code)
+            except (TypeError, ValueError):
+                error_code = None
             message = self._get_bonuscard_error_message(
                 exc, self.env._("Bonuscard validation failed.")
             )
-            return {
+            response = {
                 "error": True,
                 "messages": [message],
             }
+            if error_code is not None:
+                response["errorCode"] = error_code
+            return response
         except Exception as exc:  # pylint: disable=broad-except
             # POS flow must remain non-blocking: return an error payload instead
             # of raising and let the frontend continue with normal payment.
@@ -601,13 +609,21 @@ class BonuscardApiService(models.AbstractModel):
                 formatted_items,
             )
         except BonuscardApiError as exc:
+            error_code = exc.error_code
+            try:
+                error_code = int(error_code)
+            except (TypeError, ValueError):
+                error_code = None
             message = self._get_bonuscard_error_message(
                 exc, self.env._("Bonuscard finalization failed.")
             )
-            return {
+            response = {
                 "error": True,
                 "messages": [message],
             }
+            if error_code is not None:
+                response["errorCode"] = error_code
+            return response
         except Exception as exc:  # pylint: disable=broad-except
             if isinstance(exc, BonuscardHttpError):
                 _logger.warning(
