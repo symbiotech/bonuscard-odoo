@@ -2053,3 +2053,220 @@ test("concurrent validations: only the latest call applies its discounts, stale 
     // The transaction ID must come from the latest call, not the stale one.
     expect(order.bonuscard_transaction_id).toBe("TXN-LATEST");
 });
+
+test("addNewOrder cancels the pending Bonuscard transaction on the order being left", async () => {
+    const store = await setupPosEnv();
+    const order1 = store.addNewOrder();
+    const partner = store.models["res.partner"].create({ name: "Bonuscard Customer" });
+    partner.bonuscard_recruitment_code = "ABC123";
+    partner.bonuscard_status = "linked";
+    order1.bonuscard_transaction_id = "TXN-OLD";
+    order1.bonuscard_partner_id = partner.id;
+
+    let cancelledId = null;
+    patchWithCleanup(store.data, {
+        call: async (model, method, args) => {
+            if (model === "bonuscard.api.service" && method === "cancel_purchase_for_pos") {
+                cancelledId = args[0];
+                return { error: false };
+            }
+            return {};
+        },
+    });
+
+    const order2 = store.addNewOrder();
+    // The cancel of the previous order's transaction runs in the background;
+    // flush pending microtasks so its state cleanup completes.
+    for (let i = 0; i < 10; i++) {
+        await Promise.resolve();
+    }
+
+    expect(cancelledId).toBe("TXN-OLD");
+    expect(order1.bonuscard_transaction_id).toBe(null);
+    expect(order2).not.toBe(order1);
+});
+
+test("concurrent validations share the same client-generated transaction identifier", async () => {
+    const store = await setupPosEnv();
+    const order = store.addNewOrder();
+    const product = store.models["product.product"].get(5);
+    product.barcode = "TEST-SHARED-TXID";
+
+    await store.addLineToOrder(
+        {
+            product_id: product,
+            product_tmpl_id: product.product_tmpl_id,
+            qty: 1,
+            price_unit: 10,
+        },
+        order
+    );
+
+    const partner = store.models["res.partner"].create({ name: "Bonuscard Customer" });
+    partner.bonuscard_recruitment_code = "ABC123";
+    partner.bonuscard_status = "linked";
+    order.setPartner(partner);
+
+    const sentIdentifiers = [];
+    const resolvers = [];
+    const originalCall = store.data.call.bind(store.data);
+    patchWithCleanup(store.data, {
+        call: async function (model, method, args) {
+            if (model === "bonuscard.api.service" && method === "validate_purchase_for_pos") {
+                sentIdentifiers.push(args[2]);
+                return new Promise((resolve) => resolvers.push(resolve));
+            }
+            return originalCall(...arguments);
+        },
+    });
+
+    // Simulate "add product then immediately edit quantity": two validations
+    // start before the first response arrives.
+    const p1 = store._validateBonuscardPurchaseForOrder(order);
+    const p2 = store._validateBonuscardPurchaseForOrder(order);
+
+    expect(sentIdentifiers.length).toBe(2);
+    // Both requests must carry the SAME non-null identifier, otherwise the
+    // second one would hit Bonuscard error 2 (customer locked).
+    expect(sentIdentifiers[0]).not.toBe(null);
+    expect(sentIdentifiers[1]).toBe(sentIdentifiers[0]);
+
+    const result = {
+        transactionIdentifier: sentIdentifiers[0],
+        checkoutItems: [],
+        totalDiscount: 0,
+        resultItems: [],
+    };
+    resolvers[0](result);
+    resolvers[1](result);
+    await p1;
+    await p2;
+
+    expect(order.bonuscard_transaction_id).toBe(sentIdentifiers[0]);
+});
+
+test("stale concurrent validation result still stores the transaction identifier so the lock can be cancelled", async () => {
+    const store = await setupPosEnv();
+    const order = store.addNewOrder();
+    const product = store.models["product.product"].get(5);
+    product.barcode = "TEST-STALE-CAPTURE";
+
+    await store.addLineToOrder(
+        {
+            product_id: product,
+            product_tmpl_id: product.product_tmpl_id,
+            qty: 1,
+            price_unit: 10,
+        },
+        order
+    );
+
+    const partner = store.models["res.partner"].create({ name: "Bonuscard Customer" });
+    partner.bonuscard_recruitment_code = "ABC123";
+    partner.bonuscard_status = "linked";
+    order.setPartner(partner);
+
+    const resolvers = [];
+    const originalCall = store.data.call.bind(store.data);
+    patchWithCleanup(store.data, {
+        call: async function (model, method) {
+            if (model === "bonuscard.api.service" && method === "validate_purchase_for_pos") {
+                return new Promise((resolve) => resolvers.push(resolve));
+            }
+            return originalCall(...arguments);
+        },
+    });
+
+    const p1 = store._validateBonuscardPurchaseForOrder(order);
+    const p2 = store._validateBonuscardPurchaseForOrder(order);
+
+    // Resolve only the stale (first) call with a transaction ID; leave the
+    // latest call to fail so the order would otherwise have no identifier.
+    resolvers[0]({
+        transactionIdentifier: "TXN-FROM-STALE",
+        checkoutItems: [],
+        totalDiscount: 0,
+        resultItems: [],
+    });
+    resolvers[1]({ error: true, messages: ["Bonuscard validation failed."] });
+    await p1;
+    await p2;
+
+    // The stale result's transaction ID must have been captured, not discarded.
+    expect(order.bonuscard_transaction_id).toBe("TXN-FROM-STALE");
+});
+
+test("validation recovers from customer lock by cancelling orphaned transactions on other orders", async () => {
+    const store = await setupPosEnv();
+    const product = store.models["product.product"].get(5);
+    product.barcode = "LOCK-RECOVERY-123";
+
+    const partner = store.models["res.partner"].create({ name: "Bonuscard Customer" });
+    partner.bonuscard_recruitment_code = "ABC123";
+    partner.bonuscard_status = "linked";
+
+    const orphanedOrder = store.addNewOrder();
+    const order = store.addNewOrder();
+    // Assign the orphaned transaction only after switching orders, so the
+    // addNewOrder background-cancel path does not clean it up during setup.
+    orphanedOrder.bonuscard_transaction_id = "TXN-ORPHAN";
+    orphanedOrder.bonuscard_partner_id = partner.id;
+    await store.addLineToOrder(
+        {
+            product_id: product,
+            product_tmpl_id: product.product_tmpl_id,
+            qty: 1,
+            price_unit: 10,
+        },
+        order
+    );
+    order.setPartner(partner);
+
+    let validateCallCount = 0;
+    let cancelledIds = [];
+    const originalCall = store.data.call.bind(store.data);
+    patchWithCleanup(store.data, {
+        call: async function (model, method, args) {
+            if (model === "bonuscard.api.service" && method === "cancel_purchase_for_pos") {
+                cancelledIds.push(args[0]);
+                return { error: false };
+            }
+            if (model === "bonuscard.api.service" && method === "validate_purchase_for_pos") {
+                validateCallCount++;
+                if (validateCallCount === 1) {
+                    return {
+                        error: true,
+                        errorCode: 2,
+                        messages: [
+                            "Customer is locked to an open transaction. Please try again or restart.",
+                        ],
+                    };
+                }
+                return {
+                    transactionIdentifier: "TXN-NEW",
+                    checkoutItems: [
+                        {
+                            identifier: "ITEM1",
+                            ean: product.barcode,
+                            quantity: 1,
+                            pricePerItem: 10,
+                        },
+                    ],
+                    totalDiscount: 0,
+                    resultItems: [],
+                };
+            }
+            return originalCall(...arguments);
+        },
+    });
+
+    await store._validateBonuscardPurchaseForOrder(order);
+
+    // Two cancels: the current order's own candidate identifier (best-effort)
+    // and the orphaned transaction held by the other draft order.
+    expect(cancelledIds.length).toBe(2);
+    expect(cancelledIds[1]).toBe("TXN-ORPHAN");
+    expect(orphanedOrder.bonuscard_transaction_id).toBe(null);
+    expect(validateCallCount).toBe(2);
+    expect(order.bonuscard_transaction_id).toBe("TXN-NEW");
+});

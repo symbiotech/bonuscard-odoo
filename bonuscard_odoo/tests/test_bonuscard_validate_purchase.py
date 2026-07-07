@@ -301,6 +301,7 @@ class TestBonuscardValidatePurchase(TransactionCase):
             result = self.service.validate_purchase_for_pos(partner.id, order_lines)
 
         self.assertTrue(result.get("error"))
+        self.assertEqual(result.get("errorCode"), 2)
         self.assertEqual(
             result.get("messages"),
             ["Customer is locked to an open transaction. Please try again or restart."],
@@ -657,6 +658,7 @@ class TestBonuscardValidatePurchase(TransactionCase):
             )
 
         self.assertTrue(result.get("error"))
+        self.assertEqual(result.get("errorCode"), 2)
         self.assertEqual(
             result.get("messages"),
             ["Customer is locked to an open transaction. Please try again or restart."],

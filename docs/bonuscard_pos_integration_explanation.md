@@ -35,8 +35,10 @@ This document explains how the Bonuscard POS integration works in the `bonuscard
    - Clears `bonuscard_needs_validation` on successful validation
   - If discounts are returned (`totalDiscount > 0`), they are applied automatically to the order via `_applyBonuscardDiscountsToOrder` — as percentage discounts on matched order lines, or as separate discount lines using the POS discount product when partial coverage remains; when no POS discount product is configured, partial coverage is applied as a proportional line discount instead
   - If the POS discount product is not configured, the cashier sees a warning; proportional discounts can still apply to matched lines, but discounts that cannot be matched to a line may not apply
-   - Concurrent calls are guarded by a version counter; stale results are discarded
+   - The POS generates the `transactionIdentifier` client-side (GUID without dashes) before the first validation, so concurrent validations (e.g. add product, then immediately edit quantity) all send the same identifier — this prevents Bonuscard error 2 (customer locked) caused by a racing request arriving without an identifier
+   - Concurrent calls are guarded by a version counter; stale results are discarded, but their `transactionIdentifier` is still stored so the lock can always be cancelled
    - Previous discounts are cleared (`_clearAppliedBonuscardDiscounts`) before each new validation
+   - On Bonuscard error code 2 (customer locked), the POS cancels the current or any other draft order's pending transaction for the same partner and retries validation once
 
 4. Payment confirmation
    - `OrderPaymentValidation.afterOrderValidation()` calls `bonuscard.api.service.finalize_purchase_for_pos`
@@ -45,7 +47,7 @@ This document explains how the Bonuscard POS integration works in the `bonuscard
    - If finalization still fails after payment, the transaction fields are kept and a sticky warning is shown so the loyalty lock can be recovered manually
 
 5. Cancel or rollback flows
-   - `PosStore.onClickBackButton()` (only when on the Payment Screen), `onDeleteOrder()`, and `closePos()` cancel pending Bonuscard transactions
+   - `PosStore.onClickBackButton()` (only when on the Payment Screen), `onDeleteOrder()`, `closePos()`, `addNewOrder()`, and `setOrder()` cancel pending Bonuscard transactions on the order being left behind
    - `setPartnerToCurrentOrder` cancels an open transaction **before** changing the partner; if cancel fails, the partner change is blocked to avoid orphaning the Bonuscard lock
    - All cancel paths call `bonuscard.api.service.cancel_purchase_for_pos`
    - `closePos` and `onDeleteOrder` retry cancel once; local transaction state is cleared only after a successful cancel
@@ -84,5 +86,7 @@ This document explains how the Bonuscard POS integration works in the `bonuscard
 - `order.bonuscard_transaction_id`
 - `order.bonuscard_checkout_items`
 - `order.bonuscard_needs_validation` — set when lines change; cleared after a successful validation
+
+- `order._bonuscardCandidateTxId` — client-generated transaction identifier not yet confirmed by a successful validation; cancel paths treat it best-effort (a cancel failure for an unconfirmed identifier never blocks the cashier)
 
 These fields ensure the POS finalizes or cancels the exact Bonuscard transaction that was validated before payment, and re-validates when the order content changes.
