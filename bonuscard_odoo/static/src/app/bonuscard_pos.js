@@ -36,10 +36,6 @@ patch(PosStore.prototype, {
         return Array.isArray(items) && items.length > 0;
     },
 
-    _bonuscardShouldFinalizeAfterPayment(order) {
-        return Number(order?.bonuscard_total_discount) > 0;
-    },
-
     async _cancelBonuscardPurchaseForOrder(order, { retries = 0, logMethod = "cancel" } = {}) {
         const transactionId = this._bonuscardPendingTransactionId(order);
         if (!transactionId) {
@@ -1041,9 +1037,7 @@ patch(OrderPaymentValidation.prototype, {
             return;
         }
 
-        const shouldFinalize =
-            this.pos._bonuscardShouldFinalizeAfterPayment(order) &&
-            this.pos._bonuscardHasCheckoutItems(order);
+        const shouldFinalize = this.pos._bonuscardHasCheckoutItems(order);
 
         if (!shouldFinalize) {
             const releaseResult = await this.pos._releaseBonuscardTransactionIfPending(order, {

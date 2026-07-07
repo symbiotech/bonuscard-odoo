@@ -43,10 +43,10 @@ This document explains how the Bonuscard POS integration works in the `bonuscard
 
 4. Payment confirmation
    - `OrderPaymentValidation.afterOrderValidation()` finalizes or cancels the pending Bonuscard transaction
-   - When `bonuscard_total_discount > 0` and checkout items exist, it calls `bonuscard.api.service.finalize_purchase_for_pos`
+   - When checkout items exist (including zero-discount validations for accumulation programs), it calls `bonuscard.api.service.finalize_purchase_for_pos` to register the purchase with Bonuscard
    - This sends the stored `transactionIdentifier` and `checkoutItems` to Bonuscard
    - Finalization is retried once on failure; on success the POS clears `order.bonuscard_transaction_id` and `order.bonuscard_checkout_items`
-   - If there is a pending transaction but nothing to finalize (no checkout items, or zero-discount validation), the POS cancels the pending transaction after payment instead of leaving the customer locked; cancel failure is logged and shown as a sticky warning
+   - If there is a pending transaction but no checkout items to finalize (e.g. only products without barcode/article number), the POS cancels the pending transaction after payment instead of leaving the customer locked; cancel failure is logged and shown as a sticky warning
    - If finalization fails after payment, the POS attempts cancel as a fallback before showing a sticky warning
    - If finalization and the cancel fallback both fail, the transaction fields are kept and a sticky warning is shown so the loyalty lock can be recovered manually
 
@@ -90,7 +90,7 @@ This document explains how the Bonuscard POS integration works in the `bonuscard
 - `order.bonuscard_transaction_id`
 - `order.bonuscard_checkout_items`
 - `order.bonuscard_needs_validation` — set when lines change; cleared after a successful validation
-- `order.bonuscard_total_discount` — last successful validation discount total; used to decide whether payment should finalize or cancel the Bonuscard transaction
+- `order.bonuscard_total_discount` — last successful validation discount total (informational; finalize still runs when checkout items exist but discount is zero)
 
 - `order._bonuscardCandidateTxId` — client-generated transaction identifier not yet confirmed by a successful validation; included in cancel paths so a sent-but-unconfirmed ID is not lost before Bonuscard confirms it
 

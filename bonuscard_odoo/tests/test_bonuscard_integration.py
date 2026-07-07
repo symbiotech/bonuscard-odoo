@@ -117,10 +117,12 @@ class TestBonuscardIntegration(TransactionCase):
         self.assertIn("recruitmentCode", result["customer"])
 
     def test_zero_discount_non_bonuscard_product_cancel_releases_customer_lock(self):
-        """Bonuscard customer + non-program product must not stay locked after cancel.
+        """CancelPurchase must release a zero-discount ValidatePurchase lock.
 
-        Reproduces the POS flow where ValidatePurchase opens a transaction with
-        totalDiscount=0 and the POS cancels it after payment instead of finalizing.
+        Products on the Bonuscard API can validate with totalDiscount=0 while
+        still needing FinalizePurchase to register the sale (e.g. accumulation
+        programs). This test verifies CancelPurchase clears the customer lock
+        when a pending transaction must be aborted instead of finalized.
         """
         recruitment_code = os.getenv("BONUSCARD_TEST_CONSUMER", "").strip()
         non_bonuscard_ean = os.getenv("BONUSCARD_TEST_NON_BONUSCARD_EAN", "").strip()

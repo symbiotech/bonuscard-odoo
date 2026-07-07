@@ -2447,7 +2447,7 @@ test("validation keeps transaction state when release fails for ineligible cart 
     expect(notifications[0].options.sticky).toBe(false);
 });
 
-test("afterOrderValidation cancels zero-discount transaction instead of finalizing", async () => {
+test("afterOrderValidation finalizes zero-discount transaction when checkout items exist", async () => {
     const store = await setupPosEnv();
     const order = store.addNewOrder();
     order.bonuscard_partner_id = 42;
@@ -2456,7 +2456,7 @@ test("afterOrderValidation cancels zero-discount transaction instead of finalizi
     order.bonuscard_total_discount = 0;
 
     let cancelledId = null;
-    let finalizeCalled = false;
+    let finalizeArgs = null;
     patchWithCleanup(store.data, {
         call: async (model, method, args) => {
             if (model === "bonuscard.api.service" && method === "cancel_purchase_for_pos") {
@@ -2464,7 +2464,8 @@ test("afterOrderValidation cancels zero-discount transaction instead of finalizi
                 return { error: false };
             }
             if (model === "bonuscard.api.service" && method === "finalize_purchase_for_pos") {
-                finalizeCalled = true;
+                finalizeArgs = args;
+                return { error: false };
             }
             return {};
         },
@@ -2474,8 +2475,12 @@ test("afterOrderValidation cancels zero-discount transaction instead of finalizi
     const validation = createPaymentValidation(store, order);
     await validation.afterOrderValidation();
 
-    expect(cancelledId).toBe("TXN-ZERO");
-    expect(finalizeCalled).toBe(false);
+    expect(finalizeArgs).toEqual([
+        42,
+        "TXN-ZERO",
+        [{ ean: "TEST-999", quantity: 1, pricePerItem: 10 }],
+    ]);
+    expect(cancelledId).toBe(null);
     expect(order.bonuscard_transaction_id).toBe(null);
     expect(order.bonuscard_checkout_items).toBe(null);
 });
