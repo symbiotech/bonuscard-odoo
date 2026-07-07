@@ -499,7 +499,8 @@ class TestBonuscardValidatePurchase(TransactionCase):
         self.assertFalse(result.get("error"))
         mock_cancel.assert_called_once_with(self.instance, "TX001")
 
-    def test_cancel_purchase_for_pos_resolves_partner_company_instance(self):
+    def test_cancel_purchase_for_pos_uses_session_company_instance(self):
+        """POS RPC flows must resolve the connector by env.company (POS session)."""
         company = self.env["res.company"].create({"name": "Other Company"})
         partner = self.env["res.partner"].create(
             {
@@ -523,7 +524,9 @@ class TestBonuscardValidatePurchase(TransactionCase):
             "odoo.addons.bonuscard_odoo.models.bonuscard_api_service.BonuscardApiService._cancel_purchase",
             return_value={"error": False},
         ) as mock_cancel:
-            result = self.service.cancel_purchase_for_pos("TX001", partner.id)
+            result = self.service.with_company(company).cancel_purchase_for_pos(
+                "TX001", partner.id
+            )
 
         self.assertFalse(result.get("error"))
         mock_cancel.assert_called_once_with(other_instance, "TX001")
