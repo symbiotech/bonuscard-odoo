@@ -1,4 +1,5 @@
 import os
+import uuid
 from pathlib import Path
 from unittest import SkipTest
 
@@ -54,8 +55,8 @@ class TestBonuscardIntegration(TransactionCase):
                 f"Integration test skipped. Missing variables: {', '.join(missing_vars)}"
             )
 
-    def test_live_test_connection_with_env_credentials(self):
-        instance = self.env["bonuscard.connector.instance"].create(
+    def _create_integration_instance(self):
+        return self.env["bonuscard.connector.instance"].create(
             {
                 "name": "Bonuscard Integration Test",
                 "api_base_url": self.api_base_url,
@@ -65,21 +66,43 @@ class TestBonuscardIntegration(TransactionCase):
             }
         )
 
+    def _create_partner_with_recruitment_code(self, recruitment_code):
+        partner = self.env["res.partner"].create(
+            {"name": "Bonuscard Integration Customer"}
+        )
+        commercial = partner.commercial_partner_id
+        commercial.write({"bonuscard_recruitment_code": recruitment_code})
+        return partner
+
+    def _create_product_with_barcode(self, barcode):
+        return self.env["product.product"].create(
+            {
+                "name": "Non-Bonuscard Integration Product",
+                "barcode": barcode,
+                "list_price": 10.0,
+            }
+        )
+
+    def _validate_pos_order_line(self, partner, product, transaction_identifier=None):
+        service = self.env["bonuscard.api.service"]
+        return service.validate_purchase_for_pos(
+            partner.id,
+            [{"product_id": product.id, "qty": 1, "price_unit": 10.0}],
+            transaction_identifier=transaction_identifier,
+        )
+
+    def _cancel_transaction(self, transaction_identifier):
+        service = self.env["bonuscard.api.service"]
+        return service.cancel_purchase_for_pos(transaction_identifier)
+
+    def test_live_test_connection_with_env_credentials(self):
+        instance = self._create_integration_instance()
         instance.action_test_connection()
         self.assertEqual(instance.connection_status, "ok")
 
     def test_register_customer_with_phone_number(self):
         """Test RegisterCustomer endpoint with a valid phone number."""
-        instance = self.env["bonuscard.connector.instance"].create(
-            {
-                "name": "Bonuscard Integration Test",
-                "api_base_url": self.api_base_url,
-                "api_username": self.api_username,
-                "api_password": self.api_password,
-                "api_culture": self.api_culture,
-            }
-        )
-
+        instance = self._create_integration_instance()
         service = self.env["bonuscard.api.service"]
         phone_number = os.getenv("BONUSCARD_TEST_PHONE_FOR_REGISTRATION", "").strip()
         if not phone_number:
@@ -92,3 +115,88 @@ class TestBonuscardIntegration(TransactionCase):
         self.assertIn("customer", result)
         self.assertIn("phoneNumber", result["customer"])
         self.assertIn("recruitmentCode", result["customer"])
+
+    def test_zero_discount_non_bonuscard_product_cancel_releases_customer_lock(self):
+        """Bonuscard customer + non-program product must not stay locked after cancel.
+
+        Reproduces the POS flow where ValidatePurchase opens a transaction with
+        totalDiscount=0 and the POS cancels it after payment instead of finalizing.
+        """
+        recruitment_code = os.getenv("BONUSCARD_TEST_CONSUMER", "").strip()
+        non_bonuscard_ean = os.getenv("BONUSCARD_TEST_NON_BONUSCARD_EAN", "").strip()
+        if not recruitment_code:
+            self.skipTest(
+                "Zero-discount lock test skipped. Missing BONUSCARD_TEST_CONSUMER"
+            )
+        if not non_bonuscard_ean:
+            self.skipTest(
+                "Zero-discount lock test skipped. Missing BONUSCARD_TEST_NON_BONUSCARD_EAN"
+            )
+
+        self._create_integration_instance()
+        partner = self._create_partner_with_recruitment_code(recruitment_code)
+        product = self._create_product_with_barcode(non_bonuscard_ean)
+        first_tx = uuid.uuid4().hex
+
+        first_validate = self._validate_pos_order_line(
+            partner, product, transaction_identifier=first_tx
+        )
+        if first_validate.get("errorCode") == 2:
+            self.skipTest(
+                "Sandbox customer is already locked. Wait for the open transaction to "
+                "expire or cancel it manually, then re-run this test."
+            )
+        self.assertFalse(
+            first_validate.get("error"),
+            f"Initial validate failed: {first_validate.get('messages')} ({first_validate})",
+        )
+        transaction_id = first_validate.get("transactionIdentifier") or first_tx
+        cleanup_tx = None
+        try:
+            self.assertEqual(
+                float(first_validate.get("totalDiscount") or 0),
+                0.0,
+                f"Expected a zero-discount validation for {non_bonuscard_ean}: {first_validate}",
+            )
+
+            # A second validation for the same customer without releasing the first
+            # transaction reproduces the customer-lock failure seen in POS.
+            second_validate = self._validate_pos_order_line(
+                partner,
+                product,
+                transaction_identifier=uuid.uuid4().hex,
+            )
+            self.assertTrue(
+                second_validate.get("error"),
+                "Expected a lock error while the first transaction remains open",
+            )
+            self.assertEqual(
+                second_validate.get("errorCode"),
+                2,
+                f"Expected Bonuscard error code 2, got: {second_validate.get('messages')}",
+            )
+
+            cancel_result = self._cancel_transaction(transaction_id)
+            self.assertFalse(
+                cancel_result.get("error"),
+                f"CancelPurchase failed: {cancel_result.get('messages')}",
+            )
+
+            third_validate = self._validate_pos_order_line(
+                partner, product, transaction_identifier=uuid.uuid4().hex
+            )
+            self.assertFalse(
+                third_validate.get("error"),
+                f"Customer still locked after cancel: {third_validate.get('messages')}",
+            )
+            self.assertNotEqual(
+                third_validate.get("errorCode"),
+                2,
+                "Customer lock error persisted after cancel",
+            )
+
+            cleanup_tx = third_validate.get("transactionIdentifier")
+        finally:
+            for tx in {transaction_id, cleanup_tx}:
+                if tx:
+                    self._cancel_transaction(tx)

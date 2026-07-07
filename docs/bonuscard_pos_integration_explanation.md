@@ -38,7 +38,7 @@ This document explains how the Bonuscard POS integration works in the `bonuscard
    - The POS generates the `transactionIdentifier` client-side (GUID without dashes) before the first validation, so concurrent validations (e.g. add product, then immediately edit quantity) all send the same identifier — this prevents Bonuscard error 2 (customer locked) caused by a racing request arriving without an identifier
    - Concurrent calls are guarded by a version counter; stale results are discarded, but their `transactionIdentifier` is still stored so the lock can always be cancelled
    - Previous discounts are cleared (`_clearAppliedBonuscardDiscounts`) before each new validation
-   - On Bonuscard error code 2 (customer locked), the POS cancels the current or any other draft order's pending transaction for the same partner and retries validation once
+   - On Bonuscard error code 2 (customer locked), the POS cancels the current or any other order's pending transaction for the same partner (including already paid orders) and retries validation once
    - When the cart has no Bonuscard-eligible lines (no barcode/article number), any pending transaction is cancelled instead of being left open
 
 4. Payment confirmation
@@ -46,6 +46,8 @@ This document explains how the Bonuscard POS integration works in the `bonuscard
    - This sends the stored `transactionIdentifier` and `checkoutItems` to Bonuscard
    - Finalization is retried once on failure; on success the POS clears `order.bonuscard_transaction_id` and `order.bonuscard_checkout_items`
    - If there is a pending transaction but no `checkoutItems` to finalize (e.g. only products outside Bonuscard), the POS cancels the pending transaction after payment instead of leaving the customer locked; cancel failure is logged and shown as a sticky warning
+   - Zero-discount validations (products with no Bonuscard benefit) are also cancelled after payment rather than finalized
+   - If finalization fails after payment, the POS attempts cancel as a fallback before showing a sticky warning
    - If finalization still fails after payment, the transaction fields are kept and a sticky warning is shown so the loyalty lock can be recovered manually
 
 5. Cancel or rollback flows
@@ -88,6 +90,7 @@ This document explains how the Bonuscard POS integration works in the `bonuscard
 - `order.bonuscard_transaction_id`
 - `order.bonuscard_checkout_items`
 - `order.bonuscard_needs_validation` — set when lines change; cleared after a successful validation
+- `order.bonuscard_total_discount` — last successful validation discount total; used to decide whether payment should finalize or cancel the Bonuscard transaction
 
 - `order._bonuscardCandidateTxId` — client-generated transaction identifier not yet confirmed by a successful validation; included in cancel paths so a sent-but-unconfirmed ID is not lost before Bonuscard confirms it
 

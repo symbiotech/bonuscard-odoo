@@ -1164,7 +1164,7 @@ test("pay revalidates Bonuscard purchase when the order needs validation", async
     expect(called).toBe(true);
 });
 
-test("pay does not revalidate Bonuscard purchase when no validation is needed", async () => {
+test("pay always revalidates Bonuscard purchase before payment", async () => {
     const store = await setupPosEnv();
     const order = store.addNewOrder();
     const product = store.models["product.product"].get(5);
@@ -1192,14 +1192,14 @@ test("pay does not revalidate Bonuscard purchase when no validation is needed", 
     let validationCalled = false;
     store._validateBonuscardPurchaseForOrder = async () => {
         validationCalled = true;
-        throw new Error("Unexpected validation call");
+        return true;
     };
 
     await store.pay();
-    expect(validationCalled).toBe(false);
+    expect(validationCalled).toBe(true);
 });
 
-test("applying Bonuscard discounts does not re-arm needs_validation, so pay skips revalidation", async () => {
+test("pay revalidates Bonuscard purchase even after discounts were applied", async () => {
     const store = await setupPosEnv();
     const order = store.addNewOrder();
     const product = store.models["product.product"].get(5);
@@ -1256,15 +1256,15 @@ test("applying Bonuscard discounts does not re-arm needs_validation, so pay skip
     expect(order.bonuscard_needs_validation).toBe(false);
     expect(order.bonuscard_transaction_id).toBe("TXN1");
 
-    // Confirm pay() respects the flag and does not trigger a redundant API call.
+    // Confirm pay() still revalidates before payment.
     let revalidationCalled = false;
     store._validateBonuscardPurchaseForOrder = async () => {
         revalidationCalled = true;
-        throw new Error("Unexpected revalidation during pay");
+        return true;
     };
 
     await store.pay();
-    expect(revalidationCalled).toBe(false);
+    expect(revalidationCalled).toBe(true);
 });
 
 test("OrderSummary revalidates Bonuscard order when quantity changes", async () => {
@@ -1817,6 +1817,7 @@ test("afterOrderValidation clears Bonuscard transaction state on successful fina
     order.bonuscard_partner_id = 42;
     order.bonuscard_transaction_id = "TXN-FINALIZE";
     order.bonuscard_checkout_items = [{ ean: "TEST-123", quantity: 1, pricePerItem: 10 }];
+    order.bonuscard_total_discount = 10;
 
     let finalizedArgs = null;
     const originalCall = store.data.call.bind(store.data);
@@ -1849,6 +1850,7 @@ test("afterOrderValidation retries finalize once before clearing transaction sta
     order.bonuscard_partner_id = 42;
     order.bonuscard_transaction_id = "TXN-FINALIZE-RETRY";
     order.bonuscard_checkout_items = [{ ean: "TEST-456", quantity: 1, pricePerItem: 10 }];
+    order.bonuscard_total_discount = 10;
 
     let finalizeCallCount = 0;
     const originalCall = store.data.call.bind(store.data);
@@ -1882,6 +1884,7 @@ test("afterOrderValidation keeps transaction state when finalize fails after ret
     order.bonuscard_partner_id = 42;
     order.bonuscard_transaction_id = "TXN-FINALIZE-FAIL";
     order.bonuscard_checkout_items = [{ ean: "TEST-789", quantity: 1, pricePerItem: 10 }];
+    order.bonuscard_total_discount = 10;
 
     const notifications = [];
     patchWithCleanup(store.notification, {
@@ -1898,6 +1901,9 @@ test("afterOrderValidation keeps transaction state when finalize fails after ret
                     error: true,
                     messages: ["Bonuscard service is temporarily unavailable."],
                 };
+            }
+            if (model === "bonuscard.api.service" && method === "cancel_purchase_for_pos") {
+                return { error: true, messages: ["Bonuscard cancel failed."] };
             }
             return originalCall(...arguments);
         },
@@ -1926,6 +1932,7 @@ test("afterOrderValidation shows payment-succeeded warning without API detail wh
     order.bonuscard_partner_id = 42;
     order.bonuscard_transaction_id = "TXN-FINALIZE-NO-MSG";
     order.bonuscard_checkout_items = [{ ean: "TEST-000", quantity: 1, pricePerItem: 10 }];
+    order.bonuscard_total_discount = 10;
 
     const notifications = [];
     patchWithCleanup(store.notification, {
@@ -1937,6 +1944,9 @@ test("afterOrderValidation shows payment-succeeded warning without API detail wh
         call: async function (model, method, args) {
             if (model === "bonuscard.api.service" && method === "finalize_purchase_for_pos") {
                 return { error: true, messages: [] };
+            }
+            if (model === "bonuscard.api.service" && method === "cancel_purchase_for_pos") {
+                return { error: true, messages: ["Bonuscard cancel failed."] };
             }
             return originalCall(...arguments);
         },
@@ -1961,6 +1971,7 @@ test("afterOrderValidation retries finalize once when the RPC throws", async () 
     order.bonuscard_partner_id = 42;
     order.bonuscard_transaction_id = "TXN-FINALIZE-THROW";
     order.bonuscard_checkout_items = [{ ean: "TEST-321", quantity: 1, pricePerItem: 10 }];
+    order.bonuscard_total_discount = 10;
 
     let finalizeCallCount = 0;
     const originalCall = store.data.call.bind(store.data);
@@ -2434,4 +2445,109 @@ test("validation keeps transaction state when release fails for ineligible cart 
         "Could not release the pending Bonuscard transaction. The customer may remain locked until it expires."
     );
     expect(notifications[0].options.sticky).toBe(false);
+});
+
+test("afterOrderValidation cancels zero-discount transaction instead of finalizing", async () => {
+    const store = await setupPosEnv();
+    const order = store.addNewOrder();
+    order.bonuscard_partner_id = 42;
+    order.bonuscard_transaction_id = "TXN-ZERO";
+    order.bonuscard_checkout_items = [{ ean: "TEST-999", quantity: 1, pricePerItem: 10 }];
+    order.bonuscard_total_discount = 0;
+
+    let cancelledId = null;
+    let finalizeCalled = false;
+    patchWithCleanup(store.data, {
+        call: async (model, method, args) => {
+            if (model === "bonuscard.api.service" && method === "cancel_purchase_for_pos") {
+                cancelledId = args[0];
+                return { error: false };
+            }
+            if (model === "bonuscard.api.service" && method === "finalize_purchase_for_pos") {
+                finalizeCalled = true;
+            }
+            return {};
+        },
+    });
+
+    stubAfterOrderValidationSideEffects(store);
+    const validation = createPaymentValidation(store, order);
+    await validation.afterOrderValidation();
+
+    expect(cancelledId).toBe("TXN-ZERO");
+    expect(finalizeCalled).toBe(false);
+    expect(order.bonuscard_transaction_id).toBe(null);
+    expect(order.bonuscard_checkout_items).toBe(null);
+});
+
+test("validation recovers from customer lock by cancelling pending tx on finalized orders", async () => {
+    const store = await setupPosEnv();
+    const product = store.models["product.product"].get(5);
+    product.barcode = "LOCK-PAID-123";
+
+    const partner = store.models["res.partner"].create({ name: "Bonuscard Customer" });
+    partner.bonuscard_recruitment_code = "ABC123";
+    partner.bonuscard_status = "linked";
+
+    const paidOrder = store.addNewOrder();
+    paidOrder.state = "paid";
+    paidOrder.bonuscard_transaction_id = "TXN-PAID-ORPHAN";
+    paidOrder.bonuscard_partner_id = partner.id;
+
+    const order = store.addNewOrder();
+    await store.addLineToOrder(
+        {
+            product_id: product,
+            product_tmpl_id: product.product_tmpl_id,
+            qty: 1,
+            price_unit: 10,
+        },
+        order
+    );
+    order.setPartner(partner);
+
+    let validateCallCount = 0;
+    let cancelledIds = [];
+    const originalCall = store.data.call.bind(store.data);
+    patchWithCleanup(store.data, {
+        call: async function (model, method, args) {
+            if (model === "bonuscard.api.service" && method === "cancel_purchase_for_pos") {
+                cancelledIds.push(args[0]);
+                return { error: false };
+            }
+            if (model === "bonuscard.api.service" && method === "validate_purchase_for_pos") {
+                validateCallCount++;
+                if (validateCallCount === 1) {
+                    return {
+                        error: true,
+                        errorCode: 2,
+                        messages: [
+                            "Customer is locked to an open transaction. Please try again or restart.",
+                        ],
+                    };
+                }
+                return {
+                    transactionIdentifier: "TXN-NEW",
+                    checkoutItems: [
+                        {
+                            identifier: "ITEM1",
+                            ean: product.barcode,
+                            quantity: 1,
+                            pricePerItem: 10,
+                        },
+                    ],
+                    totalDiscount: 0,
+                    resultItems: [],
+                };
+            }
+            return originalCall(...arguments);
+        },
+    });
+
+    await store._validateBonuscardPurchaseForOrder(order);
+
+    expect(cancelledIds.includes("TXN-PAID-ORPHAN")).toBe(true);
+    expect(paidOrder.bonuscard_transaction_id).toBe(null);
+    expect(validateCallCount).toBe(2);
+    expect(order.bonuscard_transaction_id).toBe("TXN-NEW");
 });
