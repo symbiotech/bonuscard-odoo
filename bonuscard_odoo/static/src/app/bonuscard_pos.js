@@ -210,7 +210,7 @@ patch(PosStore.prototype, {
                     false,
                     [
                         {
-                            transactionId: order.bonuscard_transaction_id,
+                            transactionId: this._bonuscardPendingTransactionId(order),
                             partnerId: order.bonuscard_partner_id || null,
                             newPartnerId,
                             message: cancelResult.message,
@@ -496,7 +496,7 @@ patch(PosStore.prototype, {
                 "_validateBonuscardPurchaseForOrder",
                 "Bonuscard validation request failed",
                 false,
-                [{ partnerId: partner?.id, transactionId: order.bonuscard_transaction_id, error }]
+                [{ partnerId: partner?.id, transactionId: transactionIdentifier, error }]
             );
             this.notification.add(_t("Bonuscard validation failed."), { type: "warning" });
         }
@@ -697,7 +697,7 @@ patch(PosStore.prototype, {
                     false,
                     [
                         {
-                            transactionId: order.bonuscard_transaction_id,
+                            transactionId: this._bonuscardPendingTransactionId(order),
                             partnerId: order.bonuscard_partner_id || null,
                             message: cancelResult.message,
                         },
@@ -731,7 +731,7 @@ patch(PosStore.prototype, {
                     false,
                     [
                         {
-                            transactionId: order.bonuscard_transaction_id,
+                            transactionId: this._bonuscardPendingTransactionId(order),
                             partnerId: order.bonuscard_partner_id || null,
                             message: cancelResult.message,
                         },
@@ -775,7 +775,7 @@ patch(PosStore.prototype, {
                             "onClickBackButton",
                             "Bonuscard cancel returned error during back navigation",
                             false,
-                            [{ transactionId: order.bonuscard_transaction_id, partnerId: order.bonuscard_partner_id || null, message: result.messages?.[0] }]
+                            [{ transactionId: this._bonuscardPendingTransactionId(order), partnerId: order.bonuscard_partner_id || null, message: result.messages?.[0] }]
                         );
                         this.notification.add(
                             result.messages?.[0] || _t("Bonuscard cancel failed."),
@@ -788,7 +788,7 @@ patch(PosStore.prototype, {
                         "onClickBackButton",
                         "Bonuscard cancel failed during back navigation",
                         false,
-                        [{ transactionId: order.bonuscard_transaction_id, partnerId: order.bonuscard_partner_id || null, error }]
+                        [{ transactionId: this._bonuscardPendingTransactionId(order), partnerId: order.bonuscard_partner_id || null, error }]
                     );
                     this.notification.add(_t("Bonuscard cancel failed."), { type: "warning" });
                 }
@@ -948,7 +948,7 @@ patch(OrderPaymentValidation.prototype, {
                     false,
                     [
                         {
-                            transactionId: order.bonuscard_transaction_id,
+                            transactionId: this.pos._bonuscardPendingTransactionId(order),
                             partnerId: order.bonuscard_partner_id || null,
                             attempt: attempt + 1,
                             error,
@@ -987,7 +987,7 @@ patch(OrderPaymentValidation.prototype, {
                 false,
                 [
                     {
-                        transactionId: order.bonuscard_transaction_id,
+                        transactionId: this.pos._bonuscardPendingTransactionId(order),
                         partnerId: order.bonuscard_partner_id || null,
                         message: finalizeResult.message,
                     },
