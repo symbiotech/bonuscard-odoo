@@ -2064,6 +2064,14 @@ test("addNewOrder cancels the pending Bonuscard transaction on the order being l
     order1.bonuscard_partner_id = partner.id;
 
     let cancelledId = null;
+    let cancelLeavingDone;
+    const origLeaving = store._cancelBonuscardPurchaseWhenLeavingOrder.bind(store);
+    patchWithCleanup(store, {
+        _cancelBonuscardPurchaseWhenLeavingOrder(order, logMethod) {
+            cancelLeavingDone = origLeaving(order, logMethod);
+            return cancelLeavingDone;
+        },
+    });
     patchWithCleanup(store.data, {
         call: async (model, method, args) => {
             if (model === "bonuscard.api.service" && method === "cancel_purchase_for_pos") {
@@ -2075,11 +2083,7 @@ test("addNewOrder cancels the pending Bonuscard transaction on the order being l
     });
 
     const order2 = store.addNewOrder();
-    // The cancel of the previous order's transaction runs in the background;
-    // flush pending microtasks so its state cleanup completes.
-    for (let i = 0; i < 10; i++) {
-        await Promise.resolve();
-    }
+    await cancelLeavingDone;
 
     expect(cancelledId).toBe("TXN-OLD");
     expect(order1.bonuscard_transaction_id).toBe(null);
@@ -2262,8 +2266,8 @@ test("validation recovers from customer lock by cancelling orphaned transactions
 
     await store._validateBonuscardPurchaseForOrder(order);
 
-    // Two cancels: the current order's own candidate identifier (best-effort)
-    // and the orphaned transaction held by the other draft order.
+    // Two cancels: the current order's own candidate identifier and the
+    // orphaned transaction held by the other draft order.
     expect(cancelledIds.length).toBe(2);
     expect(cancelledIds[1]).toBe("TXN-ORPHAN");
     expect(orphanedOrder.bonuscard_transaction_id).toBe(null);

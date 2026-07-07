@@ -87,6 +87,6 @@ This document explains how the Bonuscard POS integration works in the `bonuscard
 - `order.bonuscard_checkout_items`
 - `order.bonuscard_needs_validation` — set when lines change; cleared after a successful validation
 
-- `order._bonuscardCandidateTxId` — client-generated transaction identifier not yet confirmed by a successful validation; cancel paths treat it best-effort (a cancel failure for an unconfirmed identifier never blocks the cashier)
+- `order._bonuscardCandidateTxId` — client-generated transaction identifier not yet confirmed by a successful validation; included in cancel paths so a sent-but-unconfirmed ID is not lost before Bonuscard confirms it
 
 These fields ensure the POS finalizes or cancels the exact Bonuscard transaction that was validated before payment, and re-validates when the order content changes.

@@ -36,10 +36,6 @@ patch(PosStore.prototype, {
         if (!transactionId) {
             return { success: true };
         }
-        // An unconfirmed candidate ID may never have reached Bonuscard (e.g.
-        // the validation request failed in transit). Cancel it best-effort:
-        // a failure must not block the cashier on a lock that may not exist.
-        const confirmed = Boolean(order.bonuscard_transaction_id);
 
         let lastMessage = null;
         for (let attempt = 0; attempt <= retries; attempt++) {
@@ -71,17 +67,12 @@ patch(PosStore.prototype, {
                 if (attempt < retries) {
                     continue;
                 }
-                return confirmed
-                    ? { success: false, message: _t("Bonuscard cancel failed.") }
-                    : { success: true };
+                return { success: false, message: _t("Bonuscard cancel failed.") };
             }
             if (attempt < retries) {
                 continue;
             }
             break;
-        }
-        if (!confirmed) {
-            return { success: true };
         }
         return { success: false, message: lastMessage || _t("Bonuscard cancel failed.") };
     },
@@ -128,7 +119,7 @@ patch(PosStore.prototype, {
             false,
             [
                 {
-                    transactionId: order.bonuscard_transaction_id,
+                    transactionId: this._bonuscardPendingTransactionId(order),
                     partnerId: order.bonuscard_partner_id || null,
                     message: cancelResult.message,
                 },
@@ -465,9 +456,7 @@ patch(PosStore.prototype, {
             if (!_lockRecoveryAttempt && this._isBonuscardCustomerLockError(result)) {
                 // The lock may belong to this order's own (stale) transaction
                 // or to an abandoned draft order for the same customer. Cancel
-                // both before retrying: the own identifier may be an
-                // unconfirmed candidate that never created the lock, in which
-                // case only the orphaned transaction cancel actually helps.
+                // both before retrying.
                 let recovered = false;
                 if (this._bonuscardPendingTransactionId(order)) {
                     const cancelResult = await this._cancelBonuscardPurchaseForOrder(order, {
