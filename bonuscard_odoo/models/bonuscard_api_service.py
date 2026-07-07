@@ -153,7 +153,13 @@ class BonuscardApiService(models.AbstractModel):
                 if err.code in (401, 403):
                     err.read()
                     _logger.warning(
-                        "Bonuscard authentication failed for request %s %s: HTTP %s",
+                        (
+                            "Bonuscard authentication failed for instance %s (%s, user=%s) "
+                            "request %s %s: HTTP %s"
+                        ),
+                        instance.id,
+                        instance.api_base_url,
+                        instance.api_username,
                         method,
                         url,
                         err.code,
@@ -318,7 +324,9 @@ class BonuscardApiService(models.AbstractModel):
                 ],
             }
 
-        company = commercial_partner.company_id or self.env.company
+        # In POS flows, the active company comes from the RPC context / session.
+        # Partner company_id is not a reliable selector for which connector to use.
+        company = self.env.company
         instance = self._get_company_instance(company)
         if not instance:
             return {
@@ -567,7 +575,8 @@ class BonuscardApiService(models.AbstractModel):
                 "messages": [self.env._("Invalid checkout payload from POS.")],
             }
 
-        company = partner.commercial_partner_id.company_id or self.env.company
+        # Use the POS session company (context) to select the connector instance.
+        company = self.env.company
         instance = self._get_company_instance(company)
         if not instance:
             return {
@@ -635,20 +644,15 @@ class BonuscardApiService(models.AbstractModel):
 
         Args:
             transaction_identifier: str – transaction ID from ValidatePurchase
-            partner_id: int or None – optional POS partner id to resolve the correct company
+            partner_id: int or None – kept for backwards compatibility (unused)
         """
         if not transaction_identifier:
             return {
                 "error": True,
                 "messages": [self.env._("Missing Bonuscard transaction identifier.")],
             }
-
-        partner = (
-            self.env["res.partner"].browse(partner_id).exists() if partner_id else None
-        )
-        company = (
-            partner.commercial_partner_id.company_id if partner else self.env.company
-        ) or self.env.company
+        # Use the POS session company (context) to select the connector instance.
+        company = self.env.company
         instance = self._get_company_instance(company)
         if not instance:
             return {
