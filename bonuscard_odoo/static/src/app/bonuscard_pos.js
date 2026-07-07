@@ -77,6 +77,45 @@ patch(PosStore.prototype, {
         return { success: false, message: lastMessage || _t("Bonuscard cancel failed.") };
     },
 
+    async _releaseBonuscardTransactionIfPending(
+        order,
+        { logMethod = "releasePending", notifyOnFailure = true, failureMessage = null, sticky = false } = {}
+    ) {
+        if (!this._bonuscardPendingTransactionId(order)) {
+            return { success: true };
+        }
+        const cancelResult = await this._cancelBonuscardPurchaseForOrder(order, {
+            retries: 1,
+            logMethod,
+        });
+        if (cancelResult.success) {
+            this._clearBonuscardPurchaseState(order);
+            return cancelResult;
+        }
+        logPosMessage(
+            "Bonuscard",
+            logMethod,
+            "Bonuscard cancel failed while releasing pending transaction — customer may remain locked",
+            false,
+            [
+                {
+                    transactionId: this._bonuscardPendingTransactionId(order),
+                    partnerId: order.bonuscard_partner_id || null,
+                    message: cancelResult.message,
+                },
+            ]
+        );
+        if (notifyOnFailure) {
+            this.notification.add(
+                failureMessage ||
+                    cancelResult.message ||
+                    _t("Bonuscard cancel failed."),
+                { type: "warning", sticky }
+            );
+        }
+        return cancelResult;
+    },
+
     _clearBonuscardPurchaseState(order) {
         if (!order) {
             return;
@@ -377,6 +416,12 @@ patch(PosStore.prototype, {
         order.bonuscard_checkout_items = null;
 
         if (orderLines.length === 0) {
+            await this._releaseBonuscardTransactionIfPending(order, {
+                logMethod: "_validateBonuscardPurchaseForOrder",
+                failureMessage: _t(
+                    "Could not release the pending Bonuscard transaction. The customer may remain locked until it expires."
+                ),
+            });
             return false;
         }
 
@@ -670,7 +715,7 @@ patch(PosStore.prototype, {
 
         if (
             partner?.bonuscard_recruitment_code &&
-            (!order?.bonuscard_transaction_id || order?.bonuscard_needs_validation)
+            (!this._bonuscardPendingTransactionId(order) || order?.bonuscard_needs_validation)
         ) {
             await this._validateBonuscardPurchaseForOrder(order, { notifyOnDiscount: true });
         }
@@ -911,6 +956,16 @@ patch(OrderSummary.prototype, {
 });
 
 patch(OrderPaymentValidation.prototype, {
+    _bonuscardReleaseFailedAfterPaymentMessage(apiMessage) {
+        const context = _t(
+            "Payment succeeded but Bonuscard could not release the pending transaction. The customer may remain locked."
+        );
+        if (apiMessage) {
+            return `${context} (${apiMessage})`;
+        }
+        return context;
+    },
+
     _bonuscardFinalizePendingAfterPaymentMessage(apiMessage) {
         const context = _t(
             "Payment succeeded but Bonuscard could not commit the discount. The loyalty transaction is still pending."
@@ -974,7 +1029,20 @@ patch(OrderPaymentValidation.prototype, {
         await super.afterOrderValidation(...arguments);
         const order = this.order;
 
-        if (!order?.bonuscard_transaction_id || !order?.bonuscard_checkout_items) {
+        if (!this.pos._bonuscardPendingTransactionId(order)) {
+            return;
+        }
+        if (!order?.bonuscard_checkout_items) {
+            const releaseResult = await this.pos._releaseBonuscardTransactionIfPending(order, {
+                logMethod: "afterOrderValidation",
+                notifyOnFailure: false,
+            });
+            if (!releaseResult.success) {
+                this.pos.notification.add(
+                    this._bonuscardReleaseFailedAfterPaymentMessage(releaseResult.message),
+                    { type: "warning", sticky: true }
+                );
+            }
             return;
         }
 

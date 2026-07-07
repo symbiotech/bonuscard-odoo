@@ -26,6 +26,10 @@ patchTranslations({
             "Could not cancel the pending Bonuscard transaction before closing. It may remain locked until it expires.",
         "Payment succeeded but Bonuscard could not commit the discount. The loyalty transaction is still pending.":
             "Payment succeeded but Bonuscard could not commit the discount. The loyalty transaction is still pending.",
+        "Payment succeeded but Bonuscard could not release the pending transaction. The customer may remain locked.":
+            "Payment succeeded but Bonuscard could not release the pending transaction. The customer may remain locked.",
+        "Could not release the pending Bonuscard transaction. The customer may remain locked until it expires.":
+            "Could not release the pending Bonuscard transaction. The customer may remain locked until it expires.",
         "Bonuscard discount has been applied to the order.":
             "Bonuscard discount has been applied to the order.",
     }
@@ -2273,4 +2277,161 @@ test("validation recovers from customer lock by cancelling orphaned transactions
     expect(orphanedOrder.bonuscard_transaction_id).toBe(null);
     expect(validateCallCount).toBe(2);
     expect(order.bonuscard_transaction_id).toBe("TXN-NEW");
+});
+
+test("validation releases pending transaction when cart has no Bonuscard-eligible lines", async () => {
+    const store = await setupPosEnv();
+    const order = store.addNewOrder();
+    const partner = store.models["res.partner"].create({ name: "Bonuscard Customer" });
+    partner.bonuscard_recruitment_code = "ABC123";
+    partner.bonuscard_status = "linked";
+
+    const product = store.models["product.product"].get(5);
+    product.barcode = null;
+    product.default_code = null;
+    await store.addLineToOrder(
+        {
+            product_id: product,
+            product_tmpl_id: product.product_tmpl_id,
+            qty: 1,
+            price_unit: 10,
+        },
+        order
+    );
+    order.setPartner(partner);
+    order.bonuscard_transaction_id = "TXN-NO-EAN";
+    order.bonuscard_partner_id = partner.id;
+    order.bonuscard_checkout_items = [{ ean: "OLD", quantity: 1, pricePerItem: 10 }];
+
+    let cancelledId = null;
+    patchWithCleanup(store.data, {
+        call: async (model, method, args) => {
+            if (model === "bonuscard.api.service" && method === "cancel_purchase_for_pos") {
+                cancelledId = args[0];
+                return { error: false };
+            }
+            return {};
+        },
+    });
+
+    await store._validateBonuscardPurchaseForOrder(order);
+
+    expect(cancelledId).toBe("TXN-NO-EAN");
+    expect(order.bonuscard_transaction_id).toBe(null);
+    expect(order.bonuscard_checkout_items).toBe(null);
+});
+
+test("afterOrderValidation releases pending transaction when checkout items are missing", async () => {
+    const store = await setupPosEnv();
+    const order = store.addNewOrder();
+    const partner = store.models["res.partner"].create({ name: "Bonuscard Customer" });
+    partner.bonuscard_recruitment_code = "ABC123";
+    order.bonuscard_transaction_id = "TXN-NO-FINALIZE";
+    order.bonuscard_partner_id = partner.id;
+    order.bonuscard_checkout_items = null;
+
+    let cancelledId = null;
+    let finalizeCalled = false;
+    patchWithCleanup(store.data, {
+        call: async (model, method, args) => {
+            if (model === "bonuscard.api.service" && method === "cancel_purchase_for_pos") {
+                cancelledId = args[0];
+                return { error: false };
+            }
+            if (model === "bonuscard.api.service" && method === "finalize_purchase_for_pos") {
+                finalizeCalled = true;
+            }
+            return {};
+        },
+    });
+
+    stubAfterOrderValidationSideEffects(store);
+    const validation = createPaymentValidation(store, order);
+    await validation.afterOrderValidation();
+
+    expect(cancelledId).toBe("TXN-NO-FINALIZE");
+    expect(finalizeCalled).toBe(false);
+    expect(order.bonuscard_transaction_id).toBe(null);
+    expect(order.bonuscard_checkout_items).toBe(null);
+});
+
+test("afterOrderValidation shows sticky warning when release fails after payment", async () => {
+    const store = await setupPosEnv();
+    const order = store.addNewOrder();
+    const partner = store.models["res.partner"].create({ name: "Bonuscard Customer" });
+    partner.bonuscard_recruitment_code = "ABC123";
+    order.bonuscard_transaction_id = "TXN-RELEASE-FAIL";
+    order.bonuscard_partner_id = partner.id;
+    order.bonuscard_checkout_items = null;
+
+    const notifications = [];
+    patchWithCleanup(store.notification, {
+        add: (message, options) => notifications.push({ message, options }),
+    });
+    patchWithCleanup(store.data, {
+        call: async (model, method) => {
+            if (model === "bonuscard.api.service" && method === "cancel_purchase_for_pos") {
+                return { error: true, messages: ["Bonuscard cancel failed."] };
+            }
+            return {};
+        },
+    });
+
+    stubAfterOrderValidationSideEffects(store);
+    const validation = createPaymentValidation(store, order);
+    await validation.afterOrderValidation();
+
+    expect(order.bonuscard_transaction_id).toBe("TXN-RELEASE-FAIL");
+    expect(notifications.length).toBe(1);
+    expect(notifications[0].message).toBe(
+        "Payment succeeded but Bonuscard could not release the pending transaction. The customer may remain locked. (Bonuscard cancel failed.)"
+    );
+    expect(notifications[0].options.type).toBe("warning");
+    expect(notifications[0].options.sticky).toBe(true);
+});
+
+test("validation keeps transaction state when release fails for ineligible cart lines", async () => {
+    const store = await setupPosEnv();
+    const order = store.addNewOrder();
+    const partner = store.models["res.partner"].create({ name: "Bonuscard Customer" });
+    partner.bonuscard_recruitment_code = "ABC123";
+    partner.bonuscard_status = "linked";
+
+    const product = store.models["product.product"].get(5);
+    product.barcode = null;
+    product.default_code = null;
+    await store.addLineToOrder(
+        {
+            product_id: product,
+            product_tmpl_id: product.product_tmpl_id,
+            qty: 1,
+            price_unit: 10,
+        },
+        order
+    );
+    order.setPartner(partner);
+    order.bonuscard_transaction_id = "TXN-RELEASE-FAIL";
+    order.bonuscard_partner_id = partner.id;
+
+    const notifications = [];
+    patchWithCleanup(store.notification, {
+        add: (message, options) => notifications.push({ message, options }),
+    });
+    patchWithCleanup(store.data, {
+        call: async (model, method) => {
+            if (model === "bonuscard.api.service" && method === "cancel_purchase_for_pos") {
+                return { error: true, messages: ["Bonuscard cancel failed."] };
+            }
+            return {};
+        },
+    });
+
+    await store._validateBonuscardPurchaseForOrder(order);
+
+    expect(order.bonuscard_transaction_id).toBe("TXN-RELEASE-FAIL");
+    expect(notifications.length).toBe(1);
+    expect(notifications[0].message).toBe(
+        "Could not release the pending Bonuscard transaction. The customer may remain locked until it expires."
+    );
+    expect(notifications[0].options.sticky).toBe(false);
 });

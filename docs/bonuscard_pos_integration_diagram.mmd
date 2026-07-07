@@ -39,6 +39,7 @@ flowchart LR
     B -->|final guard before payment| G
     G -->|checkoutItems + customerIdentifier| L
     L -->|transactionIdentifier + discounts| G
+    G -->|no eligible lines: cancel pending transaction| I
     G -->|transactionIdentifier + discounts (POS applies discounts to order)| B
 
     C -->|afterOrderValidation| H
@@ -46,6 +47,9 @@ flowchart LR
     M -->|commit purchase| H
     H -->|finalize success: clear bonuscard state| C
     H -->|finalize failed after retry: keep state + sticky warning| C
+    C -->|no checkoutItems: cancel pending transaction| I
+    I -->|release success: clear bonuscard state| C
+    I -->|release failed after payment: sticky warning| C
 
     E -->|cancel pending transaction| I
     I -->|transactionIdentifier| N
