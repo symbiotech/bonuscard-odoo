@@ -74,11 +74,19 @@ class TestBonuscardIntegration(TransactionCase):
         commercial.write({"bonuscard_recruitment_code": recruitment_code})
         return partner
 
-    def _create_product_with_barcode(self, barcode):
+    def _create_product_with_barcode(self, barcode, name="Integration Product"):
         return self.env["product.product"].create(
             {
-                "name": "Non-Bonuscard Integration Product",
+                "name": name,
                 "barcode": barcode,
+                "list_price": 10.0,
+            }
+        )
+
+    def _create_product_without_barcode(self):
+        return self.env["product.product"].create(
+            {
+                "name": "Non-Bonuscard Product (no barcode)",
                 "list_price": 10.0,
             }
         )
@@ -94,6 +102,31 @@ class TestBonuscardIntegration(TransactionCase):
     def _cancel_transaction(self, transaction_identifier):
         service = self.env["bonuscard.api.service"]
         return service.cancel_purchase_for_pos(transaction_identifier)
+
+    def _assert_customer_not_locked(self, partner, bonuscard_ean):
+        """Validate a known Bonuscard-catalog product; error code 2 means still locked."""
+        product = self._create_product_with_barcode(
+            bonuscard_ean, name="Bonuscard Catalog Product"
+        )
+        result = self._validate_pos_order_line(
+            partner, product, transaction_identifier=uuid.uuid4().hex
+        )
+        if result.get("errorCode") == 2:
+            self.fail(
+                "Customer is locked after the non-Bonuscard purchase flow: "
+                f"{result.get('messages')}"
+            )
+        self.assertFalse(
+            result.get("error"),
+            f"Expected a successful Bonuscard validation: {result.get('messages')}",
+        )
+        transaction_id = result.get("transactionIdentifier")
+        if transaction_id:
+            cancel_result = self._cancel_transaction(transaction_id)
+            self.assertFalse(
+                cancel_result.get("error"),
+                f"Cleanup cancel failed: {cancel_result.get('messages')}",
+            )
 
     def test_live_test_connection_with_env_credentials(self):
         instance = self._create_integration_instance()
@@ -116,92 +149,63 @@ class TestBonuscardIntegration(TransactionCase):
         self.assertIn("phoneNumber", result["customer"])
         self.assertIn("recruitmentCode", result["customer"])
 
-    def test_cancel_purchase_releases_zero_discount_validate_lock(self):
-        """CancelPurchase must release a zero-discount ValidatePurchase lock.
+    def test_non_bonuscard_product_purchase_does_not_lock_customer(self):
+        """Buying outside the Bonuscard catalog must not lock the customer.
 
-        Products on the Bonuscard API can validate with totalDiscount=0 while
-        still needing FinalizePurchase to register the sale (e.g. accumulation
-        programs). This test verifies CancelPurchase clears the customer lock
-        when a pending transaction must be aborted instead of finalized.
+        Covers the POS scenario where a Bonuscard customer pays for products that
+        are not on the Bonuscard API (no barcode/article number, or a barcode that
+        the API rejects). The customer must still be able to validate a normal
+        Bonuscard purchase afterwards.
         """
         recruitment_code = os.getenv("BONUSCARD_TEST_CONSUMER", "").strip()
-        zero_discount_ean = (
-            os.getenv("BONUSCARD_TEST_ZERO_DISCOUNT_EAN", "").strip()
-            or os.getenv("BONUSCARD_TEST_NON_BONUSCARD_EAN", "").strip()
-        )
+        non_bonuscard_ean = os.getenv("BONUSCARD_TEST_NON_BONUSCARD_EAN", "").strip()
+        bonuscard_ean = os.getenv("BONUSCARD_TEST_BONUSCARD_EAN", "").strip()
         if not recruitment_code:
+            self.skipTest("Non-Bonuscard test skipped. Missing BONUSCARD_TEST_CONSUMER")
+        if not bonuscard_ean:
             self.skipTest(
-                "Zero-discount lock test skipped. Missing BONUSCARD_TEST_CONSUMER"
-            )
-        if not zero_discount_ean:
-            self.skipTest(
-                "Zero-discount lock test skipped. Missing BONUSCARD_TEST_ZERO_DISCOUNT_EAN"
+                "Non-Bonuscard test skipped. Missing BONUSCARD_TEST_BONUSCARD_EAN "
+                "(a barcode on the Bonuscard API used to verify the customer is not locked)"
             )
 
         self._create_integration_instance()
         partner = self._create_partner_with_recruitment_code(recruitment_code)
-        product = self._create_product_with_barcode(zero_discount_ean)
-        first_tx = uuid.uuid4().hex
 
-        first_validate = self._validate_pos_order_line(
-            partner, product, transaction_identifier=first_tx
+        # Odoo products without barcode/article are never sent to ValidatePurchase.
+        no_barcode_product = self._create_product_without_barcode()
+        no_barcode_result = self._validate_pos_order_line(partner, no_barcode_product)
+        self.assertTrue(
+            no_barcode_result.get("error"),
+            "Expected validation to stop before Bonuscard when no barcode is present",
         )
-        if first_validate.get("errorCode") == 2:
-            self.skipTest(
-                "Sandbox customer is already locked. Wait for the open transaction to "
-                "expire or cancel it manually, then re-run this test."
-            )
         self.assertFalse(
-            first_validate.get("error"),
-            f"Initial validate failed: {first_validate.get('messages')} ({first_validate})",
+            no_barcode_result.get("transactionIdentifier"),
+            "No Bonuscard transaction should be opened for products without barcode",
         )
-        transaction_id = first_validate.get("transactionIdentifier") or first_tx
-        cleanup_tx = None
-        try:
-            self.assertEqual(
-                float(first_validate.get("totalDiscount") or 0),
-                0.0,
-                f"Expected a zero-discount validation for {zero_discount_ean}: {first_validate}",
-            )
 
-            # A second validation for the same customer without releasing the first
-            # transaction reproduces the customer-lock failure seen in POS.
-            second_validate = self._validate_pos_order_line(
+        if non_bonuscard_ean:
+            # Barcoded Odoo product whose EAN is not on the Bonuscard API.
+            non_bonuscard_product = self._create_product_with_barcode(
+                non_bonuscard_ean, name="Non-Bonuscard Product (unknown EAN)"
+            )
+            non_bonuscard_result = self._validate_pos_order_line(
                 partner,
-                product,
+                non_bonuscard_product,
                 transaction_identifier=uuid.uuid4().hex,
             )
+            if non_bonuscard_result.get("errorCode") == 2:
+                self.skipTest(
+                    "Sandbox customer is already locked. Wait for the open transaction to "
+                    "expire or cancel it manually, then re-run this test."
+                )
             self.assertTrue(
-                second_validate.get("error"),
-                "Expected a lock error while the first transaction remains open",
-            )
-            self.assertEqual(
-                second_validate.get("errorCode"),
-                2,
-                f"Expected Bonuscard error code 2, got: {second_validate.get('messages')}",
-            )
-
-            cancel_result = self._cancel_transaction(transaction_id)
-            self.assertFalse(
-                cancel_result.get("error"),
-                f"CancelPurchase failed: {cancel_result.get('messages')}",
-            )
-
-            third_validate = self._validate_pos_order_line(
-                partner, product, transaction_identifier=uuid.uuid4().hex
+                non_bonuscard_result.get("error"),
+                "Expected ValidatePurchase to reject a non-Bonuscard catalog EAN: "
+                f"{non_bonuscard_result}",
             )
             self.assertFalse(
-                third_validate.get("error"),
-                f"Customer still locked after cancel: {third_validate.get('messages')}",
-            )
-            self.assertNotEqual(
-                third_validate.get("errorCode"),
-                2,
-                "Customer lock error persisted after cancel",
+                non_bonuscard_result.get("transactionIdentifier"),
+                "Non-Bonuscard EAN must not open a Bonuscard transaction",
             )
 
-            cleanup_tx = third_validate.get("transactionIdentifier")
-        finally:
-            for tx in {transaction_id, cleanup_tx}:
-                if tx:
-                    self._cancel_transaction(tx)
+        self._assert_customer_not_locked(partner, bonuscard_ean)
