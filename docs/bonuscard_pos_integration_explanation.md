@@ -90,7 +90,6 @@ This document explains how the Bonuscard POS integration works in the `bonuscard
 - `order.bonuscard_transaction_id`
 - `order.bonuscard_checkout_items`
 - `order.bonuscard_needs_validation` — set when lines change; cleared after a successful validation
-- `order.bonuscard_total_discount` — last successful validation discount total (informational; finalize still runs when checkout items exist but discount is zero)
 
 - `order._bonuscardCandidateTxId` — client-generated transaction identifier not yet confirmed by a successful validation; included in cancel paths so a sent-but-unconfirmed ID is not lost before Bonuscard confirms it
 

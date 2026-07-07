@@ -117,9 +117,8 @@ are designed for local testing only.
 
 Configure ``BONUSCARD_TEST_*`` values in a local ``.env`` file (see
 ``.env.example``). The sandbox lock-release test also requires
-``BONUSCARD_TEST_CONSUMER`` and ``BONUSCARD_TEST_NON_BONUSCARD_EAN`` (a barcode
-that validates in sandbox with ``totalDiscount=0``, e.g. an accumulation-program
-product that registers now and discounts later).
+``BONUSCARD_TEST_CONSUMER`` and ``BONUSCARD_TEST_ZERO_DISCOUNT_EAN`` (a barcode
+of a product on the Bonuscard API that validates with ``totalDiscount=0``).
 
 Run only the manual integration suite with::
 

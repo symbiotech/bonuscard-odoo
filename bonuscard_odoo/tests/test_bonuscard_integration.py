@@ -116,7 +116,7 @@ class TestBonuscardIntegration(TransactionCase):
         self.assertIn("phoneNumber", result["customer"])
         self.assertIn("recruitmentCode", result["customer"])
 
-    def test_zero_discount_non_bonuscard_product_cancel_releases_customer_lock(self):
+    def test_cancel_purchase_releases_zero_discount_validate_lock(self):
         """CancelPurchase must release a zero-discount ValidatePurchase lock.
 
         Products on the Bonuscard API can validate with totalDiscount=0 while
@@ -125,19 +125,22 @@ class TestBonuscardIntegration(TransactionCase):
         when a pending transaction must be aborted instead of finalized.
         """
         recruitment_code = os.getenv("BONUSCARD_TEST_CONSUMER", "").strip()
-        non_bonuscard_ean = os.getenv("BONUSCARD_TEST_NON_BONUSCARD_EAN", "").strip()
+        zero_discount_ean = (
+            os.getenv("BONUSCARD_TEST_ZERO_DISCOUNT_EAN", "").strip()
+            or os.getenv("BONUSCARD_TEST_NON_BONUSCARD_EAN", "").strip()
+        )
         if not recruitment_code:
             self.skipTest(
                 "Zero-discount lock test skipped. Missing BONUSCARD_TEST_CONSUMER"
             )
-        if not non_bonuscard_ean:
+        if not zero_discount_ean:
             self.skipTest(
-                "Zero-discount lock test skipped. Missing BONUSCARD_TEST_NON_BONUSCARD_EAN"
+                "Zero-discount lock test skipped. Missing BONUSCARD_TEST_ZERO_DISCOUNT_EAN"
             )
 
         self._create_integration_instance()
         partner = self._create_partner_with_recruitment_code(recruitment_code)
-        product = self._create_product_with_barcode(non_bonuscard_ean)
+        product = self._create_product_with_barcode(zero_discount_ean)
         first_tx = uuid.uuid4().hex
 
         first_validate = self._validate_pos_order_line(
@@ -158,7 +161,7 @@ class TestBonuscardIntegration(TransactionCase):
             self.assertEqual(
                 float(first_validate.get("totalDiscount") or 0),
                 0.0,
-                f"Expected a zero-discount validation for {non_bonuscard_ean}: {first_validate}",
+                f"Expected a zero-discount validation for {zero_discount_ean}: {first_validate}",
             )
 
             # A second validation for the same customer without releasing the first

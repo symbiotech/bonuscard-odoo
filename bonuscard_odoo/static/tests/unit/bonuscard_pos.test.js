@@ -1817,7 +1817,6 @@ test("afterOrderValidation clears Bonuscard transaction state on successful fina
     order.bonuscard_partner_id = 42;
     order.bonuscard_transaction_id = "TXN-FINALIZE";
     order.bonuscard_checkout_items = [{ ean: "TEST-123", quantity: 1, pricePerItem: 10 }];
-    order.bonuscard_total_discount = 10;
 
     let finalizedArgs = null;
     const originalCall = store.data.call.bind(store.data);
@@ -1850,7 +1849,6 @@ test("afterOrderValidation retries finalize once before clearing transaction sta
     order.bonuscard_partner_id = 42;
     order.bonuscard_transaction_id = "TXN-FINALIZE-RETRY";
     order.bonuscard_checkout_items = [{ ean: "TEST-456", quantity: 1, pricePerItem: 10 }];
-    order.bonuscard_total_discount = 10;
 
     let finalizeCallCount = 0;
     const originalCall = store.data.call.bind(store.data);
@@ -1884,7 +1882,6 @@ test("afterOrderValidation keeps transaction state when finalize fails after ret
     order.bonuscard_partner_id = 42;
     order.bonuscard_transaction_id = "TXN-FINALIZE-FAIL";
     order.bonuscard_checkout_items = [{ ean: "TEST-789", quantity: 1, pricePerItem: 10 }];
-    order.bonuscard_total_discount = 10;
 
     const notifications = [];
     patchWithCleanup(store.notification, {
@@ -1932,7 +1929,6 @@ test("afterOrderValidation shows payment-succeeded warning without API detail wh
     order.bonuscard_partner_id = 42;
     order.bonuscard_transaction_id = "TXN-FINALIZE-NO-MSG";
     order.bonuscard_checkout_items = [{ ean: "TEST-000", quantity: 1, pricePerItem: 10 }];
-    order.bonuscard_total_discount = 10;
 
     const notifications = [];
     patchWithCleanup(store.notification, {
@@ -1971,7 +1967,6 @@ test("afterOrderValidation retries finalize once when the RPC throws", async () 
     order.bonuscard_partner_id = 42;
     order.bonuscard_transaction_id = "TXN-FINALIZE-THROW";
     order.bonuscard_checkout_items = [{ ean: "TEST-321", quantity: 1, pricePerItem: 10 }];
-    order.bonuscard_total_discount = 10;
 
     let finalizeCallCount = 0;
     const originalCall = store.data.call.bind(store.data);
@@ -2453,7 +2448,6 @@ test("afterOrderValidation finalizes zero-discount transaction when checkout ite
     order.bonuscard_partner_id = 42;
     order.bonuscard_transaction_id = "TXN-ZERO";
     order.bonuscard_checkout_items = [{ ean: "TEST-999", quantity: 1, pricePerItem: 10 }];
-    order.bonuscard_total_discount = 0;
 
     let cancelledId = null;
     let finalizeArgs = null;
