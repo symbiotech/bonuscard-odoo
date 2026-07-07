@@ -197,10 +197,11 @@ class TestBonuscardIntegration(TransactionCase):
             non_bonuscard_product = self._create_product_with_barcode(
                 non_bonuscard_ean, name="Non-Bonuscard Product (unknown EAN)"
             )
+            non_bonuscard_txn = uuid.uuid4().hex
             non_bonuscard_result = self._validate_pos_order_line(
                 partner,
                 non_bonuscard_product,
-                transaction_identifier=uuid.uuid4().hex,
+                transaction_identifier=non_bonuscard_txn,
             )
             if non_bonuscard_result.get("errorCode") == 2:
                 self.skipTest(
@@ -211,6 +212,17 @@ class TestBonuscardIntegration(TransactionCase):
                 self._is_non_bonuscard_validate_result(non_bonuscard_result),
                 "Expected ValidatePurchase to reject a non-Bonuscard catalog EAN without "
                 f"leaving a transaction open: {non_bonuscard_result}",
+            )
+            # Sandbox may report "transaction cancelled" while the customer lock
+            # remains until CancelPurchase — mirror POS afterOrderValidation release.
+            release_txn = (
+                non_bonuscard_result.get("transactionIdentifier") or non_bonuscard_txn
+            )
+            cancel_result = self._cancel_transaction(release_txn)
+            self.assertFalse(
+                cancel_result.get("error"),
+                f"Expected non-Bonuscard flow to release the customer lock: "
+                f"{cancel_result.get('messages')}",
             )
 
         self._assert_customer_not_locked(partner, bonuscard_ean)
