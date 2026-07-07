@@ -77,6 +77,20 @@ patch(PosStore.prototype, {
         return { success: false, message: lastMessage || _t("Bonuscard cancel failed.") };
     },
 
+    async _releaseBonuscardTransactionIfPending(order, { logMethod = "releasePending" } = {}) {
+        if (!this._bonuscardPendingTransactionId(order)) {
+            return { success: true };
+        }
+        const cancelResult = await this._cancelBonuscardPurchaseForOrder(order, {
+            retries: 1,
+            logMethod,
+        });
+        if (cancelResult.success) {
+            this._clearBonuscardPurchaseState(order);
+        }
+        return cancelResult;
+    },
+
     _clearBonuscardPurchaseState(order) {
         if (!order) {
             return;
@@ -377,6 +391,9 @@ patch(PosStore.prototype, {
         order.bonuscard_checkout_items = null;
 
         if (orderLines.length === 0) {
+            await this._releaseBonuscardTransactionIfPending(order, {
+                logMethod: "_validateBonuscardPurchaseForOrder",
+            });
             return false;
         }
 
@@ -670,7 +687,7 @@ patch(PosStore.prototype, {
 
         if (
             partner?.bonuscard_recruitment_code &&
-            (!order?.bonuscard_transaction_id || order?.bonuscard_needs_validation)
+            (!this._bonuscardPendingTransactionId(order) || order?.bonuscard_needs_validation)
         ) {
             await this._validateBonuscardPurchaseForOrder(order, { notifyOnDiscount: true });
         }
@@ -974,7 +991,13 @@ patch(OrderPaymentValidation.prototype, {
         await super.afterOrderValidation(...arguments);
         const order = this.order;
 
-        if (!order?.bonuscard_transaction_id || !order?.bonuscard_checkout_items) {
+        if (!this.pos._bonuscardPendingTransactionId(order)) {
+            return;
+        }
+        if (!order?.bonuscard_checkout_items) {
+            await this.pos._releaseBonuscardTransactionIfPending(order, {
+                logMethod: "afterOrderValidation",
+            });
             return;
         }
 

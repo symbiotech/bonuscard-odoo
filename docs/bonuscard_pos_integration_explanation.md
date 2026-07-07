@@ -39,11 +39,13 @@ This document explains how the Bonuscard POS integration works in the `bonuscard
    - Concurrent calls are guarded by a version counter; stale results are discarded, but their `transactionIdentifier` is still stored so the lock can always be cancelled
    - Previous discounts are cleared (`_clearAppliedBonuscardDiscounts`) before each new validation
    - On Bonuscard error code 2 (customer locked), the POS cancels the current or any other draft order's pending transaction for the same partner and retries validation once
+   - When the cart has no Bonuscard-eligible lines (no barcode/article number), any pending transaction is cancelled instead of being left open
 
 4. Payment confirmation
    - `OrderPaymentValidation.afterOrderValidation()` calls `bonuscard.api.service.finalize_purchase_for_pos`
    - This sends the stored `transactionIdentifier` and `checkoutItems` to Bonuscard
    - Finalization is retried once on failure; on success the POS clears `order.bonuscard_transaction_id` and `order.bonuscard_checkout_items`
+   - If there is a pending transaction but no `checkoutItems` to finalize (e.g. only products outside Bonuscard), the POS cancels the pending transaction after payment instead of leaving the customer locked
    - If finalization still fails after payment, the transaction fields are kept and a sticky warning is shown so the loyalty lock can be recovered manually
 
 5. Cancel or rollback flows
