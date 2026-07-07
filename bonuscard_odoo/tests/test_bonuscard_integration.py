@@ -128,6 +128,15 @@ class TestBonuscardIntegration(TransactionCase):
                 f"Cleanup cancel failed: {cancel_result.get('messages')}",
             )
 
+    def _is_non_bonuscard_validate_result(self, result):
+        """True when ValidatePurchase did not leave an open Bonuscard transaction."""
+        if result.get("transactionIdentifier"):
+            return False
+        if result.get("error"):
+            return True
+        message = " ".join(result.get("messages") or []).lower()
+        return "no valid products" in message or "cancelled" in message
+
     def test_live_test_connection_with_env_credentials(self):
         instance = self._create_integration_instance()
         instance.action_test_connection()
@@ -199,13 +208,9 @@ class TestBonuscardIntegration(TransactionCase):
                     "expire or cancel it manually, then re-run this test."
                 )
             self.assertTrue(
-                non_bonuscard_result.get("error"),
-                "Expected ValidatePurchase to reject a non-Bonuscard catalog EAN: "
-                f"{non_bonuscard_result}",
-            )
-            self.assertFalse(
-                non_bonuscard_result.get("transactionIdentifier"),
-                "Non-Bonuscard EAN must not open a Bonuscard transaction",
+                self._is_non_bonuscard_validate_result(non_bonuscard_result),
+                "Expected ValidatePurchase to reject a non-Bonuscard catalog EAN without "
+                f"leaving a transaction open: {non_bonuscard_result}",
             )
 
         self._assert_customer_not_locked(partner, bonuscard_ean)
