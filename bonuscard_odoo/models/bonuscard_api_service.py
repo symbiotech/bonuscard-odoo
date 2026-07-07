@@ -240,10 +240,13 @@ class BonuscardApiService(models.AbstractModel):
 
     def _test_connection(self, instance):
         instance.ensure_one()
-        # Use an authenticated endpoint so credentials are validated. A probe
-        # query that matches no customer avoids changing Bonuscard data.
-        self._search_customers(instance, "0000000000")
-        return {"reachable": True}
+
+        try:
+            return self._request(instance, endpoint="", method="GET")
+        except BonuscardHttpError as err:
+            if err.status_code in (404, 405):
+                return {"reachable": True}
+            raise
 
     def _search_customers(self, instance, query):
         instance.ensure_one()

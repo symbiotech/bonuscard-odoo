@@ -90,7 +90,6 @@ class BonuscardConnectorInstance(models.Model):
 
     def action_test_connection(self):
         service = self.env["bonuscard.api.service"]
-        failure_messages = []
         for rec in self:
             try:
                 service._test_connection(rec)
@@ -106,45 +105,12 @@ class BonuscardConnectorInstance(models.Model):
                     "Bonuscard connection test failed for instance %s",
                     rec.id,
                 )
-                error_message = str(exc)
-                failure_messages.append(error_message)
                 rec.write(
                     {
                         "connection_status": "error",
                         "last_test_at": fields.Datetime.now(),
-                        "last_error": error_message,
+                        "last_error": str(exc),
                     }
                 )
 
-        if failure_messages:
-            if len(self) == 1:
-                message = failure_messages[0]
-            else:
-                message = self.env._(
-                    "%s of %s connection tests failed.",
-                    len(failure_messages),
-                    len(self),
-                )
-            return {
-                "type": "ir.actions.client",
-                "tag": "display_notification",
-                "params": {
-                    "title": self.env._("Connection Failed"),
-                    "message": message,
-                    "type": "danger",
-                    "sticky": True,
-                },
-            }
-
-        return {
-            "type": "ir.actions.client",
-            "tag": "display_notification",
-            "params": {
-                "title": self.env._("Success"),
-                "message": self.env._(
-                    "Bonuscard API credentials verified successfully."
-                ),
-                "type": "success",
-                "sticky": False,
-            },
-        }
+        return True
