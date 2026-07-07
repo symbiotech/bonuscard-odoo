@@ -15,6 +15,12 @@ msgstr ""
 "X-Generator: Odoo\n"
 
 #. module: bonuscard_odoo
+#. odoo-python
+#: code:bonuscard_odoo/models/bonuscard_instance.py:0
+msgid "%s of %s connection tests failed. First error: %s"
+msgstr "%s av %s anslutningstester misslyckades. Första felet: %s"
+
+#. module: bonuscard_odoo
 #. odoo-javascript
 #: code:bonuscard_odoo/static/src/app/bonuscard_registration_service.js:0
 msgid "A phone number is required to register a customer with Bonuscard."
@@ -61,6 +67,12 @@ msgstr "Bonuscard API HTTP-fel: %s"
 #: code:bonuscard_odoo/models/bonuscard_api_service.py:0
 msgid "Bonuscard API connection error: %s"
 msgstr "Bonuscard API-anslutningsfel: %s"
+
+#. module: bonuscard_odoo
+#. odoo-python
+#: code:bonuscard_odoo/models/bonuscard_instance.py:0
+msgid "Bonuscard API credentials verified successfully."
+msgstr "Bonuscard API-uppgifterna har verifierats."
 
 #. module: bonuscard_odoo
 #. odoo-python
@@ -223,6 +235,12 @@ msgstr "Kontrollera Bonuscard"
 #: model_terms:ir.ui.view,arch_db:bonuscard_odoo.bonuscard_odoo_instance_view_search
 msgid "Company"
 msgstr "Företag"
+
+#. module: bonuscard_odoo
+#. odoo-python
+#: code:bonuscard_odoo/models/bonuscard_instance.py:0
+msgid "Connection Failed"
+msgstr "Anslutningen misslyckades"
 
 #. module: bonuscard_odoo
 #: model:ir.model.fields,field_description:bonuscard_odoo.field_bonuscard_connector_instance__name

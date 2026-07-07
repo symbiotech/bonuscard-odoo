@@ -13,6 +13,8 @@ _logger = logging.getLogger(__name__)
 _RETRYABLE_HTTP_STATUS_CODES = {429, 500, 502, 503, 504}
 _REQUEST_RETRY_COUNT = 2
 _REQUEST_RETRY_INITIAL_DELAY = 0.5
+# Probe query for connection tests: phone-shaped, unlikely to match a real customer.
+_CONNECTION_TEST_PROBE_QUERY = "0000000000"
 
 
 class BonuscardHttpError(UserError):
@@ -240,13 +242,10 @@ class BonuscardApiService(models.AbstractModel):
 
     def _test_connection(self, instance):
         instance.ensure_one()
-
-        try:
-            return self._request(instance, endpoint="", method="GET")
-        except BonuscardHttpError as err:
-            if err.status_code in (404, 405):
-                return {"reachable": True}
-            raise
+        # Use an authenticated endpoint so credentials are validated. A probe
+        # query that matches no customer avoids changing Bonuscard data.
+        self._search_customers(instance, _CONNECTION_TEST_PROBE_QUERY)
+        return {"ok": True}
 
     def _search_customers(self, instance, query):
         instance.ensure_one()
