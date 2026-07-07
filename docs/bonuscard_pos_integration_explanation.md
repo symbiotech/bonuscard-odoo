@@ -28,7 +28,7 @@ This document explains how the Bonuscard POS integration works in the `bonuscard
      - Immediately after partner selection, if `bonuscard_status` resolves to `linked`
      - When a product line is added via `addLineToOrder` and the partner has a `bonuscard_recruitment_code`
      - When a line quantity or price is edited via `OrderSummary._setValue` / `updateQuantityNumber`
-     - As a final guard in `PosStore.pay()` if the order has not been validated yet or `bonuscard_needs_validation` is set
+     - As a final guard in `PosStore.pay()` whenever the partner has a `bonuscard_recruitment_code`
    - Each call builds `orderLines` from products that have `barcode` or `default_code`, with `qty > 0` and `price_unit > 0`
    - Calls `bonuscard.api.service.validate_purchase_for_pos`
    - Stores `order.bonuscard_transaction_id`, `order.bonuscard_checkout_items`, and `order.bonuscard_partner_id`
@@ -42,13 +42,13 @@ This document explains how the Bonuscard POS integration works in the `bonuscard
    - When the cart has no Bonuscard-eligible lines (no barcode/article number), any pending transaction is cancelled instead of being left open
 
 4. Payment confirmation
-   - `OrderPaymentValidation.afterOrderValidation()` calls `bonuscard.api.service.finalize_purchase_for_pos`
+   - `OrderPaymentValidation.afterOrderValidation()` finalizes or cancels the pending Bonuscard transaction
+   - When `bonuscard_total_discount > 0` and checkout items exist, it calls `bonuscard.api.service.finalize_purchase_for_pos`
    - This sends the stored `transactionIdentifier` and `checkoutItems` to Bonuscard
    - Finalization is retried once on failure; on success the POS clears `order.bonuscard_transaction_id` and `order.bonuscard_checkout_items`
-   - If there is a pending transaction but no `checkoutItems` to finalize (e.g. only products outside Bonuscard), the POS cancels the pending transaction after payment instead of leaving the customer locked; cancel failure is logged and shown as a sticky warning
-   - Zero-discount validations (products with no Bonuscard benefit) are also cancelled after payment rather than finalized
+   - If there is a pending transaction but nothing to finalize (no checkout items, or zero-discount validation), the POS cancels the pending transaction after payment instead of leaving the customer locked; cancel failure is logged and shown as a sticky warning
    - If finalization fails after payment, the POS attempts cancel as a fallback before showing a sticky warning
-   - If finalization still fails after payment, the transaction fields are kept and a sticky warning is shown so the loyalty lock can be recovered manually
+   - If finalization and the cancel fallback both fail, the transaction fields are kept and a sticky warning is shown so the loyalty lock can be recovered manually
 
 5. Cancel or rollback flows
    - `PosStore.onClickBackButton()` (only when on the Payment Screen), `onDeleteOrder()`, `closePos()`, `addNewOrder()`, and `setOrder()` cancel pending Bonuscard transactions on the order being left behind

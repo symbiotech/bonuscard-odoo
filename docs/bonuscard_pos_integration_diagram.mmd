@@ -46,8 +46,9 @@ flowchart LR
     H -->|transactionIdentifier + checkoutItems| M
     M -->|commit purchase| H
     H -->|finalize success: clear bonuscard state| C
-    H -->|finalize failed after retry: keep state + sticky warning| C
-    C -->|no checkoutItems: cancel pending transaction| I
+    H -->|finalize failed after retry: cancel fallback| I
+    H -->|finalize and cancel fallback failed: sticky warning| C
+    C -->|zero discount or no checkoutItems: cancel pending transaction| I
     I -->|release success: clear bonuscard state| C
     I -->|release failed after payment: sticky warning| C
 
