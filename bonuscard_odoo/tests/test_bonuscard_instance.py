@@ -65,11 +65,14 @@ class TestBonuscardInstance(TransactionCase):
             "odoo.addons.bonuscard_odoo.models.bonuscard_api_service.BonuscardApiService._test_connection",
             return_value={"reachable": True},
         ):
-            record.action_test_connection()
+            action = record.action_test_connection()
 
         self.assertEqual(record.connection_status, "ok")
         self.assertFalse(record.last_error)
         self.assertTrue(record.last_test_at)
+        self.assertEqual(action["type"], "ir.actions.client")
+        self.assertEqual(action["tag"], "display_notification")
+        self.assertEqual(action["params"]["type"], "success")
 
     def test_action_test_connection_marks_status_error(self):
         record = self.instance_model.create(
@@ -85,10 +88,15 @@ class TestBonuscardInstance(TransactionCase):
             "odoo.addons.bonuscard_odoo.models.bonuscard_api_service.BonuscardApiService._test_connection",
             side_effect=UserError("Auth failed"),
         ):
-            record.action_test_connection()
+            action = record.action_test_connection()
 
         self.assertEqual(record.connection_status, "error")
         self.assertEqual(record.last_error, "Auth failed")
+        self.assertEqual(action["type"], "ir.actions.client")
+        self.assertEqual(action["tag"], "display_notification")
+        self.assertEqual(action["params"]["type"], "danger")
+        self.assertEqual(action["params"]["message"], "Auth failed")
+        self.assertTrue(action["params"]["sticky"])
 
     # ------------------------------------------------------------------
     # BonuscardHttpError – custom exception carries the HTTP status code
@@ -129,11 +137,11 @@ class TestBonuscardInstance(TransactionCase):
 
         self.assertEqual(ctx.exception.status_code, 500)
 
-    def test_test_connection_returns_reachable_on_404(self):
-        """test_connection returns {'reachable': True} when the server returns 404."""
+    def test_test_connection_succeeds_with_authenticated_search(self):
+        """test_connection succeeds when SearchCustomers accepts the credentials."""
         record = self.instance_model.create(
             {
-                "name": "404 Reachable",
+                "name": "Auth OK",
                 "api_base_url": "https://web.bonuscard.com/api/",
                 "api_username": "demo-user",
                 "api_password": "demo-pass",
@@ -141,27 +149,25 @@ class TestBonuscardInstance(TransactionCase):
         )
         service = self.env["bonuscard.api.service"]
 
-        http_err = HTTPError(
-            url="https://web.bonuscard.com/api/",
-            code=404,
-            msg="Not Found",
-            hdrs={},
-            fp=MagicMock(read=lambda: b""),
-        )
-
         with patch(
-            "odoo.addons.bonuscard_odoo.models.bonuscard_api_service.urlopen",
-            side_effect=http_err,
-        ):
+            "odoo.addons.bonuscard_odoo.models.bonuscard_api_service.BonuscardApiService._request",
+            return_value={"customers": [], "error": False},
+        ) as request_mock:
             result = service._test_connection(record)
 
         self.assertEqual(result, {"reachable": True})
+        request_mock.assert_called_once_with(
+            record,
+            endpoint="SearchCustomers",
+            method="GET",
+            params={"query": "0000000000"},
+        )
 
-    def test_test_connection_returns_reachable_on_405(self):
-        """test_connection returns {'reachable': True} when the server returns 405."""
+    def test_test_connection_raises_user_error_on_auth_failure(self):
+        """test_connection fails when SearchCustomers rejects the credentials."""
         record = self.instance_model.create(
             {
-                "name": "405 Reachable",
+                "name": "Auth Failed",
                 "api_base_url": "https://web.bonuscard.com/api/",
                 "api_username": "demo-user",
                 "api_password": "demo-pass",
@@ -170,9 +176,9 @@ class TestBonuscardInstance(TransactionCase):
         service = self.env["bonuscard.api.service"]
 
         http_err = HTTPError(
-            url="https://web.bonuscard.com/api/",
-            code=405,
-            msg="Method Not Allowed",
+            url="https://web.bonuscard.com/api/SearchCustomers?query=0000000000",
+            code=401,
+            msg="Unauthorized",
             hdrs={},
             fp=MagicMock(read=lambda: b""),
         )
@@ -181,38 +187,40 @@ class TestBonuscardInstance(TransactionCase):
             "odoo.addons.bonuscard_odoo.models.bonuscard_api_service.urlopen",
             side_effect=http_err,
         ):
-            result = service._test_connection(record)
-
-        self.assertEqual(result, {"reachable": True})
-
-    def test_test_connection_reraises_other_http_errors(self):
-        """test_connection re-raises BonuscardHttpError for status codes other than 404/405."""
-        record = self.instance_model.create(
-            {
-                "name": "500 Error",
-                "api_base_url": "https://web.bonuscard.com/api/",
-                "api_username": "demo-user",
-                "api_password": "demo-pass",
-            }
-        )
-        service = self.env["bonuscard.api.service"]
-
-        http_err = HTTPError(
-            url="https://web.bonuscard.com/api/",
-            code=500,
-            msg="Internal Server Error",
-            hdrs={},
-            fp=MagicMock(read=lambda: b""),
-        )
-
-        with patch(
-            "odoo.addons.bonuscard_odoo.models.bonuscard_api_service.urlopen",
-            side_effect=http_err,
-        ):
-            with self.assertRaises(BonuscardHttpError) as ctx:
+            with self.assertRaises(UserError) as ctx:
                 service._test_connection(record)
 
-        self.assertEqual(ctx.exception.status_code, 500)
+        self.assertIn("authentication failed", str(ctx.exception).lower())
+
+    def test_action_test_connection_marks_error_on_bogus_credentials(self):
+        """End-to-end: bogus credentials must not report connection_status=ok."""
+        record = self.instance_model.create(
+            {
+                "name": "Bogus Credentials",
+                "api_base_url": "https://test.bonuscard.com/api/",
+                "api_username": "bogus-user",
+                "api_password": "bogus-pass",
+            }
+        )
+
+        http_err = HTTPError(
+            url="https://test.bonuscard.com/api/SearchCustomers?query=0000000000",
+            code=401,
+            msg="Unauthorized",
+            hdrs={},
+            fp=MagicMock(read=lambda: b""),
+        )
+
+        with patch(
+            "odoo.addons.bonuscard_odoo.models.bonuscard_api_service.urlopen",
+            side_effect=http_err,
+        ):
+            action = record.action_test_connection()
+
+        self.assertEqual(record.connection_status, "error")
+        self.assertIn("authentication failed", (record.last_error or "").lower())
+        self.assertEqual(action["params"]["type"], "danger")
+        self.assertIn("authentication failed", action["params"]["message"].lower())
 
     def test_search_customers_uses_query_params(self):
         record = self.instance_model.create(
