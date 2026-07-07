@@ -9,7 +9,7 @@ class TestBonuscardJs(HttpCase):
     def test_bonuscard_pos_unit(self):
         """Run Bonuscard HOOT unit tests headlessly via the Odoo web test runner."""
         self.browser_js(
-            "/web/tests?headless&loglevel=2&preset=desktop&timeout=15000&filter=bonuscard",
+            '/web/tests?headless&loglevel=2&preset=desktop&timeout=15000&filter="@bonuscard_odoo"',
             "",
             "",
             login="admin",

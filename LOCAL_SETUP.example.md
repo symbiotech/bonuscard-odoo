@@ -72,7 +72,7 @@ python -m odoo -c odoo.conf -d bonuscard_dev
 
 2. Open test runner:
    - All hoot tests: `http://localhost:8069/web/tests`
-   - Bonuscard tests only: `http://localhost:8069/web/tests?filter=bonuscard`
+   - Bonuscard tests only: `http://localhost:8069/web/tests?filter="@bonuscard_odoo"`
    - Headless mode: `http://localhost:8069/web/tests?headless`
 
 ### Run Pre-commit Checks
