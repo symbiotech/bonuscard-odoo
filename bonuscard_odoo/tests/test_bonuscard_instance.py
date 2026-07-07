@@ -2,7 +2,10 @@ from unittest.mock import MagicMock, patch
 from urllib.error import HTTPError
 from urllib.request import Request
 
-from odoo.addons.bonuscard_odoo.models.bonuscard_api_service import BonuscardHttpError
+from odoo.addons.bonuscard_odoo.models.bonuscard_api_service import (
+    _CONNECTION_TEST_PROBE_QUERY,
+    BonuscardHttpError,
+)
 from odoo.exceptions import UserError, ValidationError
 from odoo.tests import TransactionCase, tagged
 
@@ -63,7 +66,7 @@ class TestBonuscardInstance(TransactionCase):
 
         with patch(
             "odoo.addons.bonuscard_odoo.models.bonuscard_api_service.BonuscardApiService._test_connection",
-            return_value={"reachable": True},
+            return_value={"ok": True},
         ):
             action = record.action_test_connection()
 
@@ -155,12 +158,12 @@ class TestBonuscardInstance(TransactionCase):
         ) as request_mock:
             result = service._test_connection(record)
 
-        self.assertEqual(result, {"reachable": True})
+        self.assertEqual(result, {"ok": True})
         request_mock.assert_called_once_with(
             record,
             endpoint="SearchCustomers",
             method="GET",
-            params={"query": "0000000000"},
+            params={"query": _CONNECTION_TEST_PROBE_QUERY},
         )
 
     def test_test_connection_raises_user_error_on_auth_failure(self):
@@ -176,7 +179,7 @@ class TestBonuscardInstance(TransactionCase):
         service = self.env["bonuscard.api.service"]
 
         http_err = HTTPError(
-            url="https://web.bonuscard.com/api/SearchCustomers?query=0000000000",
+            url=f"https://web.bonuscard.com/api/SearchCustomers?query={_CONNECTION_TEST_PROBE_QUERY}",
             code=401,
             msg="Unauthorized",
             hdrs={},
@@ -204,7 +207,7 @@ class TestBonuscardInstance(TransactionCase):
         )
 
         http_err = HTTPError(
-            url="https://test.bonuscard.com/api/SearchCustomers?query=0000000000",
+            url=f"https://test.bonuscard.com/api/SearchCustomers?query={_CONNECTION_TEST_PROBE_QUERY}",
             code=401,
             msg="Unauthorized",
             hdrs={},

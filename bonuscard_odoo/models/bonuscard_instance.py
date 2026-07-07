@@ -121,9 +121,10 @@ class BonuscardConnectorInstance(models.Model):
                 message = failure_messages[0]
             else:
                 message = self.env._(
-                    "%s of %s connection tests failed.",
+                    "%s of %s connection tests failed. First error: %s",
                     len(failure_messages),
                     len(self),
+                    failure_messages[0],
                 )
             return {
                 "type": "ir.actions.client",
