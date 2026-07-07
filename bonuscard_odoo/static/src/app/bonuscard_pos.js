@@ -77,7 +77,10 @@ patch(PosStore.prototype, {
         return { success: false, message: lastMessage || _t("Bonuscard cancel failed.") };
     },
 
-    async _releaseBonuscardTransactionIfPending(order, { logMethod = "releasePending" } = {}) {
+    async _releaseBonuscardTransactionIfPending(
+        order,
+        { logMethod = "releasePending", notifyOnFailure = true, failureMessage = null, sticky = false } = {}
+    ) {
         if (!this._bonuscardPendingTransactionId(order)) {
             return { success: true };
         }
@@ -87,6 +90,28 @@ patch(PosStore.prototype, {
         });
         if (cancelResult.success) {
             this._clearBonuscardPurchaseState(order);
+            return cancelResult;
+        }
+        logPosMessage(
+            "Bonuscard",
+            logMethod,
+            "Bonuscard cancel failed while releasing pending transaction — customer may remain locked",
+            false,
+            [
+                {
+                    transactionId: this._bonuscardPendingTransactionId(order),
+                    partnerId: order.bonuscard_partner_id || null,
+                    message: cancelResult.message,
+                },
+            ]
+        );
+        if (notifyOnFailure) {
+            this.notification.add(
+                failureMessage ||
+                    cancelResult.message ||
+                    _t("Bonuscard cancel failed."),
+                { type: "warning", sticky }
+            );
         }
         return cancelResult;
     },
@@ -393,6 +418,9 @@ patch(PosStore.prototype, {
         if (orderLines.length === 0) {
             await this._releaseBonuscardTransactionIfPending(order, {
                 logMethod: "_validateBonuscardPurchaseForOrder",
+                failureMessage: _t(
+                    "Could not release the pending Bonuscard transaction. The customer may remain locked until it expires."
+                ),
             });
             return false;
         }
@@ -928,6 +956,16 @@ patch(OrderSummary.prototype, {
 });
 
 patch(OrderPaymentValidation.prototype, {
+    _bonuscardReleaseFailedAfterPaymentMessage(apiMessage) {
+        const context = _t(
+            "Payment succeeded but Bonuscard could not release the pending transaction. The customer may remain locked."
+        );
+        if (apiMessage) {
+            return `${context} (${apiMessage})`;
+        }
+        return context;
+    },
+
     _bonuscardFinalizePendingAfterPaymentMessage(apiMessage) {
         const context = _t(
             "Payment succeeded but Bonuscard could not commit the discount. The loyalty transaction is still pending."
@@ -995,9 +1033,16 @@ patch(OrderPaymentValidation.prototype, {
             return;
         }
         if (!order?.bonuscard_checkout_items) {
-            await this.pos._releaseBonuscardTransactionIfPending(order, {
+            const releaseResult = await this.pos._releaseBonuscardTransactionIfPending(order, {
                 logMethod: "afterOrderValidation",
+                notifyOnFailure: false,
             });
+            if (!releaseResult.success) {
+                this.pos.notification.add(
+                    this._bonuscardReleaseFailedAfterPaymentMessage(releaseResult.message),
+                    { type: "warning", sticky: true }
+                );
+            }
             return;
         }
 

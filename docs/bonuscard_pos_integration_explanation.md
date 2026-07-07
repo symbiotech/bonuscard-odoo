@@ -45,7 +45,7 @@ This document explains how the Bonuscard POS integration works in the `bonuscard
    - `OrderPaymentValidation.afterOrderValidation()` calls `bonuscard.api.service.finalize_purchase_for_pos`
    - This sends the stored `transactionIdentifier` and `checkoutItems` to Bonuscard
    - Finalization is retried once on failure; on success the POS clears `order.bonuscard_transaction_id` and `order.bonuscard_checkout_items`
-   - If there is a pending transaction but no `checkoutItems` to finalize (e.g. only products outside Bonuscard), the POS cancels the pending transaction after payment instead of leaving the customer locked
+   - If there is a pending transaction but no `checkoutItems` to finalize (e.g. only products outside Bonuscard), the POS cancels the pending transaction after payment instead of leaving the customer locked; cancel failure is logged and shown as a sticky warning
    - If finalization still fails after payment, the transaction fields are kept and a sticky warning is shown so the loyalty lock can be recovered manually
 
 5. Cancel or rollback flows
