@@ -116,9 +116,10 @@ Manual integration tests exist in ``tests/test_bonuscard_integration.py`` and
 are designed for local testing only.
 
 Configure ``BONUSCARD_TEST_*`` values in a local ``.env`` file (see
-``.env.example``). The zero-discount lock test also requires
-``BONUSCARD_TEST_CONSUMER`` and ``BONUSCARD_TEST_NON_BONUSCARD_EAN`` (a barcode
-that validates in sandbox with ``totalDiscount=0``).
+``.env.example``). The non-Bonuscard customer-lock test requires
+``BONUSCARD_TEST_CONSUMER`` and ``BONUSCARD_TEST_BONUSCARD_EAN`` (a product on
+the Bonuscard API). Optionally set ``BONUSCARD_TEST_NON_BONUSCARD_EAN`` to also
+exercise a barcoded product that the Bonuscard API rejects.
 
 Run only the manual integration suite with::
 

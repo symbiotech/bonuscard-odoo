@@ -48,7 +48,7 @@ flowchart LR
     H -->|finalize success: clear bonuscard state| C
     H -->|finalize failed after retry: cancel fallback| I
     H -->|finalize and cancel fallback failed: sticky warning| C
-    C -->|zero discount or no checkoutItems: cancel pending transaction| I
+    C -->|no checkoutItems: cancel pending transaction| I
     I -->|release success: clear bonuscard state| C
     I -->|release failed after payment: sticky warning| C
 

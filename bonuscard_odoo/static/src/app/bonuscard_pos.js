@@ -36,10 +36,6 @@ patch(PosStore.prototype, {
         return Array.isArray(items) && items.length > 0;
     },
 
-    _bonuscardShouldFinalizeAfterPayment(order) {
-        return Number(order?.bonuscard_total_discount) > 0;
-    },
-
     async _cancelBonuscardPurchaseForOrder(order, { retries = 0, logMethod = "cancel" } = {}) {
         const transactionId = this._bonuscardPendingTransactionId(order);
         if (!transactionId) {
@@ -132,7 +128,6 @@ patch(PosStore.prototype, {
         order.bonuscard_transaction_id = null;
         order._bonuscardCandidateTxId = null;
         order.bonuscard_checkout_items = null;
-        order.bonuscard_total_discount = 0;
         order.bonuscard_partner_id = false;
         order.bonuscard_needs_validation = true;
         order.clearBonuscardDiscounts?.();
@@ -474,7 +469,6 @@ patch(PosStore.prototype, {
                     Array.isArray(result.checkoutItems) && result.checkoutItems.length
                         ? result.checkoutItems
                         : orderLines;
-                order.bonuscard_total_discount = Number(result.totalDiscount) || 0;
                 order.bonuscard_partner_id = partner.id;
                 order.bonuscard_needs_validation = false;
 
@@ -1041,9 +1035,7 @@ patch(OrderPaymentValidation.prototype, {
             return;
         }
 
-        const shouldFinalize =
-            this.pos._bonuscardShouldFinalizeAfterPayment(order) &&
-            this.pos._bonuscardHasCheckoutItems(order);
+        const shouldFinalize = this.pos._bonuscardHasCheckoutItems(order);
 
         if (!shouldFinalize) {
             const releaseResult = await this.pos._releaseBonuscardTransactionIfPending(order, {
@@ -1089,6 +1081,5 @@ patch(OrderPaymentValidation.prototype, {
         }
         order.bonuscard_transaction_id = null;
         order.bonuscard_checkout_items = null;
-        order.bonuscard_total_discount = 0;
     },
 });
