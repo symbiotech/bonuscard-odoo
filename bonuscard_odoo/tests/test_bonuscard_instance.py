@@ -420,3 +420,111 @@ class TestBonuscardInstance(TransactionCase):
         )
         self.assertTrue(record.is_current)
         record.write({"active": False})
+
+    def test_archiving_current_promotes_replacement(self):
+        """When the current instance is archived and another active instance exists,
+        the other instance is promoted to current."""
+        instances = self.instance_model.search([])
+        instances.write({"active": False})
+        current = self.instance_model.create(
+            {
+                "name": "Current",
+                "api_base_url": "https://web.bonuscard.com/api/",
+                "api_username": "demo-user",
+                "api_password": "demo-pass",
+                "is_current": True,
+            }
+        )
+        other = self.instance_model.create(
+            {
+                "name": "Other",
+                "api_base_url": "https://test.bonuscard.com/api/",
+                "api_username": "demo-user2",
+                "api_password": "demo-pass2",
+            }
+        )
+        self.assertTrue(current.is_current)
+        self.assertFalse(other.is_current)
+
+        current.write({"active": False})
+
+        self.assertFalse(current.is_current)
+        self.assertTrue(other.is_current)
+        other.write({"active": False})
+
+    def test_unsetting_is_current_promotes_replacement(self):
+        """write({"is_current": False}) on the current instance promotes another
+        active instance to current."""
+        instances = self.instance_model.search([])
+        instances.write({"active": False})
+        current = self.instance_model.create(
+            {
+                "name": "Current",
+                "api_base_url": "https://web.bonuscard.com/api/",
+                "api_username": "demo-user",
+                "api_password": "demo-pass",
+                "is_current": True,
+            }
+        )
+        other = self.instance_model.create(
+            {
+                "name": "Other",
+                "api_base_url": "https://test.bonuscard.com/api/",
+                "api_username": "demo-user2",
+                "api_password": "demo-pass2",
+            }
+        )
+        self.assertTrue(current.is_current)
+        self.assertFalse(other.is_current)
+
+        current.write({"is_current": False})
+
+        self.assertFalse(current.is_current)
+        self.assertTrue(other.is_current)
+        current.write({"active": False})
+        other.write({"active": False})
+
+    def test_unsetting_is_current_raises_when_no_replacement(self):
+        """write({"is_current": False}) on the only active instance raises ValidationError
+        because there is no other connection to take over."""
+        instances = self.instance_model.search([])
+        instances.write({"active": False})
+        solo = self.instance_model.create(
+            {
+                "name": "Solo",
+                "api_base_url": "https://web.bonuscard.com/api/",
+                "api_username": "demo-user",
+                "api_password": "demo-pass",
+                "is_current": True,
+            }
+        )
+        with self.assertRaises(ValidationError):
+            solo.write({"is_current": False})
+        # DB unchanged — solo is still active and current
+        self.assertTrue(solo.active)
+        self.assertTrue(solo.is_current)
+        solo.write({"active": False})
+
+    def test_reactivating_archived_instance_auto_becomes_current(self):
+        """Re-activating an archived instance when the company has no current
+        active connection makes it current automatically."""
+        instances = self.instance_model.search([])
+        instances.write({"active": False})
+        instance = self.instance_model.create(
+            {
+                "name": "To Reactivate",
+                "api_base_url": "https://web.bonuscard.com/api/",
+                "api_username": "demo-user",
+                "api_password": "demo-pass",
+            }
+        )
+        self.assertTrue(instance.is_current)
+
+        # Archive — now the company has no active current connection
+        instance.write({"active": False})
+        self.assertFalse(instance.is_current)
+
+        # Reactivate — must auto-become current again
+        instance.write({"active": True})
+        self.assertTrue(instance.is_current)
+        instance.write({"active": False})

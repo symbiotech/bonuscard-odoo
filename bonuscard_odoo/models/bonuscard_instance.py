@@ -95,6 +95,8 @@ class BonuscardConnectorInstance(models.Model):
 
     @api.constrains("is_current", "company_id", "active")
     def _check_is_current_unique_per_company(self):
+        if self.env.context.get(_CTX_SKIP_CURRENT_ENFORCEMENT):
+            return
         for rec in self:
             if not rec.is_current:
                 continue
@@ -289,7 +291,7 @@ class BonuscardConnectorInstance(models.Model):
                     ]
                 ).write({"is_current": False})
 
-        if vals.get("active") is True and "is_current" not in vals:
+        if vals.get("active") is True and vals.get("is_current") is not True:
             # Reactivating instances (single or bulk) must also pick exactly one current
             # per company, otherwise constraints will fail inside super().write().
             # Split the write so one record per company becomes current.
@@ -326,6 +328,45 @@ class BonuscardConnectorInstance(models.Model):
                 ).write(vals)
             return results
 
+        if (
+            "is_current" in vals
+            and not vals["is_current"]
+            and vals.get("active") is not False
+        ):
+            # Explicitly unsetting is_current on active current records: pre-assign a
+            # replacement so the "exactly one current" constraint is satisfied during
+            # super().write(). Uses the skip context so the intermediate state (two
+            # current records momentarily) does not trip constraints.
+            current_to_unset = self.filtered(lambda r: r.is_current and r.active)
+            if current_to_unset:
+                for company in current_to_unset.mapped("company_id"):
+                    company_recs = current_to_unset.filtered(
+                        lambda r, c=company: r.company_id == c
+                    )
+                    replacement = self.sudo().search(
+                        [
+                            ("company_id", "=", company.id),
+                            ("active", "=", True),
+                            ("is_current", "=", False),
+                            ("id", "not in", company_recs.ids),
+                        ],
+                        limit=1,
+                        order="id desc",
+                    )
+                    if replacement:
+                        replacement.with_context(
+                            **{_CTX_SKIP_CURRENT_ENFORCEMENT: True}
+                        ).write({"is_current": True})
+                    else:
+                        raise ValidationError(
+                            self.env._(
+                                "Cannot unset the current Bonuscard connection for %s — "
+                                "no other active connection is available to take over. "
+                                "Archive this connection instead.",
+                                company.name,
+                            )
+                        )
+
         if vals.get("active") is False:
             # Odoo runs constraints during super().write(). If we archive a current
             # connector without clearing is_current first (or picking a replacement),
@@ -344,7 +385,9 @@ class BonuscardConnectorInstance(models.Model):
                         order="id desc",
                     )
                     if replacement:
-                        replacement.write({"is_current": True})
+                        replacement.with_context(
+                            **{_CTX_SKIP_CURRENT_ENFORCEMENT: True}
+                        ).write({"is_current": True})
                 # Clear current flag on the archived records in the same write
                 # so constraints see a consistent state.
                 vals.setdefault("is_current", False)
