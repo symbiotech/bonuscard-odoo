@@ -27,12 +27,19 @@ def _load_dotenv_if_present():
             os.environ[key] = value
 
 
+# Manual-only integration tests (live Bonuscard API). These are skipped by default
+# unless explicitly enabled via an environment flag.
 @tagged("bonuscard_integration", "post_install", "-at_install")
 class TestBonuscardIntegration(TransactionCase):
     @classmethod
     def setUpClass(cls):
         super().setUpClass()
         _load_dotenv_if_present()
+
+        if os.getenv("BONUSCARD_RUN_INTEGRATION_TESTS", "").strip() != "1":
+            raise SkipTest(
+                "Integration tests are disabled by default. Set BONUSCARD_RUN_INTEGRATION_TESTS=1 to enable."
+            )
 
         cls.api_base_url = os.getenv("BONUSCARD_TEST_API_BASE_URL", "").strip()
         cls.api_username = os.getenv("BONUSCARD_TEST_USERNAME", "").strip()

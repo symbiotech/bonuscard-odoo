@@ -48,6 +48,35 @@ class ProductProduct(models.Model):
             }
         )
 
+    @api.model_create_multi
+    def create(self, vals_list):
+        now = fields.Datetime.now()
+        patched = []
+        for vals in vals_list:
+            vals = dict(vals or {})
+            if (
+                "bonuscard_catalog_status" in vals
+                and "bonuscard_catalog_updated_at" not in vals
+            ):
+                vals["bonuscard_catalog_updated_at"] = now
+            patched.append(vals)
+        return super().create(patched)
+
+    def write(self, vals):
+        vals = dict(vals or {})
+        if (
+            "bonuscard_catalog_status" in vals
+            and "bonuscard_catalog_updated_at" not in vals
+        ):
+            now = fields.Datetime.now()
+            # Only set updated_at when status actually changes for at least one record.
+            if any(
+                product.bonuscard_catalog_status != vals["bonuscard_catalog_status"]
+                for product in self
+            ):
+                vals["bonuscard_catalog_updated_at"] = now
+        return super().write(vals)
+
     def action_bonuscard_mark_in_catalog(self):
         invalid = self.filtered(
             lambda product: not (product.barcode or product.default_code)
