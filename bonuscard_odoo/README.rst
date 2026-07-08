@@ -76,9 +76,9 @@ Bonuscard customer linking can be prefetched in the background so that most POS
 partner selections already have a cached ``bonuscard_status`` of ``linked`` or
 ``not_found``.
 
-- Scheduled job: runs daily by default (see the module cron entry).
-- Manual run: **Bonuscard > Connections** → open a connection → **Run Bulk Prefetch**.
-- Manual refresh: **Bonuscard > Connections** → open a connection → **Refresh Bulk Prefetch** (re-checks already-scanned partners; TTL applies).
+- Scheduled job: runs daily by default and only processes partners **never scanned before** (see the module cron entry).
+- Manual run: **Bonuscard > Connections** → open a connection → **Run Bulk Prefetch** (same scope as the cron).
+- Manual refresh: **Bonuscard > Connections** → open a connection → **Refresh Bulk Prefetch** (re-checks already-scanned partners older than TTL).
 
 Term order is phone → email → (optional) name. Name fallback is constrained to
 cases where both the partner and the Bonuscard customer have no phone/email.

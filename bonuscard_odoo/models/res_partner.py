@@ -17,11 +17,15 @@ class ResPartner(models.Model):
     ):
         """Build the partner domain used by bulk Bonuscard prefetch."""
         if force_refresh:
-            sync_domain = [
-                "|",
-                ("bonuscard_last_synced_at", "=", False),
-                ("bonuscard_last_synced_at", "<", cutoff),
-            ]
+            if cutoff is None:
+                # Safe fallback when callers omit cutoff: behave like cron (never synced).
+                sync_domain = [("bonuscard_last_synced_at", "=", False)]
+            else:
+                sync_domain = [
+                    "|",
+                    ("bonuscard_last_synced_at", "=", False),
+                    ("bonuscard_last_synced_at", "<", cutoff),
+                ]
         else:
             sync_domain = [("bonuscard_last_synced_at", "=", False)]
 

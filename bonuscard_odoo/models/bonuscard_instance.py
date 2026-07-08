@@ -93,6 +93,20 @@ class BonuscardConnectorInstance(models.Model):
                     self.env._("Request timeout must be at least 1 second.")
                 )
 
+    @api.constrains(
+        "bulk_partner_prefetch_ttl_hours", "bulk_partner_prefetch_batch_size"
+    )
+    def _check_bulk_prefetch_settings(self):
+        for rec in self:
+            if rec.bulk_partner_prefetch_ttl_hours < 1:
+                raise ValidationError(
+                    self.env._("Bulk prefetch TTL must be at least 1 hour.")
+                )
+            if rec.bulk_partner_prefetch_batch_size < 1:
+                raise ValidationError(
+                    self.env._("Bulk prefetch batch size must be at least 1.")
+                )
+
     def _build_headers(self):
         self.ensure_one()
         credentials = f"{self.api_username}:{self.api_password}".encode()
@@ -251,7 +265,12 @@ class BonuscardConnectorInstance(models.Model):
 
     @api.model
     def _cron_run_bulk_partner_prefetch(self):
-        """Scheduled entry point: run prefetch for each active instance/company."""
+        """Scheduled entry point: run prefetch for each active instance/company.
+
+        Uses ``force_refresh=False`` on purpose: the cron only scans partners that
+        have never been checked against Bonuscard. Use **Refresh Bulk Prefetch** on
+        the connection form to re-check stale partners while respecting TTL.
+        """
         instances = self.sudo().search([("active", "=", True)])
         for instance in instances:
             if not instance.bulk_partner_prefetch_active:

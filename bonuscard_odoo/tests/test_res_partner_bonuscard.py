@@ -465,9 +465,8 @@ class TestResPartnerBonuscard(TransactionCase):
             "odoo.addons.bonuscard_odoo.models.bonuscard_api_service.BonuscardApiService._search_customers",
             side_effect=AssertionError("Should not call API when within TTL."),
         ):
-            with patch.object(
-                type(self.partner_model),
-                "_sync_bonuscard_status_for_bulk_prefetch",
+            with patch(
+                "odoo.addons.bonuscard_odoo.models.res_partner.ResPartner._sync_bonuscard_status_for_bulk_prefetch",
                 autospec=True,
             ) as mock_sync:
                 summary = self.partner_model.action_bulk_prefetch_bonuscard_status(
