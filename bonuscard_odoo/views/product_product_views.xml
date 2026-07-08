@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<odoo>
+
+    <record id="view_product_product_form_bonuscard" model="ir.ui.view">
+        <field name="name">product.product.form.bonuscard</field>
+        <field name="model">product.product</field>
+        <field name="inherit_id" ref="product.product_normal_form_view"/>
+        <field name="arch" type="xml">
+            <group name="inventory" position="after">
+                <group string="Bonuscard" name="bonuscard_catalog" groups="bonuscard_odoo.bonuscard_odoo_group_user">
+                    <field name="bonuscard_catalog_status" widget="badge"/>
+                    <field name="bonuscard_catalog_updated_at"/>
+                </group>
+            </group>
+        </field>
+    </record>
+
+    <record id="view_product_product_tree_bonuscard" model="ir.ui.view">
+        <field name="name">product.product.tree.bonuscard</field>
+        <field name="model">product.product</field>
+        <field name="inherit_id" ref="product.product_product_tree_view"/>
+        <field name="arch" type="xml">
+            <field name="default_code" position="after">
+                <field name="bonuscard_catalog_status" widget="badge" optional="hide"/>
+            </field>
+        </field>
+    </record>
+
+    <record id="view_product_product_search_bonuscard" model="ir.ui.view">
+        <field name="name">product.product.search.bonuscard</field>
+        <field name="model">product.product</field>
+        <field name="inherit_id" ref="product.product_search_form_view"/>
+        <field name="arch" type="xml">
+            <filter name="inactive" position="after">
+                <separator/>
+                <filter name="bonuscard_catalog_in" string="Bonuscard: In Catalog" domain="[('bonuscard_catalog_status', '=', 'in_catalog')]"/>
+                <filter name="bonuscard_catalog_not_in" string="Bonuscard: Not in Catalog" domain="[('bonuscard_catalog_status', '=', 'not_in_catalog')]"/>
+                <filter name="bonuscard_catalog_not_set" string="Bonuscard: Not Set" domain="[('bonuscard_catalog_status', '=', 'not_set')]"/>
+            </filter>
+        </field>
+    </record>
+
+</odoo>

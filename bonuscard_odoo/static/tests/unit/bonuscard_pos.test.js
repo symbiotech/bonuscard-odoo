@@ -35,6 +35,15 @@ patchTranslations({
     }
 });
 
+function markProductBonuscardCatalog(product, barcode) {
+    if (barcode !== undefined) {
+        product.barcode = barcode;
+    } else if (!product.barcode) {
+        product.barcode = "TEST-123";
+    }
+    product.bonuscard_catalog_status = "in_catalog";
+}
+
 function mockValidatePurchaseWithDiscount(store, product) {
     const originalCall = store.data.call.bind(store.data);
     patchWithCleanup(store.data, {
@@ -192,7 +201,7 @@ test("_applyBonuscardDiscountsToOrder applies line discounts for matching identi
     const order = await getFilledOrder(store);
 
     const product = store.models["product.product"].get(5);
-    product.barcode = product.barcode || "TEST-123";
+    markProductBonuscardCatalog(product);
 
     const line = await store.addLineToOrder(
         {
@@ -233,7 +242,7 @@ test("_applyBonuscardDiscountsToOrder only consumes the configured quantity acro
     const order = await getFilledOrder(store);
 
     const product = store.models["product.product"].get(5);
-    product.barcode = "TEST-MULTI-123";
+    markProductBonuscardCatalog(product, "TEST-MULTI-123");
 
     const line1 = await store.addLineToOrder(
         {
@@ -289,7 +298,7 @@ test("_applyBonuscardDiscountsToOrder applies proportional line discount when qu
     store.config.discount_product_id = false;
 
     const product = store.models["product.product"].get(5);
-    product.barcode = "TEST-PARTIAL-123";
+    markProductBonuscardCatalog(product, "TEST-PARTIAL-123");
 
     const line = await store.addLineToOrder(
         {
@@ -332,7 +341,7 @@ test("_applyBonuscardDiscountsToOrder adds discount product line for partial cov
 
     const product = store.models["product.product"].get(5);
     const discountProduct = store.models["product.product"].get(6);
-    product.barcode = "TEST-PARTIAL-DP-123";
+    markProductBonuscardCatalog(product, "TEST-PARTIAL-DP-123");
     store.config.discount_product_id = discountProduct;
 
     const line = await store.addLineToOrder(
@@ -382,7 +391,7 @@ test("setPartnerToCurrentOrder validates Bonuscard purchase and applies discount
     const store = await setupPosEnv();
     const order = store.addNewOrder();
     const product = store.models["product.product"].get(5);
-    product.barcode = product.barcode || "TEST-123";
+    markProductBonuscardCatalog(product);
 
     await store.addLineToOrder(
         {
@@ -438,7 +447,7 @@ test("setPartnerToCurrentOrder skips re-validation when the same customer is re-
     const store = await setupPosEnv();
     const order = store.addNewOrder();
     const product = store.models["product.product"].get(5);
-    product.barcode = product.barcode || "TEST-123";
+    markProductBonuscardCatalog(product);
 
     await store.addLineToOrder(
         {
@@ -495,7 +504,7 @@ test("validatePurchaseForOrder retains existing transactionIdentifier when API r
     const store = await setupPosEnv();
     const order = store.addNewOrder();
     const product = store.models["product.product"].get(5);
-    product.barcode = product.barcode || "TEST-123";
+    markProductBonuscardCatalog(product);
 
     await store.addLineToOrder(
         {
@@ -553,7 +562,7 @@ test("quantity change clears pending Bonuscard transaction", async () => {
     const store = await setupPosEnv();
     const order = store.addNewOrder();
     const product = store.models["product.product"].get(5);
-    product.barcode = product.barcode || "TEST-123";
+    markProductBonuscardCatalog(product);
 
     const line = await store.addLineToOrder(
         {
@@ -611,7 +620,7 @@ test("removing a line clears pending Bonuscard transaction", async () => {
     const store = await setupPosEnv();
     const order = store.addNewOrder();
     const product = store.models["product.product"].get(5);
-    product.barcode = product.barcode || "TEST-123";
+    markProductBonuscardCatalog(product);
 
     const line = await store.addLineToOrder(
         {
@@ -669,7 +678,7 @@ test("addLineToOrder re-validation does not show discount success toast", async 
     const store = await setupPosEnv();
     const order = store.addNewOrder();
     const product = store.models["product.product"].get(5);
-    product.barcode = product.barcode || "TEST-123";
+    markProductBonuscardCatalog(product);
 
     const partner = store.models["res.partner"].create({
         name: "Bonuscard Customer",
@@ -709,7 +718,7 @@ test("setPartnerToCurrentOrder shows discount success toast when discount is app
     const store = await setupPosEnv();
     const order = store.addNewOrder();
     const product = store.models["product.product"].get(5);
-    product.barcode = product.barcode || "TEST-123";
+    markProductBonuscardCatalog(product);
 
     await store.addLineToOrder(
         {
@@ -749,7 +758,7 @@ test("addLineToOrder validates Bonuscard purchase after customer is selected", a
     const store = await setupPosEnv();
     const order = store.addNewOrder();
     const product = store.models["product.product"].get(5);
-    product.barcode = product.barcode || "TEST-123";
+    markProductBonuscardCatalog(product);
 
     const partner = store.models["res.partner"].create({
         name: "Bonuscard Customer",
@@ -805,7 +814,7 @@ test("changing partner clears pending Bonuscard transaction and discounts", asyn
     const store = await setupPosEnv();
     const order = store.addNewOrder();
     const product = store.models["product.product"].get(5);
-    product.barcode = product.barcode || "TEST-123";
+    markProductBonuscardCatalog(product);
 
     const line = await store.addLineToOrder(
         {
@@ -877,7 +886,7 @@ test("changing partner cancels the open Bonuscard transaction before clearing it
     const store = await setupPosEnv();
     const order = store.addNewOrder();
     const product = store.models["product.product"].get(5);
-    product.barcode = product.barcode || "TEST-123";
+    markProductBonuscardCatalog(product);
 
     await store.addLineToOrder(
         {
@@ -937,7 +946,7 @@ test("changing partner keeps transaction state when cancel returns an error", as
     const store = await setupPosEnv();
     const order = store.addNewOrder();
     const product = store.models["product.product"].get(5);
-    product.barcode = product.barcode || "TEST-123";
+    markProductBonuscardCatalog(product);
 
     await store.addLineToOrder(
         {
@@ -999,7 +1008,7 @@ test("removing partner cancels the open Bonuscard transaction before clearing it
     const store = await setupPosEnv();
     const order = store.addNewOrder();
     const product = store.models["product.product"].get(5);
-    product.barcode = product.barcode || "TEST-123";
+    markProductBonuscardCatalog(product);
 
     await store.addLineToOrder(
         {
@@ -1049,7 +1058,7 @@ test("clearBonuscardDiscounts removes bonuscard discount lines and resets applie
     const store = await setupPosEnv();
     const order = store.addNewOrder();
     const product = store.models["product.product"].get(5);
-    product.barcode = product.barcode || "TEST-123";
+    markProductBonuscardCatalog(product);
 
     const line = await store.addLineToOrder(
         {
@@ -1088,7 +1097,7 @@ test("addLineToOrder marks discount lines so subsequent validation can clear the
     const store = await setupPosEnv();
     const order = store.addNewOrder();
     const product = store.models["product.product"].get(5);
-    product.barcode = "TEST-MARK-123";
+    markProductBonuscardCatalog(product, "TEST-MARK-123");
 
     // Add a product line before setting partner so no validation fires during setup.
     await store.addLineToOrder(
@@ -1133,7 +1142,7 @@ test("pay revalidates Bonuscard purchase when the order needs validation", async
     const store = await setupPosEnv();
     const order = store.addNewOrder();
     const product = store.models["product.product"].get(5);
-    product.barcode = product.barcode || "TEST-123";
+    markProductBonuscardCatalog(product);
 
     await store.addLineToOrder(
         {
@@ -1168,7 +1177,7 @@ test("pay always revalidates Bonuscard purchase before payment", async () => {
     const store = await setupPosEnv();
     const order = store.addNewOrder();
     const product = store.models["product.product"].get(5);
-    product.barcode = product.barcode || "TEST-123";
+    markProductBonuscardCatalog(product);
 
     await store.addLineToOrder(
         {
@@ -1203,7 +1212,7 @@ test("pay revalidates Bonuscard purchase even after discounts were applied", asy
     const store = await setupPosEnv();
     const order = store.addNewOrder();
     const product = store.models["product.product"].get(5);
-    product.barcode = product.barcode || "TEST-123";
+    markProductBonuscardCatalog(product);
 
     // Configure a discount product so _applyBonuscardDiscountsToOrder can call
     // addLineToOrder (and thus internally setQuantity) when remaining qty > 0.
@@ -1271,7 +1280,7 @@ test("OrderSummary revalidates Bonuscard order when quantity changes", async () 
     const store = await setupPosEnv();
     const order = store.addNewOrder();
     const product = store.models["product.product"].get(5);
-    product.barcode = product.barcode || "TEST-123";
+    markProductBonuscardCatalog(product);
 
     await store.addLineToOrder(
         {
@@ -1305,7 +1314,7 @@ test("OrderSummary does not revalidate Bonuscard order when no partner is linked
     const store = await setupPosEnv();
     const order = store.addNewOrder();
     const product = store.models["product.product"].get(5);
-    product.barcode = product.barcode || "TEST-123";
+    markProductBonuscardCatalog(product);
 
     await store.addLineToOrder(
         {
@@ -1332,7 +1341,7 @@ test("pay applies Bonuscard discount and does not create a payment line when app
     const store = await setupPosEnv();
     const order = store.addNewOrder();
     const product = store.models["product.product"].get(5);
-    product.barcode = product.barcode || "TEST-123";
+    markProductBonuscardCatalog(product);
 
     await store.addLineToOrder(
         {
@@ -1394,7 +1403,7 @@ test("validatePurchaseForOrder excludes zero-price lines from the Bonuscard API 
     const store = await setupPosEnv();
     const order = store.addNewOrder();
     const product = store.models["product.product"].get(5);
-    product.barcode = "PRICED-BARCODE";
+    markProductBonuscardCatalog(product, "PRICED-BARCODE");
 
     // Normal priced line
     await store.addLineToOrder(
@@ -1446,7 +1455,7 @@ test("validatePurchaseForOrder returns false and skips the API call when all lin
     const store = await setupPosEnv();
     const order = store.addNewOrder();
     const product = store.models["product.product"].get(5);
-    product.barcode = "ZERO-ONLY-BARCODE";
+    markProductBonuscardCatalog(product, "ZERO-ONLY-BARCODE");
 
     await store.addLineToOrder(
         {
@@ -1998,7 +2007,7 @@ test("concurrent validations: only the latest call applies its discounts, stale 
     const store = await setupPosEnv();
     const order = store.addNewOrder();
     const product = store.models["product.product"].get(5);
-    product.barcode = "TEST-CONCURRENT-123";
+    markProductBonuscardCatalog(product, "TEST-CONCURRENT-123");
 
     // Add a line before setting the partner so no validation fires during setup.
     await store.addLineToOrder(
@@ -2104,7 +2113,7 @@ test("concurrent validations share the same client-generated transaction identif
     const store = await setupPosEnv();
     const order = store.addNewOrder();
     const product = store.models["product.product"].get(5);
-    product.barcode = "TEST-SHARED-TXID";
+    markProductBonuscardCatalog(product, "TEST-SHARED-TXID");
 
     await store.addLineToOrder(
         {
@@ -2163,7 +2172,7 @@ test("stale concurrent validation result still stores the transaction identifier
     const store = await setupPosEnv();
     const order = store.addNewOrder();
     const product = store.models["product.product"].get(5);
-    product.barcode = "TEST-STALE-CAPTURE";
+    markProductBonuscardCatalog(product, "TEST-STALE-CAPTURE");
 
     await store.addLineToOrder(
         {
@@ -2213,7 +2222,7 @@ test("stale concurrent validation result still stores the transaction identifier
 test("validation recovers from customer lock by cancelling orphaned transactions on other orders", async () => {
     const store = await setupPosEnv();
     const product = store.models["product.product"].get(5);
-    product.barcode = "LOCK-RECOVERY-123";
+    markProductBonuscardCatalog(product, "LOCK-RECOVERY-123");
 
     const partner = store.models["res.partner"].create({ name: "Bonuscard Customer" });
     partner.bonuscard_recruitment_code = "ABC123";
@@ -2482,7 +2491,7 @@ test("afterOrderValidation finalizes zero-discount transaction when checkout ite
 test("validation recovers from customer lock by cancelling pending tx on finalized orders", async () => {
     const store = await setupPosEnv();
     const product = store.models["product.product"].get(5);
-    product.barcode = "LOCK-PAID-123";
+    markProductBonuscardCatalog(product, "LOCK-PAID-123");
 
     const partner = store.models["res.partner"].create({ name: "Bonuscard Customer" });
     partner.bonuscard_recruitment_code = "ABC123";
@@ -2549,4 +2558,98 @@ test("validation recovers from customer lock by cancelling pending tx on finaliz
     expect(paidOrder.bonuscard_transaction_id).toBe(null);
     expect(validateCallCount).toBe(2);
     expect(order.bonuscard_transaction_id).toBe("TXN-NEW");
+});
+
+test("validation skips non-catalog products without calling Bonuscard", async () => {
+    const store = await setupPosEnv();
+    const order = store.addNewOrder();
+    const partner = store.models["res.partner"].create({ name: "Bonuscard Customer" });
+    partner.bonuscard_recruitment_code = "ABC123";
+    partner.bonuscard_status = "linked";
+
+    const product = store.models["product.product"].get(5);
+    markProductBonuscardCatalog(product, "TEST-NOT-IN-CATALOG");
+    product.bonuscard_catalog_status = "not_in_catalog";
+
+    let validateCalled = false;
+    let cancelCalled = false;
+    patchWithCleanup(store.data, {
+        call: async (model, method) => {
+            if (model === "bonuscard.api.service" && method === "validate_purchase_for_pos") {
+                validateCalled = true;
+            }
+            if (model === "bonuscard.api.service" && method === "cancel_purchase_for_pos") {
+                cancelCalled = true;
+            }
+            return {};
+        },
+    });
+
+    await store.addLineToOrder(
+        {
+            product_id: product,
+            product_tmpl_id: product.product_tmpl_id,
+            qty: 1,
+            price_unit: 10,
+        },
+        order
+    );
+    order.setPartner(partner);
+
+    await store._validateBonuscardPurchaseForOrder(order);
+
+    expect(validateCalled).toBe(false);
+    expect(cancelCalled).toBe(false);
+});
+
+test("validation cancels pending transaction when last catalog line is removed", async () => {
+    const store = await setupPosEnv();
+    const order = store.addNewOrder();
+    const partner = store.models["res.partner"].create({ name: "Bonuscard Customer" });
+    partner.bonuscard_recruitment_code = "ABC123";
+    partner.bonuscard_status = "linked";
+
+    const catalogProduct = store.models["product.product"].get(5);
+    markProductBonuscardCatalog(catalogProduct, "TEST-CATALOG-LINE");
+    const nonCatalogProduct = store.models["product.product"].get(6);
+    nonCatalogProduct.barcode = "TEST-NON-CATALOG-LINE";
+    nonCatalogProduct.bonuscard_catalog_status = "not_in_catalog";
+
+    order.setPartner(partner);
+    order.bonuscard_transaction_id = "TXN-LAST-CATALOG-LINE";
+    order.bonuscard_partner_id = partner.id;
+    order.bonuscard_checkout_items = [
+        { ean: "TEST-CATALOG-LINE", quantity: 1, pricePerItem: 10 },
+    ];
+
+    await store.addLineToOrder(
+        {
+            product_id: nonCatalogProduct,
+            product_tmpl_id: nonCatalogProduct.product_tmpl_id,
+            qty: 1,
+            price_unit: 10,
+        },
+        order
+    );
+
+    let cancelledId = null;
+    let validateCalled = false;
+    patchWithCleanup(store.data, {
+        call: async (model, method, args) => {
+            if (model === "bonuscard.api.service" && method === "cancel_purchase_for_pos") {
+                cancelledId = args[0];
+                return { error: false };
+            }
+            if (model === "bonuscard.api.service" && method === "validate_purchase_for_pos") {
+                validateCalled = true;
+            }
+            return {};
+        },
+    });
+
+    await store._validateBonuscardPurchaseForOrder(order);
+
+    expect(validateCalled).toBe(false);
+    expect(cancelledId).toBe("TXN-LAST-CATALOG-LINE");
+    expect(order.bonuscard_transaction_id).toBe(null);
 });

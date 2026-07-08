@@ -115,7 +115,12 @@ class TestBonuscardValidatePurchase(TransactionCase):
 
     def _make_product_with_barcode(self, barcode="8710255122465", name="Test Product"):
         return self.env["product.product"].create(
-            {"name": name, "barcode": barcode, "available_in_pos": True}
+            {
+                "name": name,
+                "barcode": barcode,
+                "available_in_pos": True,
+                "bonuscard_catalog_status": "in_catalog",
+            }
         )
 
     def test_validate_purchase_for_pos_returns_result(self):
@@ -177,6 +182,7 @@ class TestBonuscardValidatePurchase(TransactionCase):
                 "name": "No Barcode Product",
                 "default_code": "ART123",
                 "available_in_pos": True,
+                "bonuscard_catalog_status": "in_catalog",
             }
         )
         order_lines = [{"product_id": product.id, "qty": 1, "price_unit": 50.0}]
@@ -240,15 +246,37 @@ class TestBonuscardValidatePurchase(TransactionCase):
         self.assertTrue(result.get("error"))
         instances.write({"active": True})
 
-    def test_validate_purchase_for_pos_error_when_no_ean_products(self):
+    def test_validate_purchase_for_pos_error_when_no_catalog_products(self):
         partner = self._make_partner_with_code()
         product = self.env["product.product"].create(
-            {"name": "No EAN", "available_in_pos": True}
+            {
+                "name": "No EAN",
+                "available_in_pos": True,
+                "bonuscard_catalog_status": "not_set",
+            }
         )
         order_lines = [{"product_id": product.id, "qty": 1, "price_unit": 10.0}]
 
         result = self.service.validate_purchase_for_pos(partner.id, order_lines)
 
+        self.assertTrue(result.get("error"))
+        self.assertIn(
+            "No Bonuscard catalog products found in the order.",
+            result.get("messages", [""])[0],
+        )
+
+    def test_validate_purchase_for_pos_skips_not_in_catalog_products(self):
+        partner = self._make_partner_with_code()
+        product = self._make_product_with_barcode()
+        product.bonuscard_catalog_status = "not_in_catalog"
+        order_lines = [{"product_id": product.id, "qty": 1, "price_unit": 10.0}]
+
+        with patch(
+            "odoo.addons.bonuscard_odoo.models.bonuscard_api_service.BonuscardApiService._validate_purchase",
+        ) as mock_validate:
+            result = self.service.validate_purchase_for_pos(partner.id, order_lines)
+
+        mock_validate.assert_not_called()
         self.assertTrue(result.get("error"))
 
     def test_validate_purchase_for_pos_passes_transaction_identifier(self):

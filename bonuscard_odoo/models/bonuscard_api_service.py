@@ -355,6 +355,8 @@ class BonuscardApiService(models.AbstractModel):
             product = products.get(line.get("product_id"))
             if not product:
                 continue
+            if product.bonuscard_catalog_status != "in_catalog":
+                continue
             ean = product.barcode or product.default_code
             if not ean:
                 continue
@@ -381,9 +383,7 @@ class BonuscardApiService(models.AbstractModel):
             return {
                 "error": True,
                 "messages": [
-                    self.env._(
-                        "No products with a barcode or article number found in the order."
-                    )
+                    self.env._("No Bonuscard catalog products found in the order.")
                 ],
             }
 

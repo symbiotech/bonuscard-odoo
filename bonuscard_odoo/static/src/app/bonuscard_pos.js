@@ -384,6 +384,30 @@ patch(PosStore.prototype, {
         order.bonuscard_needs_validation = true;
     },
 
+    _bonuscardIsCatalogProduct(line) {
+        const product = line.product_id;
+        return (
+            product?.bonuscard_catalog_status === "in_catalog" &&
+            (product?.barcode || product?.default_code)
+        );
+    },
+
+    _getBonuscardOrderLines(order) {
+        return order.lines
+            .filter(
+                (line) =>
+                    line.qty > 0 &&
+                    line.price_unit > 0 &&
+                    !line.uiState?._bonuscardLine &&
+                    this._bonuscardIsCatalogProduct(line)
+            )
+            .map((line) => ({
+                product_id: line.product_id.id,
+                qty: line.qty,
+                price_unit: line.price_unit,
+            }));
+    },
+
     async _validateBonuscardPurchaseForOrder(
         order,
         { notifyOnDiscount = false, _lockRecoveryAttempt = false } = {}
@@ -404,29 +428,19 @@ patch(PosStore.prototype, {
 
         this._clearAppliedBonuscardDiscounts(order);
 
-        const orderLines = order.lines
-            .filter(
-                (l) =>
-                    l.qty > 0 &&
-                    l.price_unit > 0 &&
-                    !l.uiState?._bonuscardLine &&
-                    (l.product_id?.barcode || l.product_id?.default_code)
-            )
-            .map((l) => ({
-                product_id: l.product_id.id,
-                qty: l.qty,
-                price_unit: l.price_unit,
-            }));
+        const orderLines = this._getBonuscardOrderLines(order);
 
         order.bonuscard_checkout_items = null;
 
         if (orderLines.length === 0) {
-            await this._releaseBonuscardTransactionIfPending(order, {
-                logMethod: "_validateBonuscardPurchaseForOrder",
-                failureMessage: _t(
-                    "Could not release the pending Bonuscard transaction. The customer may remain locked until it expires."
-                ),
-            });
+            if (this._bonuscardPendingTransactionId(order)) {
+                await this._releaseBonuscardTransactionIfPending(order, {
+                    logMethod: "_validateBonuscardPurchaseForOrder",
+                    failureMessage: _t(
+                        "Could not release the pending Bonuscard transaction. The customer may remain locked until it expires."
+                    ),
+                });
+            }
             return false;
         }
 
