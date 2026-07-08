@@ -28,6 +28,7 @@ Features
 * Smart button for one-click Bonuscard status checks from the partner form
 * Manual customer registration from the partner form or POS partner list when lookup returns ``not_found``
 * Automatic discount application in POS after validation
+* Scheduled + manual bulk prefetch of Bonuscard customer links (phone → email → optional name fallback) to reduce POS lookup requests
 
 Installation
 ============
@@ -46,6 +47,13 @@ Configuration
 5. In **Point of Sale > Configuration > Settings**, configure a **Discount Product**.
    Bonuscard discounts that cannot be applied as line percentages are added as
    separate discount lines using this product.
+6. (Optional) Configure the bulk prefetch on the connection record:
+
+   - **Bonuscard > Connections** → open a connection → **Bulk Prefetch**
+   - Enable/disable the job
+   - TTL (hours) to avoid re-querying recently synced partners
+   - Batch size per run
+   - Optional name fallback (only used when phone and email are missing)
 
 Usage
 =====
@@ -60,6 +68,20 @@ matches prefer phone and email; name is used only when neither side has phone
 or email details. The result is written back to the partner and shown as a
 badge in the partner list.
 Use **Check Bonuscard** on the partner form to force a fresh lookup.
+
+Bulk Prefetch (Reduce POS Lookups)
+---------------------------------
+
+Bonuscard customer linking can be prefetched in the background so that most POS
+partner selections already have a cached ``bonuscard_status`` of ``linked`` or
+``not_found``.
+
+- Scheduled job: runs daily by default (see the module cron entry).
+- Manual run: **Bonuscard > Connections** → open a connection → **Run Bulk Prefetch**.
+- Manual refresh: **Bonuscard > Connections** → open a connection → **Refresh Bulk Prefetch** (re-checks already-scanned partners; TTL applies).
+
+Term order is phone → email → (optional) name. Name fallback is constrained to
+cases where both the partner and the Bonuscard customer have no phone/email.
 
 Customer Registration
 ---------------------

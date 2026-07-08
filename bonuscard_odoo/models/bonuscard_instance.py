@@ -41,6 +41,27 @@ class BonuscardConnectorInstance(models.Model):
     )
     request_timeout = fields.Integer(string="Request Timeout (s)", default=20)
 
+    bulk_partner_prefetch_active = fields.Boolean(
+        string="Enable bulk partner prefetch",
+        default=True,
+        help="When enabled, the cron job and manual button will prefetch Bonuscard customer links in the background.",
+    )
+    bulk_partner_prefetch_ttl_hours = fields.Integer(
+        string="Bulk prefetch TTL (hours)",
+        default=24,
+        help="Partners synced within this window are skipped to reduce API calls.",
+    )
+    bulk_partner_prefetch_batch_size = fields.Integer(
+        string="Bulk prefetch batch size",
+        default=200,
+        help="Maximum number of partners processed per run.",
+    )
+    bulk_partner_prefetch_enable_name_fallback = fields.Boolean(
+        string="Allow name fallback",
+        default=False,
+        help="If enabled, the prefetch can use partner name as a last resort when phone and email are missing.",
+    )
+
     connection_status = fields.Selection(
         selection=[
             ("unknown", "Unknown"),
@@ -149,3 +170,114 @@ class BonuscardConnectorInstance(models.Model):
                 "sticky": False,
             },
         }
+
+    def action_run_bulk_partner_prefetch(self):
+        """Manual UI entry point to run the bulk partner prefetch for this company."""
+        self.ensure_one()
+        if not self.bulk_partner_prefetch_active:
+            return {
+                "type": "ir.actions.client",
+                "tag": "display_notification",
+                "params": {
+                    "title": self.env._("Bonuscard Bulk Prefetch"),
+                    "message": self.env._(
+                        "Bulk partner prefetch is disabled for this connection."
+                    ),
+                    "type": "warning",
+                    "sticky": False,
+                },
+            }
+        summary = (
+            self.env["res.partner"]
+            .with_company(self.company_id)
+            .action_bulk_prefetch_bonuscard_status(
+                company_id=self.company_id.id, instance_id=self.id
+            )
+        )
+        message = self.env._(
+            "Processed: %(processed)s (linked=%(linked)s, not_found=%(not_found)s, ambiguous=%(ambiguous)s, error=%(error)s).",
+            **summary,
+        )
+        return {
+            "type": "ir.actions.client",
+            "tag": "display_notification",
+            "params": {
+                "title": self.env._("Bonuscard Bulk Prefetch"),
+                "message": message,
+                "type": "info" if summary.get("error") == 0 else "warning",
+                "sticky": False,
+            },
+        }
+
+    def action_run_bulk_partner_prefetch_force_refresh(self):
+        """Manual UI entry point to refresh already-scanned partners (TTL applies)."""
+        self.ensure_one()
+        if not self.bulk_partner_prefetch_active:
+            return {
+                "type": "ir.actions.client",
+                "tag": "display_notification",
+                "params": {
+                    "title": self.env._("Bonuscard Bulk Prefetch"),
+                    "message": self.env._(
+                        "Bulk partner prefetch is disabled for this connection."
+                    ),
+                    "type": "warning",
+                    "sticky": False,
+                },
+            }
+        summary = (
+            self.env["res.partner"]
+            .with_company(self.company_id)
+            .action_bulk_prefetch_bonuscard_status(
+                company_id=self.company_id.id,
+                instance_id=self.id,
+                force_refresh=True,
+            )
+        )
+        message = self.env._(
+            "Processed: %(processed)s (linked=%(linked)s, not_found=%(not_found)s, ambiguous=%(ambiguous)s, error=%(error)s).",
+            **summary,
+        )
+        return {
+            "type": "ir.actions.client",
+            "tag": "display_notification",
+            "params": {
+                "title": self.env._("Bonuscard Bulk Prefetch (Refresh)"),
+                "message": message,
+                "type": "info" if summary.get("error") == 0 else "warning",
+                "sticky": False,
+            },
+        }
+
+    @api.model
+    def _cron_run_bulk_partner_prefetch(self):
+        """Scheduled entry point: run prefetch for each active instance/company."""
+        instances = self.sudo().search([("active", "=", True)])
+        for instance in instances:
+            if not instance.bulk_partner_prefetch_active:
+                continue
+            try:
+                summary = (
+                    self.env["res.partner"]
+                    .with_company(instance.company_id)
+                    .sudo()
+                    .action_bulk_prefetch_bonuscard_status(
+                        company_id=instance.company_id.id,
+                        instance_id=instance.id,
+                        force_refresh=False,
+                    )
+                )
+                _logger.info(
+                    "Bonuscard bulk prefetch complete for company=%s processed=%s linked=%s not_found=%s ambiguous=%s error=%s",
+                    instance.company_id.id,
+                    summary.get("processed"),
+                    summary.get("linked"),
+                    summary.get("not_found"),
+                    summary.get("ambiguous"),
+                    summary.get("error"),
+                )
+            except Exception:  # pylint: disable=broad-except
+                _logger.exception(
+                    "Bonuscard bulk prefetch cron failed for company %s",
+                    instance.company_id.id,
+                )

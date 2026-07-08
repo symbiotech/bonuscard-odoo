@@ -13,6 +13,7 @@
     "data": [
         "security/security.xml",
         "security/ir.model.access.csv",
+        "data/bonuscard_bulk_prefetch_cron.xml",
         "views/bonuscard_instance_views.xml",
         "views/res_partner_views.xml",
         "views/menus.xml",

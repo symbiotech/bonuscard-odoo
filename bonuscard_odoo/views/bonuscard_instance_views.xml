@@ -8,6 +8,8 @@
             <form string="Bonuscard Connection">
                 <header>
                     <button name="action_test_connection" string="Test Connection" type="object" class="btn-primary"/>
+                    <button name="action_run_bulk_partner_prefetch" string="Run Bulk Prefetch" type="object" groups="bonuscard_odoo.bonuscard_odoo_group_manager"/>
+                    <button name="action_run_bulk_partner_prefetch_force_refresh" string="Refresh Bulk Prefetch" type="object" groups="bonuscard_odoo.bonuscard_odoo_group_manager"/>
                     <field name="connection_status" widget="statusbar" statusbar_visible="unknown,ok,error"/>
                 </header>
                 <sheet>
@@ -28,6 +30,16 @@
                             <field name="api_culture"/>
                             <field name="request_timeout"/>
                             <field name="last_test_at"/>
+                        </group>
+                    </group>
+                    <group string="Bulk Prefetch">
+                        <group>
+                            <field name="bulk_partner_prefetch_active"/>
+                            <field name="bulk_partner_prefetch_enable_name_fallback"/>
+                        </group>
+                        <group>
+                            <field name="bulk_partner_prefetch_ttl_hours"/>
+                            <field name="bulk_partner_prefetch_batch_size"/>
                         </group>
                     </group>
                     <group string="Diagnostics">

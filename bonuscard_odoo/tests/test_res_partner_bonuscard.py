@@ -1,5 +1,7 @@
+from datetime import timedelta
 from unittest.mock import patch
 
+from odoo import fields
 from odoo.exceptions import UserError
 from odoo.tests import TransactionCase, tagged
 
@@ -143,7 +145,8 @@ class TestResPartnerBonuscard(TransactionCase):
         self.assertEqual(result["recruitment_code"], "POS123")
 
     def test_refresh_bonuscard_status_raises_if_no_instance(self):
-        self.instance.active = False
+        instances = self.env["bonuscard.connector.instance"].search([])
+        instances.write({"active": False})
         partner = self.partner_model.create(
             {"name": "No Instance", "email": "none@example.com"}
         )
@@ -151,7 +154,7 @@ class TestResPartnerBonuscard(TransactionCase):
         with self.assertRaises(UserError):
             partner.action_refresh_bonuscard_status()
 
-        self.instance.active = True
+        instances.write({"active": True})
 
     def test_clear_bonuscard_link_also_resets_company_when_phone_matches(self):
         """When a contact and its commercial partner share the same phone number they
@@ -355,3 +358,126 @@ class TestResPartnerBonuscard(TransactionCase):
         self.assertIn("Already registered to Bonuscard.", str(exc.exception))
         # When an exception is raised, the transaction rolls back, so status remains unchanged
         self.assertEqual(partner.bonuscard_status, "not_checked")
+
+    def test_bulk_prefetch_prefers_phone_then_email(self):
+        self.instance.bulk_partner_prefetch_active = True
+        self.instance.bulk_partner_prefetch_ttl_hours = 24
+        self.instance.bulk_partner_prefetch_batch_size = 200
+        self.instance.bulk_partner_prefetch_enable_name_fallback = False
+
+        partner = self.partner_model.create(
+            {
+                "name": "Phone Miss Email Hit",
+                "phone": "+46701234567",
+                "email": "hit@example.com",
+                "customer_rank": 1,
+            }
+        )
+
+        def _search_side_effect(_self, _instance, query):
+            # First call: normalized phone (digits-only)
+            if query == "46701234567":
+                return []
+            # Second call: email (lowercased)
+            if query == "hit@example.com":
+                return [
+                    {
+                        "id": 10,
+                        "name": "Phone Miss Email Hit",
+                        "email": "hit@example.com",
+                        "recruitmentCode": "EMAIL10",
+                    }
+                ]
+            raise AssertionError(f"Unexpected query: {query}")
+
+        with patch(
+            "odoo.addons.bonuscard_odoo.models.bonuscard_api_service.BonuscardApiService._search_customers",
+            autospec=True,
+            side_effect=_search_side_effect,
+        ):
+            summary = self.partner_model.action_bulk_prefetch_bonuscard_status(
+                company_id=self.env.company.id, instance_id=self.instance.id
+            )
+
+        self.assertTrue(summary["ok"])
+        self.assertEqual(summary["processed"], 1)
+        self.assertEqual(partner.bonuscard_status, "linked")
+        self.assertEqual(partner.bonuscard_recruitment_code, "EMAIL10")
+
+    def test_bulk_prefetch_name_fallback_only_when_phone_email_missing(self):
+        self.instance.bulk_partner_prefetch_active = True
+        self.instance.bulk_partner_prefetch_ttl_hours = 24
+        self.instance.bulk_partner_prefetch_batch_size = 200
+        self.instance.bulk_partner_prefetch_enable_name_fallback = True
+
+        partner = self.partner_model.create(
+            {
+                "name": "Walk In Customer",
+                "customer_rank": 1,
+            }
+        )
+        domain = self.partner_model._build_bulk_prefetch_domain(
+            force_refresh=False,
+            enable_name_fallback=True,
+            cutoff=fields.Datetime.now(),
+        )
+        self.assertIn(partner, self.partner_model.search(domain))
+
+        with patch(
+            "odoo.addons.bonuscard_odoo.models.bonuscard_api_service.BonuscardApiService._search_customers",
+            return_value=[
+                {"id": 2, "name": "Walk In Customer", "recruitmentCode": "WALK1"}
+            ],
+        ) as mocked:
+            summary = self.partner_model.action_bulk_prefetch_bonuscard_status(
+                company_id=self.env.company.id, instance_id=self.instance.id
+            )
+
+        self.assertTrue(summary["ok"])
+        self.assertEqual(summary["processed"], 1)
+        self.assertEqual(mocked.call_args.args[-1], "Walk In Customer")
+        self.assertEqual(partner.bonuscard_status, "linked")
+        self.assertEqual(partner.bonuscard_recruitment_code, "WALK1")
+
+    def test_bulk_prefetch_skips_recently_synced_by_ttl(self):
+        self.instance.bulk_partner_prefetch_active = True
+        self.instance.bulk_partner_prefetch_ttl_hours = 24
+        self.instance.bulk_partner_prefetch_batch_size = 200
+
+        partner = self.partner_model.create(
+            {
+                "name": "Recently Synced",
+                "phone": "+46701230000",
+                "customer_rank": 1,
+            }
+        )
+        partner._write_bonuscard_status("not_found", note="recent")
+
+        cutoff = fields.Datetime.now() - timedelta(hours=24)
+        domain = self.partner_model._build_bulk_prefetch_domain(
+            force_refresh=True,
+            enable_name_fallback=False,
+            cutoff=cutoff,
+        )
+        self.assertNotIn(partner, self.partner_model.search(domain))
+
+        with patch(
+            "odoo.addons.bonuscard_odoo.models.bonuscard_api_service.BonuscardApiService._search_customers",
+            side_effect=AssertionError("Should not call API when within TTL."),
+        ):
+            with patch.object(
+                type(self.partner_model),
+                "_sync_bonuscard_status_for_bulk_prefetch",
+                autospec=True,
+            ) as mock_sync:
+                summary = self.partner_model.action_bulk_prefetch_bonuscard_status(
+                    company_id=self.env.company.id,
+                    instance_id=self.instance.id,
+                    force_refresh=True,
+                )
+
+        self.assertTrue(summary["ok"])
+        synced_partner_ids = {
+            call.args[0].id for call in mock_sync.call_args_list if call.args
+        }
+        self.assertNotIn(partner.id, synced_partner_ids)

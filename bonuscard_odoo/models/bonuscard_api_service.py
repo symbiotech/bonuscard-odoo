@@ -48,7 +48,9 @@ class BonuscardApiService(models.AbstractModel):
         if company:
             domain.append(("company_id", "=", company.id))
         instance = (
-            self.env["bonuscard.connector.instance"].sudo().search(domain, limit=1)
+            self.env["bonuscard.connector.instance"]
+            .sudo()
+            .search(domain, limit=1, order="id desc")
         )
         return instance
 
