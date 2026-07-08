@@ -289,9 +289,9 @@ class BonuscardConnectorInstance(models.Model):
                     ]
                 ).write({"is_current": False})
 
-        if vals.get("active") is True and "is_current" not in vals and len(self) > 1:
-            # Bulk-activating instances must also pick exactly one current per company,
-            # otherwise constraints will fail inside super().write().
+        if vals.get("active") is True and "is_current" not in vals:
+            # Reactivating instances (single or bulk) must also pick exactly one current
+            # per company, otherwise constraints will fail inside super().write().
             # Split the write so one record per company becomes current.
             remaining = self
             results = True
