@@ -12,6 +12,16 @@ class ResPartner(models.Model):
     _inherit = "res.partner"
 
     @api.model
+    def _check_bulk_prefetch_access(self):
+        """Allow managers (or sudo/cron) to run bulk prefetch."""
+        if self.env.is_superuser() or self.env.su:
+            return
+        if not self.env.user.has_group("bonuscard_odoo.bonuscard_odoo_group_manager"):
+            raise UserError(
+                self.env._("You do not have permission to run bulk Bonuscard prefetch.")
+            )
+
+    @api.model
     def _build_bulk_prefetch_domain(
         self, *, force_refresh=False, enable_name_fallback=False, cutoff=None
     ):
@@ -29,13 +39,17 @@ class ResPartner(models.Model):
         else:
             sync_domain = [("bonuscard_last_synced_at", "=", False)]
 
-        contact_domain = ["|", ("phone", "!=", False), ("email", "!=", False)]
+        contact_domain = [
+            "|",
+            ("phone", "not in", [False, ""]),
+            ("email", "not in", [False, ""]),
+        ]
         if enable_name_fallback:
             contact_domain = [
                 "|",
                 "|",
-                ("phone", "!=", False),
-                ("email", "!=", False),
+                ("phone", "not in", [False, ""]),
+                ("email", "not in", [False, ""]),
                 "&",
                 "&",
                 ("phone", "in", [False, ""]),
@@ -335,6 +349,10 @@ class ResPartner(models.Model):
         force_refresh=False,
     ):
         """Manual/cron entry point: prefetch Bonuscard status for customer partners."""
+        # Only enforce access checks for regular RPC callers. Cron/manual actions
+        # run via sudo and are allowed.
+        if not partner_ids:
+            self._check_bulk_prefetch_access()
         company = (
             self.env["res.company"].browse(company_id).exists()
             if company_id
