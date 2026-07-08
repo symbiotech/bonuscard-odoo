@@ -20,6 +20,7 @@ class TestBonuscardValidatePurchase(TransactionCase):
                 "api_base_url": "https://example.invalid/api/",
                 "api_username": "demo-user",
                 "api_password": "demo-pass",
+                "is_current": True,
             }
         )
 
@@ -520,6 +521,7 @@ class TestBonuscardValidatePurchase(TransactionCase):
                 "api_username": "demo-user",
                 "api_password": "demo-pass",
                 "company_id": company.id,
+                "is_current": True,
             }
         )
 

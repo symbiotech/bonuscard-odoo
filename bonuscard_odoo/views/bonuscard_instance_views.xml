@@ -20,6 +20,7 @@
                     </div>
                     <group>
                         <group>
+                            <field name="is_current"/>
                             <field name="active"/>
                             <field name="company_id"/>
                             <field name="api_base_url"/>
@@ -57,6 +58,7 @@
             <list string="Bonuscard Connections">
                 <field name="name"/>
                 <field name="company_id"/>
+                <field name="is_current"/>
                 <field name="connection_status"/>
                 <field name="last_test_at"/>
                 <field name="active"/>
@@ -71,6 +73,7 @@
             <search string="Search Bonuscard Connections">
                 <field name="name"/>
                 <field name="company_id"/>
+                <filter string="Current" name="current" domain="[('is_current', '=', True)]"/>
                 <filter string="OK" name="ok" domain="[('connection_status', '=', 'ok')]"/>
                 <filter string="Error" name="error" domain="[('connection_status', '=', 'error')]"/>
                 <separator/>

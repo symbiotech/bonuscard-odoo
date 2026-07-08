@@ -47,12 +47,12 @@ class BonuscardApiService(models.AbstractModel):
         domain = [("active", "=", True)]
         if company:
             domain.append(("company_id", "=", company.id))
-        instance = (
+        current = (
             self.env["bonuscard.connector.instance"]
             .sudo()
-            .search(domain, limit=1, order="id desc")
+            .search(domain + [("is_current", "=", True)], limit=1, order="id desc")
         )
-        return instance
+        return current
 
     def _decode_response(self, response):
         raw_data = response.read().decode("utf-8")

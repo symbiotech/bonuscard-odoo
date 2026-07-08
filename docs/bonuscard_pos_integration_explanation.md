@@ -66,6 +66,7 @@ This document explains how the Bonuscard POS integration works in the `bonuscard
 
 - `bonuscard.connector.instance`
   - Stores Bonuscard API URL, credentials, culture, and timeout
+  - One connection per company is selected via the **Use for Bonuscard API** (`is_current`) flag
   - Used by all Bonuscard API requests
 
 - `bonuscard.api.service`
