@@ -110,6 +110,7 @@ class BonuscardConnectorInstance(models.Model):
                 [
                     ("id", "!=", rec.id),
                     ("company_id", "=", rec.company_id.id),
+                    ("active", "=", True),
                     ("is_current", "=", True),
                 ],
                 limit=1,
