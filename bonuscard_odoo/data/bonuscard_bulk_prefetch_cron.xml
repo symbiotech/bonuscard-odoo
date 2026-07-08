@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<odoo noupdate="1">
+
+    <record id="ir_cron_bonuscard_bulk_partner_prefetch" model="ir.cron">
+        <field name="name">Bonuscard: Bulk partner prefetch</field>
+        <field name="model_id" ref="bonuscard_odoo.model_bonuscard_connector_instance"/>
+        <field name="state">code</field>
+        <field name="code">model._cron_run_bulk_partner_prefetch()</field>
+        <field name="interval_number" eval="1"/>
+        <field name="interval_type">days</field>
+        <field name="active" eval="True"/>
+    </record>
+
+</odoo>

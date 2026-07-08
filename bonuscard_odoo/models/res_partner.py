@@ -1,5 +1,6 @@
 import logging
 import re
+from datetime import timedelta
 
 from odoo import api, fields, models
 from odoo.exceptions import UserError
@@ -9,6 +10,83 @@ _logger = logging.getLogger(__name__)
 
 class ResPartner(models.Model):
     _inherit = "res.partner"
+
+    @api.model
+    def _check_bulk_prefetch_access(self):
+        """Allow managers (or sudo/cron) to run bulk prefetch."""
+        if self.env.is_superuser() or self.env.su:
+            return
+        if not self.env.user.has_group("bonuscard_odoo.bonuscard_odoo_group_manager"):
+            raise UserError(
+                self.env._("You do not have permission to run bulk Bonuscard prefetch.")
+            )
+
+    @api.model
+    def _build_bulk_prefetch_domain(
+        self, *, force_refresh=False, enable_name_fallback=False, cutoff=None
+    ):
+        """Build the partner domain used by bulk Bonuscard prefetch."""
+        if force_refresh:
+            if cutoff is None:
+                # Safe fallback when callers omit cutoff: behave like cron (never synced).
+                sync_domain = [("bonuscard_last_synced_at", "=", False)]
+            else:
+                sync_domain = [
+                    "|",
+                    ("bonuscard_last_synced_at", "=", False),
+                    ("bonuscard_last_synced_at", "<", cutoff),
+                ]
+        else:
+            sync_domain = [("bonuscard_last_synced_at", "=", False)]
+
+        contact_domain = [
+            "|",
+            ("phone", "not in", [False, ""]),
+            ("email", "not in", [False, ""]),
+        ]
+        if enable_name_fallback:
+            contact_domain = [
+                "|",
+                "|",
+                ("phone", "not in", [False, ""]),
+                ("email", "not in", [False, ""]),
+                "&",
+                "&",
+                ("phone", "in", [False, ""]),
+                ("email", "in", [False, ""]),
+                ("name", "!=", False),
+            ]
+
+        # A single sync leaf can be ANDed implicitly with a leading '|' contact domain.
+        if len(sync_domain) == 1 and not isinstance(sync_domain[0], str):
+            return sync_domain + contact_domain
+        return ["&"] + sync_domain + contact_domain
+
+    def _get_bonuscard_prefetch_search_terms(
+        self, *, enable_name_fallback: bool = False
+    ) -> list[str]:
+        """Search terms for bulk prefetch (phone → email → name).
+
+        Name fallback is intentionally constrained: it is only used when the partner
+        has no phone/email, and relies on `_filter_exact_bonuscard_matches` to avoid
+        linking on name when either side has contact details.
+        """
+        self.ensure_one()
+        terms: list[str] = []
+        phone = self._normalize_phone(self.phone)
+        if phone:
+            terms.append(phone)
+
+        email = (self.email or "").strip().lower()
+        if email:
+            terms.append(email)
+
+        if enable_name_fallback and not phone and not email:
+            name = (self.name or "").strip()
+            if name:
+                terms.append(name)
+
+        return terms
 
     bonuscard_recruitment_code = fields.Char(copy=False, readonly=True)
     bonuscard_internal_id = fields.Integer(copy=False, readonly=True)
@@ -179,6 +257,196 @@ class ResPartner(models.Model):
             ),
         )
         return {"status": "not_found", "note": self.bonuscard_last_lookup_note}
+
+    def _sync_bonuscard_status_for_bulk_prefetch(
+        self,
+        *,
+        company=None,
+        instance=None,
+        raise_if_missing_instance=False,
+        enable_name_fallback=False,
+    ):
+        """Bulk-prefetch variant of Bonuscard status sync.
+
+        Uses term order: phone → email → (optional) name.
+        Stops on the first term that produces an unambiguous decision.
+        """
+        self.ensure_one()
+        service = self.env["bonuscard.api.service"]
+        if not company:
+            company = (
+                self.company_id
+                or self.commercial_partner_id.company_id
+                or self.env.company
+            )
+        if not instance:
+            instance = service._get_company_instance(company)
+
+        if not instance:
+            if raise_if_missing_instance:
+                raise UserError(
+                    self.env._(
+                        "No active Bonuscard connection is configured for this company."
+                    )
+                )
+            self._write_bonuscard_status(
+                "error",
+                note=self.env._("No active Bonuscard connection is configured."),
+            )
+            return {
+                "status": self.bonuscard_status,
+                "note": self.bonuscard_last_lookup_note,
+            }
+
+        terms = self._get_bonuscard_prefetch_search_terms(
+            enable_name_fallback=enable_name_fallback
+        )
+        for term in terms:
+            customers = service._search_customers(instance, term)
+            if not customers:
+                continue
+            exact_matches = self._filter_exact_bonuscard_matches(customers)
+            if len(exact_matches) == 1:
+                customer = exact_matches[0]
+                self._write_bonuscard_status(
+                    "linked",
+                    customer=customer,
+                    note=self.env._("Matched Bonuscard customer using %s.", term),
+                )
+                return {
+                    "status": "linked",
+                    "recruitment_code": customer.get("recruitmentCode"),
+                    "name": customer.get("name"),
+                    "note": self.bonuscard_last_lookup_note,
+                }
+            if len(exact_matches) > 1 or len(customers) > 1:
+                self._write_bonuscard_status(
+                    "ambiguous",
+                    note=self.env._(
+                        "Bonuscard returned multiple customer matches for %s.", term
+                    ),
+                )
+                return {
+                    "status": "ambiguous",
+                    "note": self.bonuscard_last_lookup_note,
+                }
+
+        self._write_bonuscard_status(
+            "not_found",
+            note=self.env._(
+                "No Bonuscard customer matched the available partner details."
+            ),
+        )
+        return {"status": "not_found", "note": self.bonuscard_last_lookup_note}
+
+    @api.model
+    def action_bulk_prefetch_bonuscard_status(
+        self,
+        company_id=None,
+        instance_id=None,
+        partner_ids=None,
+        *,
+        force_refresh=False,
+    ):
+        """Manual/cron entry point: prefetch Bonuscard status for customer partners."""
+        # Server-side access control. Cron/manual actions run via sudo and are
+        # allowed by `_check_bulk_prefetch_access()`.
+        self._check_bulk_prefetch_access()
+        company = (
+            self.env["res.company"].browse(company_id).exists()
+            if company_id
+            else self.env.company
+        )
+        service = self.env["bonuscard.api.service"]
+        instance = (
+            self.env["bonuscard.connector.instance"].browse(instance_id).exists()
+            if instance_id
+            else service._get_company_instance(company)
+        )
+        if not instance:
+            return {
+                "ok": False,
+                "company_id": company.id,
+                "processed": 0,
+                "linked": 0,
+                "not_found": 0,
+                "ambiguous": 0,
+                "error": 0,
+                "skipped": 0,
+                "message": self.env._(
+                    "No active Bonuscard connection is configured for this company."
+                ),
+            }
+        if company_id and instance.company_id and instance.company_id != company:
+            raise UserError(
+                self.env._(
+                    "Selected Bonuscard connection does not belong to the requested company."
+                )
+            )
+        if not instance.bulk_partner_prefetch_active:
+            return {
+                "ok": False,
+                "company_id": company.id,
+                "processed": 0,
+                "linked": 0,
+                "not_found": 0,
+                "ambiguous": 0,
+                "error": 0,
+                "skipped": 0,
+                "message": self.env._(
+                    "Bulk partner prefetch is disabled for this connection."
+                ),
+            }
+
+        ttl_hours = int(instance.bulk_partner_prefetch_ttl_hours or 24)
+        batch_size = int(instance.bulk_partner_prefetch_batch_size or 200)
+        enable_name_fallback = bool(instance.bulk_partner_prefetch_enable_name_fallback)
+
+        cutoff = fields.Datetime.now() - timedelta(hours=ttl_hours)
+        domain = self._build_bulk_prefetch_domain(
+            force_refresh=force_refresh,
+            enable_name_fallback=enable_name_fallback,
+            cutoff=cutoff,
+        )
+        if partner_ids:
+            domain = [("id", "in", partner_ids)] + domain
+        # Oldest first to avoid starving older never-synced partners.
+        partners = self.search(domain, limit=batch_size, order="id asc")
+
+        summary = {
+            "ok": True,
+            "company_id": company.id,
+            "processed": 0,
+            "linked": 0,
+            "not_found": 0,
+            "ambiguous": 0,
+            "error": 0,
+            "skipped": 0,
+        }
+        if not partners:
+            return summary
+
+        for partner in partners:
+            try:
+                result = partner._sync_bonuscard_status_for_bulk_prefetch(
+                    company=company,
+                    instance=instance,
+                    enable_name_fallback=enable_name_fallback,
+                )
+                status = result.get("status") or partner.bonuscard_status
+                summary["processed"] += 1
+                if status in ("linked", "not_found", "ambiguous"):
+                    summary[status] += 1
+                else:
+                    summary["error"] += 1
+            except Exception:  # pylint: disable=broad-except
+                _logger.exception(
+                    "Bulk Bonuscard prefetch failed for partner %s", partner.id
+                )
+                summary["processed"] += 1
+                summary["error"] += 1
+
+        return summary
 
     def action_refresh_bonuscard_status(self):
         for partner in self:

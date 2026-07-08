@@ -10,6 +10,8 @@ flowchart LR
 
     subgraph Odoo Backend
         F[res.partner.get_bonuscard_status_for_pos]
+        Q[res.partner.action_bulk_prefetch_bonuscard_status]
+        S[ir.cron / manual bulk prefetch]
         O[res.partner.action_register_to_bonuscard]
         G[bonuscard.api.service.validate_purchase_for_pos]
         H[bonuscard.api.service.finalize_purchase_for_pos]
@@ -30,6 +32,10 @@ flowchart LR
     K -->|match result| F
     F -->|status/recruitment_code| A
     A -->|status=linked: auto-validate| G
+
+    S -->|batch prefetch (phone→email→optional name)| Q
+    Q -->|search terms: phone/email/name| K
+    K -->|match result| Q
 
     R -->|not_found partner| O
     O -->|re-check then register by phone| P
@@ -58,6 +64,7 @@ flowchart LR
     I -->|clear order bonuscard state| E
 
     J -->|used by search/status sync| F
+    J -->|used by bulk prefetch| Q
     J -->|used by register| O
     J -->|used by validate/finalize/cancel| G
     J -->|used by validate/finalize/cancel| H

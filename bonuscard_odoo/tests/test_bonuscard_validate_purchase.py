@@ -145,7 +145,7 @@ class TestBonuscardValidatePurchase(TransactionCase):
         mock_validate.assert_called_once_with(
             self.instance,
             "WLKT6",
-            [{"ean": "8710255122465", "quantity": 2, "pricePerItem": 299.0}],
+            [{"ean": "8710255122465", "quantity": 2.0, "pricePerItem": 299.0}],
             transaction_identifier=None,
         )
 
@@ -228,7 +228,8 @@ class TestBonuscardValidatePurchase(TransactionCase):
         self.assertTrue(result.get("error"))
 
     def test_validate_purchase_for_pos_error_when_no_instance(self):
-        self.instance.active = False
+        instances = self.env["bonuscard.connector.instance"].search([])
+        instances.write({"active": False})
         partner = self._make_partner_with_code()
         product = self._make_product_with_barcode()
         order_lines = [{"product_id": product.id, "qty": 1, "price_unit": 10.0}]
@@ -236,7 +237,7 @@ class TestBonuscardValidatePurchase(TransactionCase):
         result = self.service.validate_purchase_for_pos(partner.id, order_lines)
 
         self.assertTrue(result.get("error"))
-        self.instance.active = True
+        instances.write({"active": True})
 
     def test_validate_purchase_for_pos_error_when_no_ean_products(self):
         partner = self._make_partner_with_code()
@@ -374,7 +375,7 @@ class TestBonuscardValidatePurchase(TransactionCase):
         mock_validate.assert_called_once_with(
             self.instance,
             "WLKT6",
-            [{"ean": "EAN-SAFE", "quantity": 1, "pricePerItem": 10.0}],
+            [{"ean": "EAN-SAFE", "quantity": 1.0, "pricePerItem": 10.0}],
             transaction_identifier=None,
         )
 
@@ -462,7 +463,8 @@ class TestBonuscardValidatePurchase(TransactionCase):
         partner = self._make_partner_with_code()
         product = self._make_product_with_barcode()
         order_lines = [{"product_id": product.id, "qty": 1, "price_unit": 100.0}]
-        self.instance.active = False
+        instances = self.env["bonuscard.connector.instance"].search([])
+        instances.write({"active": False})
         try:
             result = self.service.finalize_purchase_for_pos(
                 partner.id, "TX001", order_lines
@@ -474,7 +476,7 @@ class TestBonuscardValidatePurchase(TransactionCase):
                 ["No active Bonuscard connection is configured."],
             )
         finally:
-            self.instance.active = True
+            instances.write({"active": True})
 
     def test_cancel_purchase_sends_correct_payload(self):
         with patch(
@@ -544,7 +546,8 @@ class TestBonuscardValidatePurchase(TransactionCase):
         )
 
     def test_cancel_purchase_for_pos_returns_error_when_no_instance(self):
-        self.instance.active = False
+        instances = self.env["bonuscard.connector.instance"].search([])
+        instances.write({"active": False})
         result = self.service.cancel_purchase_for_pos("TX001")
 
         self.assertTrue(result.get("error"))
@@ -552,7 +555,7 @@ class TestBonuscardValidatePurchase(TransactionCase):
             result.get("messages"),
             ["No active Bonuscard connection is configured."],
         )
-        self.instance.active = True
+        instances.write({"active": True})
 
     def test_cancel_purchase_for_pos_returns_error_when_cancel_raises(self):
         with patch(

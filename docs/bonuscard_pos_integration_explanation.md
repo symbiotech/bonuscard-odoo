@@ -9,7 +9,7 @@ This document explains how the Bonuscard POS integration works in the `bonuscard
 
 1. Customer selected in POS
    - `bonuscard_odoo/static/src/app/bonuscard_pos.js` extends `PosStore.setPartnerToCurrentOrder`
-   - Calls `res.partner.get_bonuscard_status_for_pos` to resolve Bonuscard status **unless** the partner already has status `linked` or `not_found` (cached from a prior lookup)
+   - Calls `res.partner.get_bonuscard_status_for_pos` to resolve Bonuscard status **unless** the partner already has status `linked` or `not_found` (cached from a prior lookup or the bulk prefetch job)
    - The backend searches Bonuscard using customer phone, email, or name
    - The partner record is updated with `bonuscard_status` and `bonuscard_recruitment_code`
    - Status badges are rendered by `bonuscard_partner_line.xml`; status changes trigger POS notifications (success for `linked`, warnings for `not_found`/`ambiguous`, danger for `error`)
@@ -83,6 +83,7 @@ This document explains how the Bonuscard POS integration works in the `bonuscard
   - Implements search/match logic and status synchronization
   - When status is written for a contact, the same status is also written to its commercial partner if both share the same phone number
   - Adds `action_register_to_bonuscard`, `action_refresh_bonuscard_status`, and `action_clear_bonuscard_link`
+  - Adds `action_bulk_prefetch_bonuscard_status` to prefetch linking in batches (used by the cron job and the connection form button)
 
 ## Important state tracked in POS
 

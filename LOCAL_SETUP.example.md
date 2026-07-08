@@ -43,11 +43,23 @@ cd <ODOO_SOURCE_PATH>
 python -m odoo -c odoo.conf -d bonuscard_dev --addons-path "<ODOO_SOURCE_PATH>\odoo\addons,<ADDON_REPO_PATH>" --test-tags bonuscard_odoo --stop-after-init
 ```
 
+#### If you changed model fields/views
+If you added/renamed fields, updated XML views, or modified data files, upgrade the module first so your database schema matches the code:
+
+```powershell
+python -m odoo -c odoo.conf -d bonuscard_dev -u bonuscard_odoo --addons-path "<ODOO_SOURCE_PATH>\odoo\addons,<ADDON_REPO_PATH>" --stop-after-init
+```
+
 ### Run Python Tests (Linux/macOS Bash)
 ```bash
 cd <ODOO_SOURCE_PATH>
 source .venv/bin/activate
 python -m odoo -c odoo.conf -d bonuscard_dev --addons-path "<ODOO_SOURCE_PATH>/odoo/addons,<ADDON_REPO_PATH>" --test-tags bonuscard_odoo --stop-after-init
+```
+
+#### If you changed model fields/views
+```bash
+python -m odoo -c odoo.conf -d bonuscard_dev -u bonuscard_odoo --addons-path "<ODOO_SOURCE_PATH>/odoo/addons,<ADDON_REPO_PATH>" --stop-after-init
 ```
 
 ### Run JS Unit Tests
