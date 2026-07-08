@@ -24,6 +24,7 @@ class TestBonuscardInstance(TransactionCase):
                 "api_base_url": "https://web.bonuscard.com/api/",
                 "api_username": "demo-user",
                 "api_password": "demo-pass",
+                "is_current": True,
             }
         )
         self.assertEqual(record.connection_status, "unknown")
@@ -36,6 +37,7 @@ class TestBonuscardInstance(TransactionCase):
                 "api_base_url": "https://web.bonuscard.com/api/",
                 "api_username": "demo-user",
                 "api_password": "demo-pass",
+                "is_current": True,
             }
         )
 
@@ -61,6 +63,7 @@ class TestBonuscardInstance(TransactionCase):
                 "api_base_url": "https://web.bonuscard.com/api/",
                 "api_username": "demo-user",
                 "api_password": "demo-pass",
+                "is_current": True,
             }
         )
 
@@ -84,6 +87,7 @@ class TestBonuscardInstance(TransactionCase):
                 "api_base_url": "https://web.bonuscard.com/api/",
                 "api_username": "demo-user",
                 "api_password": "demo-pass",
+                "is_current": True,
             }
         )
 
@@ -119,6 +123,7 @@ class TestBonuscardInstance(TransactionCase):
                 "api_base_url": "https://web.bonuscard.com/api/",
                 "api_username": "demo-user",
                 "api_password": "demo-pass",
+                "is_current": True,
             }
         )
         service = self.env["bonuscard.api.service"]
@@ -148,6 +153,7 @@ class TestBonuscardInstance(TransactionCase):
                 "api_base_url": "https://web.bonuscard.com/api/",
                 "api_username": "demo-user",
                 "api_password": "demo-pass",
+                "is_current": True,
             }
         )
         service = self.env["bonuscard.api.service"]
@@ -174,6 +180,7 @@ class TestBonuscardInstance(TransactionCase):
                 "api_base_url": "https://web.bonuscard.com/api/",
                 "api_username": "demo-user",
                 "api_password": "demo-pass",
+                "is_current": True,
             }
         )
         service = self.env["bonuscard.api.service"]
@@ -203,6 +210,7 @@ class TestBonuscardInstance(TransactionCase):
                 "api_base_url": "https://test.bonuscard.com/api/",
                 "api_username": "bogus-user",
                 "api_password": "bogus-pass",
+                "is_current": True,
             }
         )
 
@@ -232,6 +240,7 @@ class TestBonuscardInstance(TransactionCase):
                 "api_base_url": "https://web.bonuscard.com/api/",
                 "api_username": "demo-user",
                 "api_password": "demo-pass",
+                "is_current": True,
             }
         )
         service = self.env["bonuscard.api.service"]
@@ -257,6 +266,7 @@ class TestBonuscardInstance(TransactionCase):
                 "api_base_url": "https://web.bonuscard.com/api/",
                 "api_username": "demo-user",
                 "api_password": "demo-pass",
+                "is_current": True,
             }
         )
         service = self.env["bonuscard.api.service"]
@@ -279,6 +289,7 @@ class TestBonuscardInstance(TransactionCase):
                 "api_base_url": "https://web.bonuscard.com/api/",
                 "api_username": "demo-user",
                 "api_password": "demo-pass",
+                "is_current": True,
             }
         )
         service = self.env["bonuscard.api.service"]
@@ -308,6 +319,7 @@ class TestBonuscardInstance(TransactionCase):
                 "api_base_url": "https://web.bonuscard.com/api/",
                 "api_username": "demo-user",
                 "api_password": "demo-pass",
+                "is_current": True,
             }
         )
         service = self.env["bonuscard.api.service"]
@@ -356,3 +368,163 @@ class TestBonuscardInstance(TransactionCase):
         self.assertEqual(len(requests_created), 2)
         self.assertIsNot(requests_created[0], requests_created[1])
         self.assertEqual(mock_urlopen.call_count, 2)
+
+    def test_is_current_unsets_other_instances_in_same_company(self):
+        company = self.env.company
+        first = self.instance_model.create(
+            {
+                "name": "First",
+                "api_base_url": "https://web.bonuscard.com/api/",
+                "api_username": "demo-user",
+                "api_password": "demo-pass",
+                "company_id": company.id,
+                "is_current": True,
+            }
+        )
+        second = self.instance_model.create(
+            {
+                "name": "Second",
+                "api_base_url": "https://test.bonuscard.com/api/",
+                "api_username": "demo-user2",
+                "api_password": "demo-pass2",
+                "company_id": company.id,
+                "is_current": True,
+            }
+        )
+        self.assertFalse(first.is_current)
+        self.assertTrue(second.is_current)
+
+    def test_archiving_current_instance_unsets_is_current(self):
+        record = self.instance_model.create(
+            {
+                "name": "Archive Current",
+                "api_base_url": "https://web.bonuscard.com/api/",
+                "api_username": "demo-user",
+                "api_password": "demo-pass",
+                "is_current": True,
+            }
+        )
+        record.write({"active": False})
+        self.assertFalse(record.is_current)
+
+    def test_first_active_instance_auto_becomes_current(self):
+        instances = self.instance_model.search([])
+        instances.write({"active": False})
+        record = self.instance_model.create(
+            {
+                "name": "Auto Current",
+                "api_base_url": "https://web.bonuscard.com/api/",
+                "api_username": "demo-user",
+                "api_password": "demo-pass",
+            }
+        )
+        self.assertTrue(record.is_current)
+        record.write({"active": False})
+
+    def test_archiving_current_promotes_replacement(self):
+        """When the current instance is archived and another active instance exists,
+        the other instance is promoted to current."""
+        instances = self.instance_model.search([])
+        instances.write({"active": False})
+        current = self.instance_model.create(
+            {
+                "name": "Current",
+                "api_base_url": "https://web.bonuscard.com/api/",
+                "api_username": "demo-user",
+                "api_password": "demo-pass",
+                "is_current": True,
+            }
+        )
+        other = self.instance_model.create(
+            {
+                "name": "Other",
+                "api_base_url": "https://test.bonuscard.com/api/",
+                "api_username": "demo-user2",
+                "api_password": "demo-pass2",
+            }
+        )
+        self.assertTrue(current.is_current)
+        self.assertFalse(other.is_current)
+
+        current.write({"active": False})
+
+        self.assertFalse(current.is_current)
+        self.assertTrue(other.is_current)
+        other.write({"active": False})
+
+    def test_unsetting_is_current_promotes_replacement(self):
+        """write({"is_current": False}) on the current instance promotes another
+        active instance to current."""
+        instances = self.instance_model.search([])
+        instances.write({"active": False})
+        current = self.instance_model.create(
+            {
+                "name": "Current",
+                "api_base_url": "https://web.bonuscard.com/api/",
+                "api_username": "demo-user",
+                "api_password": "demo-pass",
+                "is_current": True,
+            }
+        )
+        other = self.instance_model.create(
+            {
+                "name": "Other",
+                "api_base_url": "https://test.bonuscard.com/api/",
+                "api_username": "demo-user2",
+                "api_password": "demo-pass2",
+            }
+        )
+        self.assertTrue(current.is_current)
+        self.assertFalse(other.is_current)
+
+        current.write({"is_current": False})
+
+        self.assertFalse(current.is_current)
+        self.assertTrue(other.is_current)
+        current.write({"active": False})
+        other.write({"active": False})
+
+    def test_unsetting_is_current_raises_when_no_replacement(self):
+        """write({"is_current": False}) on the only active instance raises ValidationError
+        because there is no other connection to take over."""
+        instances = self.instance_model.search([])
+        instances.write({"active": False})
+        solo = self.instance_model.create(
+            {
+                "name": "Solo",
+                "api_base_url": "https://web.bonuscard.com/api/",
+                "api_username": "demo-user",
+                "api_password": "demo-pass",
+                "is_current": True,
+            }
+        )
+        with self.assertRaises(ValidationError):
+            solo.write({"is_current": False})
+        # DB unchanged — solo is still active and current
+        self.assertTrue(solo.active)
+        self.assertTrue(solo.is_current)
+        solo.write({"active": False})
+
+    def test_reactivating_archived_instance_auto_becomes_current(self):
+        """Re-activating an archived instance when the company has no current
+        active connection makes it current automatically."""
+        instances = self.instance_model.search([])
+        instances.write({"active": False})
+        instance = self.instance_model.create(
+            {
+                "name": "To Reactivate",
+                "api_base_url": "https://web.bonuscard.com/api/",
+                "api_username": "demo-user",
+                "api_password": "demo-pass",
+            }
+        )
+        self.assertTrue(instance.is_current)
+
+        # Archive — now the company has no active current connection
+        instance.write({"active": False})
+        self.assertFalse(instance.is_current)
+
+        # Reactivate — must auto-become current again
+        instance.write({"active": True})
+        self.assertTrue(instance.is_current)
+        instance.write({"active": False})

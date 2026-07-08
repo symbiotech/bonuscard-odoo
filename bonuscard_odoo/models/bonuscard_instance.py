@@ -6,6 +6,7 @@ from odoo import api, fields, models
 from odoo.exceptions import ValidationError
 
 _logger = logging.getLogger(__name__)
+_CTX_SKIP_CURRENT_ENFORCEMENT = "bonuscard_skip_current_enforcement"
 
 
 class BonuscardConnectorInstance(models.Model):
@@ -15,6 +16,13 @@ class BonuscardConnectorInstance(models.Model):
 
     name = fields.Char(string="Connection Name", required=True)
     active = fields.Boolean(default=True)
+    is_current = fields.Boolean(
+        string="Use for Bonuscard API",
+        default=False,
+        copy=False,
+        help="Enable this on exactly one connection per company to control which "
+        "Bonuscard environment (production/sandbox) is used by POS and other API calls.",
+    )
     company_id = fields.Many2one(
         "res.company",
         required=True,
@@ -85,6 +93,63 @@ class BonuscardConnectorInstance(models.Model):
                     self.env._("API Base URL must start with http:// or https://")
                 )
 
+    @api.constrains("is_current", "company_id", "active")
+    def _check_is_current_unique_per_company(self):
+        if self.env.context.get(_CTX_SKIP_CURRENT_ENFORCEMENT):
+            return
+        for rec in self:
+            if not rec.is_current:
+                continue
+            if not rec.active:
+                raise ValidationError(
+                    self.env._(
+                        "Archived Bonuscard connections cannot be selected for API use."
+                    )
+                )
+            other = self.sudo().search(
+                [
+                    ("id", "!=", rec.id),
+                    ("company_id", "=", rec.company_id.id),
+                    ("active", "=", True),
+                    ("is_current", "=", True),
+                ],
+                limit=1,
+            )
+            if other:
+                raise ValidationError(
+                    self.env._(
+                        "Only one Bonuscard connection can be selected for API use per company."
+                    )
+                )
+
+    @api.constrains("company_id", "active", "is_current")
+    def _check_company_has_current_instance_when_active(self):
+        """Require exactly one current connection per company when any are active."""
+        if self.env.context.get(_CTX_SKIP_CURRENT_ENFORCEMENT):
+            return
+        for rec in self:
+            company = rec.company_id
+            if not company:
+                continue
+            active_count = self.sudo().search_count(
+                [("company_id", "=", company.id), ("active", "=", True)]
+            )
+            if not active_count:
+                continue
+            current_count = self.sudo().search_count(
+                [
+                    ("company_id", "=", company.id),
+                    ("active", "=", True),
+                    ("is_current", "=", True),
+                ]
+            )
+            if current_count != 1:
+                raise ValidationError(
+                    self.env._(
+                        "Exactly one active Bonuscard connection must be selected for API use per company."
+                    )
+                )
+
     @api.constrains("request_timeout")
     def _check_timeout(self):
         for rec in self:
@@ -122,6 +187,225 @@ class BonuscardConnectorInstance(models.Model):
         base_url = self.api_base_url.rstrip("/") + "/"
         endpoint = endpoint.lstrip("/")
         return urljoin(base_url, endpoint)
+
+    def _unset_other_current_instances(self):
+        self.ensure_one()
+        if not self.is_current or not self.company_id:
+            return
+        others = self.sudo().search(
+            [
+                ("id", "!=", self.id),
+                ("company_id", "=", self.company_id.id),
+                ("is_current", "=", True),
+            ]
+        )
+        if others:
+            others.write({"is_current": False})
+
+    def _ensure_company_has_current_instance(self):
+        """If this company has active instances but none current, pick one."""
+        self.ensure_one()
+        if not self.company_id:
+            return
+        active_instances = self.sudo().search(
+            [("company_id", "=", self.company_id.id), ("active", "=", True)],
+            order="id desc",
+        )
+        if not active_instances:
+            return
+        if any(active_instances.mapped("is_current")):
+            return
+        active_instances[:1].write({"is_current": True})
+
+    @api.model_create_multi
+    def create(self, vals_list):
+        for vals in vals_list:
+            # Make 'current' mandatory without making creation painful:
+            # if this is the first active instance for the company, auto-select it.
+            if vals.get("active", True) and not vals.get("is_current"):
+                company_id = vals.get("company_id") or self.env.company.id
+                has_current = self.sudo().search_count(
+                    [
+                        ("company_id", "=", company_id),
+                        ("active", "=", True),
+                        ("is_current", "=", True),
+                    ]
+                )
+                if not has_current:
+                    vals["is_current"] = True
+
+        # Normalize multi-create input so that per company at most one record
+        # is created with is_current=True (pick the last one in vals_list).
+        last_current_idx_by_company = {}
+        for idx, vals in enumerate(vals_list):
+            if not vals.get("is_current"):
+                continue
+            company_id = vals.get("company_id") or self.env.company.id
+            last_current_idx_by_company[company_id] = idx
+
+        for idx, vals in enumerate(vals_list):
+            # If multiple records are created with is_current=True for the same
+            # company, keep only the last one as current.
+            if vals.get("is_current"):
+                company_id = vals.get("company_id") or self.env.company.id
+                if last_current_idx_by_company.get(company_id) != idx:
+                    vals["is_current"] = False
+
+        # Pre-clear existing current instances when creating a new current one.
+        # This must happen *before* super().create() so constraints don't see
+        # two current connectors for a company during validation.
+        for company_id, idx in last_current_idx_by_company.items():
+            if not vals_list[idx].get("is_current"):
+                continue
+            self.with_context(**{_CTX_SKIP_CURRENT_ENFORCEMENT: True}).sudo().search(
+                [
+                    ("company_id", "=", company_id),
+                    ("active", "=", True),
+                    ("is_current", "=", True),
+                ]
+            ).write({"is_current": False})
+
+        records = super().create(vals_list)
+        for rec, vals in zip(records, vals_list, strict=True):
+            if vals.get("is_current"):
+                rec._unset_other_current_instances()
+            elif rec.active:
+                rec._ensure_company_has_current_instance()
+        return records
+
+    def write(self, vals):
+        vals = dict(vals or {})
+
+        if self.env.context.get(_CTX_SKIP_CURRENT_ENFORCEMENT):
+            return super().write(vals)
+
+        if vals.get("is_current") is True:
+            for company in self.mapped("company_id"):
+                self.with_context(
+                    **{_CTX_SKIP_CURRENT_ENFORCEMENT: True}
+                ).sudo().search(
+                    [
+                        ("company_id", "=", company.id),
+                        ("active", "=", True),
+                        ("is_current", "=", True),
+                        ("id", "not in", self.ids),
+                    ]
+                ).write({"is_current": False})
+
+        if vals.get("active") is True and vals.get("is_current") is not True:
+            # Reactivating instances (single or bulk) must also pick exactly one current
+            # per company, otherwise constraints will fail inside super().write().
+            # Split the write so one record per company becomes current.
+            remaining = self
+            results = True
+            for company in self.mapped("company_id"):
+                company_recs = remaining.filtered(
+                    lambda r, company=company: r.company_id == company
+                )
+                if not company_recs:
+                    continue
+                has_current = self.sudo().search_count(
+                    [
+                        ("company_id", "=", company.id),
+                        ("active", "=", True),
+                        ("is_current", "=", True),
+                    ]
+                )
+                if has_current:
+                    continue
+                rec_to_current = company_recs.sorted("id")[-1]
+                others = company_recs - rec_to_current
+                results = results and super(
+                    BonuscardConnectorInstance, rec_to_current
+                ).write({**vals, "is_current": True})
+                if others:
+                    results = results and super(
+                        BonuscardConnectorInstance, others
+                    ).write({**vals, "is_current": False})
+                remaining -= company_recs
+            if remaining:
+                results = results and super(
+                    BonuscardConnectorInstance, remaining
+                ).write(vals)
+            return results
+
+        if (
+            "is_current" in vals
+            and not vals["is_current"]
+            and vals.get("active") is not False
+        ):
+            # Explicitly unsetting is_current on active current records: pre-assign a
+            # replacement so the "exactly one current" constraint is satisfied during
+            # super().write(). Uses the skip context so the intermediate state (two
+            # current records momentarily) does not trip constraints.
+            current_to_unset = self.filtered(lambda r: r.is_current and r.active)
+            if current_to_unset:
+                for company in current_to_unset.mapped("company_id"):
+                    company_recs = current_to_unset.filtered(
+                        lambda r, c=company: r.company_id == c
+                    )
+                    replacement = self.sudo().search(
+                        [
+                            ("company_id", "=", company.id),
+                            ("active", "=", True),
+                            ("is_current", "=", False),
+                            ("id", "not in", company_recs.ids),
+                        ],
+                        limit=1,
+                        order="id desc",
+                    )
+                    if replacement:
+                        replacement.with_context(
+                            **{_CTX_SKIP_CURRENT_ENFORCEMENT: True}
+                        ).write({"is_current": True})
+                    else:
+                        raise ValidationError(
+                            self.env._(
+                                "Cannot unset the current Bonuscard connection for %s — "
+                                "no other active connection is available to take over. "
+                                "Archive this connection instead.",
+                                company.name,
+                            )
+                        )
+
+        if vals.get("active") is False:
+            # Odoo runs constraints during super().write(). If we archive a current
+            # connector without clearing is_current first (or picking a replacement),
+            # the constraints will raise. Handle this deterministically up-front.
+            current_to_archive = self.filtered("is_current")
+            if current_to_archive:
+                companies = current_to_archive.mapped("company_id")
+                for company in companies:
+                    replacement = self.sudo().search(
+                        [
+                            ("company_id", "=", company.id),
+                            ("active", "=", True),
+                            ("id", "not in", self.ids),
+                        ],
+                        limit=1,
+                        order="id desc",
+                    )
+                    if replacement:
+                        replacement.with_context(
+                            **{_CTX_SKIP_CURRENT_ENFORCEMENT: True}
+                        ).write({"is_current": True})
+                # Clear current flag on the archived records in the same write
+                # so constraints see a consistent state.
+                vals.setdefault("is_current", False)
+
+        res = super().write(vals)
+        if vals.get("is_current"):
+            for rec in self.filtered("is_current"):
+                rec._unset_other_current_instances()
+        # If current is unset explicitly (or by archiving) and there are still active
+        # instances, ensure one is current to satisfy the "exactly one" invariant.
+        if vals.get("is_current") is False:
+            for rec in self:
+                rec._ensure_company_has_current_instance()
+        if vals.get("active") is True:
+            for rec in self.filtered("active"):
+                rec._ensure_company_has_current_instance()
+        return res
 
     def action_test_connection(self):
         service = self.env["bonuscard.api.service"]
@@ -271,7 +555,9 @@ class BonuscardConnectorInstance(models.Model):
         have never been checked against Bonuscard. Use **Refresh Bulk Prefetch** on
         the connection form to re-check stale partners while respecting TTL.
         """
-        instances = self.sudo().search([("active", "=", True)])
+        instances = self.sudo().search(
+            [("active", "=", True), ("is_current", "=", True)]
+        )
         for instance in instances:
             if not instance.bulk_partner_prefetch_active:
                 continue

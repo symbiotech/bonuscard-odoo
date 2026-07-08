@@ -63,6 +63,7 @@ class TestBonuscardIntegration(TransactionCase):
                 "api_username": self.api_username,
                 "api_password": self.api_password,
                 "api_culture": self.api_culture,
+                "is_current": True,
             }
         )
 

@@ -18,6 +18,7 @@ class TestResPartnerBonuscard(TransactionCase):
                 "api_base_url": "https://web.bonuscard.com/api/",
                 "api_username": "demo-user",
                 "api_password": "demo-pass",
+                "is_current": True,
             }
         )
 
