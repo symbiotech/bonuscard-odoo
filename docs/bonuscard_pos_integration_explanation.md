@@ -29,7 +29,7 @@ This document explains how the Bonuscard POS integration works in the `bonuscard
      - When a product line is added via `addLineToOrder` and the partner has a `bonuscard_recruitment_code`
      - When a line quantity or price is edited via `OrderSummary._setValue` / `updateQuantityNumber`
      - As a final guard in `PosStore.pay()` whenever the partner has a `bonuscard_recruitment_code`
-   - Each call builds `orderLines` from products that have `barcode` or `default_code`, with `qty > 0` and `price_unit > 0`
+   - Each call builds `orderLines` from products marked `in_catalog` on `product.product`, with `qty > 0`, `price_unit > 0`, and a barcode or article number
    - Calls `bonuscard.api.service.validate_purchase_for_pos`
    - Stores `order.bonuscard_transaction_id`, `order.bonuscard_checkout_items`, and `order.bonuscard_partner_id`
    - Clears `bonuscard_needs_validation` on successful validation
@@ -39,14 +39,14 @@ This document explains how the Bonuscard POS integration works in the `bonuscard
    - Concurrent calls are guarded by a version counter; stale results are discarded, but their `transactionIdentifier` is still stored so the lock can always be cancelled
    - Previous discounts are cleared (`_clearAppliedBonuscardDiscounts`) before each new validation
    - On Bonuscard error code 2 (customer locked), the POS cancels the current or any other order's pending transaction for the same partner (including already paid orders) and retries validation once
-   - When the cart has no Bonuscard-eligible lines (no barcode/article number), any pending transaction is cancelled instead of being left open
+   - When the cart has no Bonuscard catalog lines, no `ValidatePurchase` call is made; if a pending transaction already exists from earlier catalog lines, it is cancelled
 
 4. Payment confirmation
    - `OrderPaymentValidation.afterOrderValidation()` finalizes or cancels the pending Bonuscard transaction
    - When checkout items exist (including zero-discount validations for accumulation programs), it calls `bonuscard.api.service.finalize_purchase_for_pos` to register the purchase with Bonuscard
    - This sends the stored `transactionIdentifier` and `checkoutItems` to Bonuscard
    - Finalization is retried once on failure; on success the POS clears `order.bonuscard_transaction_id` and `order.bonuscard_checkout_items`
-   - If there is a pending transaction but no checkout items to finalize (e.g. only products without barcode/article number), the POS cancels the pending transaction after payment instead of leaving the customer locked; cancel failure is logged and shown as a sticky warning
+- If there is a pending transaction but no checkout items to finalize (e.g. the cart ended up with no `in_catalog` products), the POS cancels the pending transaction after payment instead of leaving the customer locked; cancel failure is logged and shown as a sticky warning
    - If finalization fails after payment, the POS attempts cancel as a fallback before showing a sticky warning
    - If finalization and the cancel fallback both fail, the transaction fields are kept and a sticky warning is shown so the loyalty lock can be recovered manually
 
@@ -84,6 +84,12 @@ This document explains how the Bonuscard POS integration works in the `bonuscard
   - When status is written for a contact, the same status is also written to its commercial partner if both share the same phone number
   - Adds `action_register_to_bonuscard`, `action_refresh_bonuscard_status`, and `action_clear_bonuscard_link`
   - Adds `action_bulk_prefetch_bonuscard_status` to prefetch linking in batches (used by the cron job and the connection form button)
+
+- `product.product` extension
+  - Adds `bonuscard_catalog_status` (`not_set`, `in_catalog`, `not_in_catalog`)
+  - Products marked `in_catalog` must have a barcode or article number
+  - Only `in_catalog` products are sent to Bonuscard from POS
+  - Bulk list actions and CSV import can maintain catalog membership manually
 
 ## Important state tracked in POS
 

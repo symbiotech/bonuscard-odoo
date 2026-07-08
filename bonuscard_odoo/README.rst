@@ -28,6 +28,8 @@ Features
 * Smart button for one-click Bonuscard status checks from the partner form
 * Manual customer registration from the partner form or POS partner list when lookup returns ``not_found``
 * Automatic discount application in POS after validation
+* Product catalog status on ``product.product`` to control which lines are sent to Bonuscard
+* Bulk list actions to mark products as in or not in the Bonuscard catalog
 * Scheduled + manual bulk prefetch of Bonuscard customer links (phone → email → optional name fallback) to reduce POS lookup requests
 
 Installation
@@ -54,9 +56,21 @@ Configuration
    - TTL (hours) to avoid re-querying recently synced partners
    - Batch size per run
    - Optional name fallback (only used when phone and email are missing)
+7. Mark Bonuscard catalog products on **Inventory > Products**:
+
+   - Open a product variant and set **Bonuscard Catalog** to ``In Bonuscard Catalog``
+   - Or use the list actions **Mark as Bonuscard Catalog** / **Mark as Not in Bonuscard Catalog**
+   - Or import from CSV with columns ``barcode`` (or ``default_code``) and ``bonuscard_catalog_status``
 
 Usage
 =====
+
+Product Catalog in POS
+----------------------
+
+Only product variants marked **In Bonuscard Catalog** are included in
+``ValidatePurchase``. Other lines are sold normally and ignored by Bonuscard.
+Products without a barcode or article number cannot be marked as in the catalog.
 
 Customer Lookup in POS
 ----------------------

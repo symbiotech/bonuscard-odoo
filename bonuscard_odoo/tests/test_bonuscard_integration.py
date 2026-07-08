@@ -74,14 +74,17 @@ class TestBonuscardIntegration(TransactionCase):
         commercial.write({"bonuscard_recruitment_code": recruitment_code})
         return partner
 
-    def _create_product_with_barcode(self, barcode, name="Integration Product"):
-        return self.env["product.product"].create(
-            {
-                "name": name,
-                "barcode": barcode,
-                "list_price": 10.0,
-            }
-        )
+    def _create_product_with_barcode(
+        self, barcode, name="Integration Product", in_catalog=True
+    ):
+        values = {
+            "name": name,
+            "barcode": barcode,
+            "list_price": 10.0,
+        }
+        if in_catalog:
+            values["bonuscard_catalog_status"] = "in_catalog"
+        return self.env["product.product"].create(values)
 
     def _create_product_without_barcode(self):
         return self.env["product.product"].create(
@@ -128,15 +131,6 @@ class TestBonuscardIntegration(TransactionCase):
                 f"Cleanup cancel failed: {cancel_result.get('messages')}",
             )
 
-    def _is_non_bonuscard_validate_result(self, result):
-        """True when ValidatePurchase did not leave an open Bonuscard transaction."""
-        if result.get("transactionIdentifier"):
-            return False
-        if result.get("error"):
-            return True
-        message = " ".join(result.get("messages") or []).lower()
-        return "no valid products" in message or "cancelled" in message
-
     def test_live_test_connection_with_env_credentials(self):
         instance = self._create_integration_instance()
         instance.action_test_connection()
@@ -159,11 +153,11 @@ class TestBonuscardIntegration(TransactionCase):
         self.assertIn("recruitmentCode", result["customer"])
 
     def test_non_bonuscard_product_purchase_does_not_lock_customer(self):
-        """Buying outside the Bonuscard catalog must not lock the customer.
+        """Non-catalog POS lines must not lock the Bonuscard customer.
 
         Covers the POS scenario where a Bonuscard customer pays for products that
-        are not on the Bonuscard API (no barcode/article number, or a barcode that
-        the API rejects). The customer must still be able to validate a normal
+        are not marked in the Bonuscard catalog. No ValidatePurchase call should
+        be made, and the customer must still be able to validate a normal
         Bonuscard purchase afterwards.
         """
         recruitment_code = os.getenv("BONUSCARD_TEST_CONSUMER", "").strip()
@@ -185,44 +179,31 @@ class TestBonuscardIntegration(TransactionCase):
         no_barcode_result = self._validate_pos_order_line(partner, no_barcode_product)
         self.assertTrue(
             no_barcode_result.get("error"),
-            "Expected validation to stop before Bonuscard when no barcode is present",
+            "Expected validation to stop before Bonuscard when no catalog product is present",
         )
         self.assertFalse(
             no_barcode_result.get("transactionIdentifier"),
-            "No Bonuscard transaction should be opened for products without barcode",
+            "No Bonuscard transaction should be opened for non-catalog products",
         )
 
         if non_bonuscard_ean:
-            # Barcoded Odoo product whose EAN is not on the Bonuscard API.
             non_bonuscard_product = self._create_product_with_barcode(
-                non_bonuscard_ean, name="Non-Bonuscard Product (unknown EAN)"
+                non_bonuscard_ean,
+                name="Non-Bonuscard Product (unknown EAN)",
+                in_catalog=False,
             )
-            non_bonuscard_txn = uuid.uuid4().hex
             non_bonuscard_result = self._validate_pos_order_line(
                 partner,
                 non_bonuscard_product,
-                transaction_identifier=non_bonuscard_txn,
+                transaction_identifier=uuid.uuid4().hex,
             )
-            if non_bonuscard_result.get("errorCode") == 2:
-                self.skipTest(
-                    "Sandbox customer is already locked. Wait for the open transaction to "
-                    "expire or cancel it manually, then re-run this test."
-                )
             self.assertTrue(
-                self._is_non_bonuscard_validate_result(non_bonuscard_result),
-                "Expected ValidatePurchase to reject a non-Bonuscard catalog EAN without "
-                f"leaving a transaction open: {non_bonuscard_result}",
+                non_bonuscard_result.get("error"),
+                "Expected non-catalog products to be ignored by Bonuscard validation",
             )
-            # Sandbox may report "transaction cancelled" while the customer lock
-            # remains until CancelPurchase — mirror POS afterOrderValidation release.
-            release_txn = (
-                non_bonuscard_result.get("transactionIdentifier") or non_bonuscard_txn
-            )
-            cancel_result = self._cancel_transaction(release_txn)
             self.assertFalse(
-                cancel_result.get("error"),
-                f"Expected non-Bonuscard flow to release the customer lock: "
-                f"{cancel_result.get('messages')}",
+                non_bonuscard_result.get("transactionIdentifier"),
+                "No Bonuscard transaction should be opened for non-catalog products",
             )
 
         self._assert_customer_not_locked(partner, bonuscard_ean)
