@@ -349,10 +349,9 @@ class ResPartner(models.Model):
         force_refresh=False,
     ):
         """Manual/cron entry point: prefetch Bonuscard status for customer partners."""
-        # Only enforce access checks for regular RPC callers. Cron/manual actions
-        # run via sudo and are allowed.
-        if not partner_ids:
-            self._check_bulk_prefetch_access()
+        # Server-side access control. Cron/manual actions run via sudo and are
+        # allowed by `_check_bulk_prefetch_access()`.
+        self._check_bulk_prefetch_access()
         company = (
             self.env["res.company"].browse(company_id).exists()
             if company_id
@@ -378,6 +377,12 @@ class ResPartner(models.Model):
                     "No active Bonuscard connection is configured for this company."
                 ),
             }
+        if company_id and instance.company_id and instance.company_id != company:
+            raise UserError(
+                self.env._(
+                    "Selected Bonuscard connection does not belong to the requested company."
+                )
+            )
         if not instance.bulk_partner_prefetch_active:
             return {
                 "ok": False,
@@ -405,7 +410,8 @@ class ResPartner(models.Model):
         )
         if partner_ids:
             domain = [("id", "in", partner_ids)] + domain
-        partners = self.search(domain, limit=batch_size, order="id desc")
+        # Oldest first to avoid starving older never-synced partners.
+        partners = self.search(domain, limit=batch_size, order="id asc")
 
         summary = {
             "ok": True,
