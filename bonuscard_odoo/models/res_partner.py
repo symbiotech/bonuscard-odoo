@@ -327,7 +327,12 @@ class ResPartner(models.Model):
 
     @api.model
     def action_bulk_prefetch_bonuscard_status(
-        self, company_id=None, instance_id=None, *, force_refresh=False
+        self,
+        company_id=None,
+        instance_id=None,
+        partner_ids=None,
+        *,
+        force_refresh=False,
     ):
         """Manual/cron entry point: prefetch Bonuscard status for customer partners."""
         company = (
@@ -380,6 +385,8 @@ class ResPartner(models.Model):
             enable_name_fallback=enable_name_fallback,
             cutoff=cutoff,
         )
+        if partner_ids:
+            domain = [("id", "in", partner_ids)] + domain
         partners = self.search(domain, limit=batch_size, order="id desc")
 
         summary = {

@@ -396,7 +396,9 @@ class TestResPartnerBonuscard(TransactionCase):
             side_effect=_search_side_effect,
         ):
             summary = self.partner_model.action_bulk_prefetch_bonuscard_status(
-                company_id=self.env.company.id, instance_id=self.instance.id
+                company_id=self.env.company.id,
+                instance_id=self.instance.id,
+                partner_ids=[partner.id],
             )
 
         self.assertTrue(summary["ok"])
@@ -430,7 +432,9 @@ class TestResPartnerBonuscard(TransactionCase):
             ],
         ) as mocked:
             summary = self.partner_model.action_bulk_prefetch_bonuscard_status(
-                company_id=self.env.company.id, instance_id=self.instance.id
+                company_id=self.env.company.id,
+                instance_id=self.instance.id,
+                partner_ids=[partner.id],
             )
 
         self.assertTrue(summary["ok"])
@@ -472,6 +476,7 @@ class TestResPartnerBonuscard(TransactionCase):
                 summary = self.partner_model.action_bulk_prefetch_bonuscard_status(
                     company_id=self.env.company.id,
                     instance_id=self.instance.id,
+                    partner_ids=[partner.id],
                     force_refresh=True,
                 )
 
