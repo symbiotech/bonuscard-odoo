@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8" ?>
 <odoo>
 
-    <!-- Shown only when Odoo Product Variants are disabled for the user. -->
+    <!-- Shown only when Product Variants are disabled (!group is valid Odoo 19 groups syntax). -->
     <record id="view_product_template_tree_bonuscard" model="ir.ui.view">
         <field name="name">product.template.tree.bonuscard</field>
         <field name="model">product.template</field>
