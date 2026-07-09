@@ -589,6 +589,7 @@ class TestBonuscardInstance(TransactionCase):
                 "is_current": True,
             }
         )
+        non_current.invalidate_recordset()
         self.assertFalse(non_current.is_current)
         self.assertTrue(current.is_current)
 
