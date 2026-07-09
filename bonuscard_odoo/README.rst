@@ -58,8 +58,8 @@ Configuration
    - Optional name fallback (only used when phone and email are missing)
 7. Mark Bonuscard catalog products on **Inventory > Products**:
 
-   - Open a product variant and set **Bonuscard Catalog** to ``In Bonuscard Catalog``
-   - Or use the list actions **Mark as Bonuscard Catalog** / **Mark as Not in Bonuscard Catalog**
+   - Open a product and set **Bonuscard Catalog** to ``In Bonuscard Catalog``
+   - Or use the list actions **Mark as Bonuscard Catalog** / **Mark as Not in Bonuscard Catalog** (available on the Products list)
    - Or import from CSV with columns ``barcode`` (or ``default_code``) and ``bonuscard_catalog_status``
 
 Usage

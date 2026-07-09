@@ -13,6 +13,15 @@ class TestBonuscardProductCatalog(TransactionCase):
         defaults.update(values)
         return self.env["product.product"].create(defaults)
 
+    def _create_template(self, **values):
+        defaults = {
+            "name": "Catalog Test Template",
+            "list_price": 10.0,
+            "available_in_pos": True,
+        }
+        defaults.update(values)
+        return self.env["product.template"].create(defaults)
+
     def test_default_catalog_status_is_not_set(self):
         product = self._create_product(barcode="8710000000001")
         self.assertEqual(product.bonuscard_catalog_status, "not_set")
@@ -50,6 +59,23 @@ class TestBonuscardProductCatalog(TransactionCase):
         )
         product.action_bonuscard_reset_catalog_status()
         self.assertEqual(product.bonuscard_catalog_status, "not_set")
+
+    def test_template_actions_forward_to_variants(self):
+        tmpl = self._create_template(barcode="8710000000100")
+        variant = tmpl.product_variant_id
+        self.assertEqual(tmpl.bonuscard_catalog_status, "not_set")
+
+        tmpl.action_bonuscard_mark_in_catalog()
+        self.assertEqual(variant.bonuscard_catalog_status, "in_catalog")
+        self.assertEqual(tmpl.bonuscard_catalog_status, "in_catalog")
+
+        tmpl.action_bonuscard_mark_not_in_catalog()
+        self.assertEqual(variant.bonuscard_catalog_status, "not_in_catalog")
+        self.assertEqual(tmpl.bonuscard_catalog_status, "not_in_catalog")
+
+        tmpl.action_bonuscard_reset_catalog_status()
+        self.assertEqual(variant.bonuscard_catalog_status, "not_set")
+        self.assertEqual(tmpl.bonuscard_catalog_status, "not_set")
 
     def test_load_pos_data_fields_includes_catalog_status(self):
         fields_list = self.env["product.product"]._load_pos_data_fields(
