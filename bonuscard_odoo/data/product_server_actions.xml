@@ -12,7 +12,7 @@
         <field name="code">records.action_bonuscard_mark_in_catalog()</field>
     </record>
 
-    <!-- Products (templates) list: shown when Product Variants are disabled. -->
+    <!-- Products (templates) list: intended for no-variant setups; gated by Bonuscard group (model rejects variant users). -->
     <record id="action_bonuscard_mark_templates_in_catalog" model="ir.actions.server">
         <field name="name">Mark as Bonuscard Catalog</field>
         <field name="model_id" ref="product.model_product_template"/>
@@ -33,6 +33,7 @@
         <field name="code">records.action_bonuscard_mark_not_in_catalog()</field>
     </record>
 
+    <!-- Products (templates) list: intended for no-variant setups; gated by Bonuscard group (model rejects variant users). -->
     <record id="action_bonuscard_mark_templates_not_in_catalog" model="ir.actions.server">
         <field name="name">Mark as Not in Bonuscard Catalog</field>
         <field name="model_id" ref="product.model_product_template"/>
@@ -53,6 +54,7 @@
         <field name="code">records.action_bonuscard_reset_catalog_status()</field>
     </record>
 
+    <!-- Products (templates) list: intended for no-variant setups; gated by Bonuscard group (model rejects variant users). -->
     <record id="action_bonuscard_reset_templates_catalog_status" model="ir.actions.server">
         <field name="name">Reset Bonuscard Catalog Status</field>
         <field name="model_id" ref="product.model_product_template"/>

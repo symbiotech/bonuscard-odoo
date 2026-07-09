@@ -95,10 +95,11 @@ This document explains how the Bonuscard POS integration works in the `bonuscard
 
 - `product.template` extension
   - Mirrors catalog status from the single underlying variant for list visibility
-  - List columns, filters, and bulk actions on **Inventory > Products** when
-    Product Variants are disabled (`!product.group_product_variant`)
-  - Refuses template-level bulk updates when variants are enabled or when a
-    template does not have exactly one variant
+  - List columns, filters, and bulk actions on **Inventory > Products** for
+    Bonuscard users who do not have the Product Variants user group (hidden via
+    a variant-group view override when variants are enabled)
+  - Refuses template-level bulk updates when the user has Product Variants
+    enabled or when a template does not have exactly one variant
 
 ## Important state tracked in POS
 

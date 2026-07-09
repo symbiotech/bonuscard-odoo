@@ -60,18 +60,18 @@ class ProductTemplate(models.Model):
                 )
             )
 
-        for template in self:
-            variant = template._bonuscard_catalog_variant()
-            if not variant:
-                raise UserError(
-                    self.env._(
-                        "Product %(name)s does not have exactly one variant, "
-                        "so its Bonuscard catalog status cannot be updated "
-                        "from the Products list.",
-                        name=template.display_name,
-                    )
+        invalid = self.filtered(lambda t: not t._bonuscard_catalog_variant())
+        if invalid:
+            raise UserError(
+                self.env._(
+                    "These products cannot be updated from the Products list "
+                    "because they do not have exactly one variant: %s",
+                    ", ".join(invalid.mapped("display_name")),
                 )
-            getattr(variant, method_name)()
+            )
+
+        variants = self.mapped("product_variant_ids")
+        getattr(variants, method_name)()
         return True
 
     def action_bonuscard_mark_in_catalog(self):

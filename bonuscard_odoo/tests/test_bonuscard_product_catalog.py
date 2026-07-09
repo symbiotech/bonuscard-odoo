@@ -105,6 +105,13 @@ class TestBonuscardProductCatalog(TransactionCase):
         self.assertEqual(variant.bonuscard_catalog_status, "not_set")
         self.assertEqual(tmpl.bonuscard_catalog_status, "not_set")
 
+    def test_template_bulk_action_updates_all_selected(self):
+        tmpl1 = self._create_template(barcode="8710000001000", name="Bulk 1")
+        tmpl2 = self._create_template(barcode="8710000001001", name="Bulk 2")
+        (tmpl1 | tmpl2).action_bonuscard_mark_in_catalog()
+        self.assertEqual(tmpl1.bonuscard_catalog_status, "in_catalog")
+        self.assertEqual(tmpl2.bonuscard_catalog_status, "in_catalog")
+
     def test_template_catalog_status_empty_when_multiple_variants(self):
         tmpl = self._create_multi_variant_template()
         self.assertEqual(len(tmpl.product_variant_ids), 2)
