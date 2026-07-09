@@ -56,11 +56,24 @@ Configuration
    - TTL (hours) to avoid re-querying recently synced partners
    - Batch size per run
    - Optional name fallback (only used when phone and email are missing)
-7. Mark Bonuscard catalog products on **Inventory > Products**:
+7. Mark Bonuscard catalog products:
 
-   - Open a product and set **Bonuscard Catalog** to ``In Bonuscard Catalog``
-   - Or use the list actions **Mark as Bonuscard Catalog** / **Mark as Not in Bonuscard Catalog** (available on the Products list)
-   - Or import from CSV with columns ``barcode`` (or ``default_code``) and ``bonuscard_catalog_status``
+   **When Product Variants are disabled** (default for many POS setups), use
+   **Inventory > Products**:
+
+   - Select products in the list and run **Mark as Bonuscard Catalog** /
+     **Mark as Not in Bonuscard Catalog**
+   - Optional columns: enable **Bonuscard Catalog** and **Bonuscard Catalog
+     Updated** from the list column picker
+
+   **When Product Variants are enabled**, use **Inventory > Products > Product
+   Variants**:
+
+   - Open a variant form and set **Bonuscard Catalog** to ``In Bonuscard Catalog``
+   - Or use the same list actions on the Product Variants list
+
+   In both cases you can also import from CSV with columns ``barcode`` (or
+   ``default_code``) and ``bonuscard_catalog_status``
 
 Usage
 =====

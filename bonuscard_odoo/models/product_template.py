@@ -1,4 +1,9 @@
 from odoo import api, fields, models
+from odoo.exceptions import UserError
+
+# Template-level catalog UI is intended for setups where Odoo's Product Variants
+# feature is disabled (users lack product.group_product_variant). Catalog status
+# is still stored on product.product; templates mirror the single variant.
 
 
 class ProductTemplate(models.Model):
@@ -10,16 +15,16 @@ class ProductTemplate(models.Model):
             ("in_catalog", "In Bonuscard Catalog"),
             ("not_in_catalog", "Not in Bonuscard Catalog"),
         ],
+        string="Bonuscard Catalog",
         compute="_compute_bonuscard_catalog_fields",
         store=True,
         readonly=True,
-        groups="bonuscard_odoo.bonuscard_odoo_group_user",
     )
     bonuscard_catalog_updated_at = fields.Datetime(
+        string="Bonuscard Catalog Updated",
         compute="_compute_bonuscard_catalog_fields",
         store=True,
         readonly=True,
-        groups="bonuscard_odoo.bonuscard_odoo_group_user",
     )
 
     @api.depends(
@@ -28,27 +33,58 @@ class ProductTemplate(models.Model):
     )
     def _compute_bonuscard_catalog_fields(self):
         for template in self:
-            # This addon is intended for setups where product variants are not used.
-            # If a template has multiple variants, the "catalog status" is ambiguous,
-            # so we keep it unset on the template and manage variants directly.
-            variants = template.product_variant_ids
-            if len(variants) != 1:
-                template.bonuscard_catalog_status = "not_set"
+            variant = template._bonuscard_catalog_variant()
+            if not variant:
+                template.bonuscard_catalog_status = False
                 template.bonuscard_catalog_updated_at = False
                 continue
 
-            variant = variants[0]
             template.bonuscard_catalog_status = variant.bonuscard_catalog_status
             template.bonuscard_catalog_updated_at = variant.bonuscard_catalog_updated_at
 
-    def action_bonuscard_mark_in_catalog(self):
-        self.mapped("product_variant_ids").action_bonuscard_mark_in_catalog()
+    def _bonuscard_catalog_variant(self):
+        """Return the single variant for template-level catalog management."""
+        self.ensure_one()
+        variants = self.product_variant_ids
+        if len(variants) == 1:
+            return variants[0]
+        return self.env["product.product"]
+
+    def _bonuscard_action_on_single_variant(self, method_name):
+        if self.env.user.has_group("product.group_product_variant"):
+            raise UserError(
+                self.env._(
+                    "Bonuscard catalog actions on the Products list are only "
+                    "available when Product Variants are disabled. Open "
+                    "Inventory > Products > Product Variants instead."
+                )
+            )
+
+        for template in self:
+            variant = template._bonuscard_catalog_variant()
+            if not variant:
+                raise UserError(
+                    self.env._(
+                        "Product %(name)s does not have exactly one variant, "
+                        "so its Bonuscard catalog status cannot be updated "
+                        "from the Products list.",
+                        name=template.display_name,
+                    )
+                )
+            getattr(variant, method_name)()
         return True
+
+    def action_bonuscard_mark_in_catalog(self):
+        return self._bonuscard_action_on_single_variant(
+            "action_bonuscard_mark_in_catalog"
+        )
 
     def action_bonuscard_mark_not_in_catalog(self):
-        self.mapped("product_variant_ids").action_bonuscard_mark_not_in_catalog()
-        return True
+        return self._bonuscard_action_on_single_variant(
+            "action_bonuscard_mark_not_in_catalog"
+        )
 
     def action_bonuscard_reset_catalog_status(self):
-        self.mapped("product_variant_ids").action_bonuscard_reset_catalog_status()
-        return True
+        return self._bonuscard_action_on_single_variant(
+            "action_bonuscard_reset_catalog_status"
+        )

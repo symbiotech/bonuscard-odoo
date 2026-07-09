@@ -7,7 +7,7 @@
         <field name="inherit_id" ref="product.product_normal_form_view"/>
         <field name="arch" type="xml">
             <group name="inventory" position="after">
-                <group string="Bonuscard" name="bonuscard_catalog" groups="bonuscard_odoo.bonuscard_odoo_group_user">
+                <group string="Bonuscard" name="bonuscard_catalog" groups="bonuscard_odoo.bonuscard_odoo_group_user,product.group_product_variant">
                     <field name="bonuscard_catalog_status" widget="badge"/>
                     <field name="bonuscard_catalog_updated_at"/>
                 </group>
@@ -21,7 +21,7 @@
         <field name="inherit_id" ref="product.product_product_tree_view"/>
         <field name="arch" type="xml">
             <field name="default_code" position="after">
-                <field name="bonuscard_catalog_status" widget="badge" optional="hide"/>
+                <field name="bonuscard_catalog_status" widget="badge" optional="hide" groups="bonuscard_odoo.bonuscard_odoo_group_user,product.group_product_variant"/>
             </field>
         </field>
     </record>
@@ -32,10 +32,10 @@
         <field name="inherit_id" ref="product.product_search_form_view"/>
         <field name="arch" type="xml">
             <filter name="inactive" position="after">
-                <separator/>
-                <filter name="bonuscard_catalog_in" string="Bonuscard: In Catalog" domain="[('bonuscard_catalog_status', '=', 'in_catalog')]"/>
-                <filter name="bonuscard_catalog_not_in" string="Bonuscard: Not in Catalog" domain="[('bonuscard_catalog_status', '=', 'not_in_catalog')]"/>
-                <filter name="bonuscard_catalog_not_set" string="Bonuscard: Not Set" domain="[('bonuscard_catalog_status', '=', 'not_set')]"/>
+                <separator groups="bonuscard_odoo.bonuscard_odoo_group_user,product.group_product_variant"/>
+                <filter name="bonuscard_catalog_in" string="Bonuscard: In Catalog" domain="[('bonuscard_catalog_status', '=', 'in_catalog')]" groups="bonuscard_odoo.bonuscard_odoo_group_user,product.group_product_variant"/>
+                <filter name="bonuscard_catalog_not_in" string="Bonuscard: Not in Catalog" domain="[('bonuscard_catalog_status', '=', 'not_in_catalog')]" groups="bonuscard_odoo.bonuscard_odoo_group_user,product.group_product_variant"/>
+                <filter name="bonuscard_catalog_not_set" string="Bonuscard: Not Set" domain="[('bonuscard_catalog_status', '=', 'not_set')]" groups="bonuscard_odoo.bonuscard_odoo_group_user,product.group_product_variant"/>
             </filter>
         </field>
     </record>
