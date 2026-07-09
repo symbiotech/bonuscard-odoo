@@ -20,11 +20,7 @@
         <field name="binding_view_types">list</field>
         <field name="group_ids" eval="[(4, ref('bonuscard_odoo.bonuscard_odoo_group_user'))]"/>
         <field name="state">code</field>
-        <field name="code">
-if env.user.has_group('product.group_product_variant'):
-    raise UserError(env._('Use Inventory > Products > Product Variants for Bonuscard catalog actions when Product Variants are enabled.'))
-records.action_bonuscard_mark_in_catalog()
-        </field>
+        <field name="code">records.action_bonuscard_mark_in_catalog()</field>
     </record>
 
     <record id="action_bonuscard_mark_products_not_in_catalog" model="ir.actions.server">
@@ -44,11 +40,7 @@ records.action_bonuscard_mark_in_catalog()
         <field name="binding_view_types">list</field>
         <field name="group_ids" eval="[(4, ref('bonuscard_odoo.bonuscard_odoo_group_user'))]"/>
         <field name="state">code</field>
-        <field name="code">
-if env.user.has_group('product.group_product_variant'):
-    raise UserError(env._('Use Inventory > Products > Product Variants for Bonuscard catalog actions when Product Variants are enabled.'))
-records.action_bonuscard_mark_not_in_catalog()
-        </field>
+        <field name="code">records.action_bonuscard_mark_not_in_catalog()</field>
     </record>
 
     <record id="action_bonuscard_reset_products_catalog_status" model="ir.actions.server">
@@ -68,11 +60,7 @@ records.action_bonuscard_mark_not_in_catalog()
         <field name="binding_view_types">list</field>
         <field name="group_ids" eval="[(4, ref('bonuscard_odoo.bonuscard_odoo_group_user'))]"/>
         <field name="state">code</field>
-        <field name="code">
-if env.user.has_group('product.group_product_variant'):
-    raise UserError(env._('Use Inventory > Products > Product Variants for Bonuscard catalog actions when Product Variants are enabled.'))
-records.action_bonuscard_reset_catalog_status()
-        </field>
+        <field name="code">records.action_bonuscard_reset_catalog_status()</field>
     </record>
 
 </odoo>
