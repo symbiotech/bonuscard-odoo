@@ -10,3 +10,4 @@ __pycache__/
 LOCAL_SETUP.md
 .jcodemunch.jsonc
 .cursor/rules/jcodemunch.mdc
+.cursor/rules/windows-shell-exec.mdc
