@@ -52,7 +52,13 @@ class BonuscardApiService(models.AbstractModel):
             .sudo()
             .search(domain + [("is_current", "=", True)], limit=1, order="id desc")
         )
-        return current
+        if current:
+            return current
+        return (
+            self.env["bonuscard.connector.instance"]
+            .sudo()
+            .search(domain, limit=1, order="id desc")
+        )
 
     def _decode_response(self, response):
         raw_data = response.read().decode("utf-8")

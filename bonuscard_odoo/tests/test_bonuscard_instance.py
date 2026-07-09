@@ -6,6 +6,9 @@ from odoo.addons.bonuscard_odoo.models.bonuscard_api_service import (
     _CONNECTION_TEST_PROBE_QUERY,
     BonuscardHttpError,
 )
+from odoo.addons.bonuscard_odoo.models.bonuscard_instance import (
+    _CTX_SKIP_CURRENT_ENFORCEMENT,
+)
 from odoo.exceptions import UserError, ValidationError
 from odoo.tests import TransactionCase, tagged
 
@@ -528,3 +531,68 @@ class TestBonuscardInstance(TransactionCase):
         instance.write({"active": True})
         self.assertTrue(instance.is_current)
         instance.write({"active": False})
+
+    # ------------------------------------------------------------------
+    # _get_company_instance – connector selection logic
+    # ------------------------------------------------------------------
+
+    def test_get_company_instance_falls_back_to_active_non_current(self):
+        """_get_company_instance returns the latest active instance even when
+        no instance has is_current=True (e.g. after data migration)."""
+        instances = self.instance_model.search([])
+        instances.write({"active": False})
+        company = self.env.company
+        instance = self.instance_model.create(
+            {
+                "name": "Fallback Active",
+                "api_base_url": "https://web.bonuscard.com/api/",
+                "api_username": "demo-user",
+                "api_password": "demo-pass",
+                "company_id": company.id,
+            }
+        )
+        # Bypass enforcement to simulate a state without any marked-current instance
+        instance.with_context(**{_CTX_SKIP_CURRENT_ENFORCEMENT: True}).write(
+            {"is_current": False}
+        )
+        self.assertFalse(instance.is_current)
+
+        service = self.env["bonuscard.api.service"]
+        result = service._get_company_instance(company)
+        self.assertEqual(result, instance)
+
+    def test_get_company_instance_prefers_is_current_instance(self):
+        """_get_company_instance returns the is_current=True instance rather
+        than falling back to other active instances."""
+        instances = self.instance_model.search([])
+        instances.write({"active": False})
+        company = self.env.company
+        # Create the first instance — it auto-becomes current.
+        non_current = self.instance_model.create(
+            {
+                "name": "Non-Current",
+                "api_base_url": "https://test.bonuscard.com/api/",
+                "api_username": "demo-user",
+                "api_password": "demo-pass",
+                "company_id": company.id,
+                "is_current": True,
+            }
+        )
+        # Creating a second instance with is_current=True unsets the first.
+        current = self.instance_model.create(
+            {
+                "name": "Current",
+                "api_base_url": "https://web.bonuscard.com/api/",
+                "api_username": "demo-user2",
+                "api_password": "demo-pass2",
+                "company_id": company.id,
+                "is_current": True,
+            }
+        )
+        non_current.invalidate_recordset()
+        self.assertFalse(non_current.is_current)
+        self.assertTrue(current.is_current)
+
+        service = self.env["bonuscard.api.service"]
+        result = service._get_company_instance(company)
+        self.assertEqual(result, current)
