@@ -91,10 +91,14 @@ This document explains how the Bonuscard POS integration works in the `bonuscard
   - Products marked `in_catalog` must have a barcode or article number
   - Only `in_catalog` products are sent to Bonuscard from POS
   - Bulk list actions and CSV import can maintain catalog membership manually
+  - Form editing on **Inventory > Products** (single-variant setups), **Product
+    Variants**, and the POS **Edit Product** modal for Bonuscard users
   - Used when Odoo **Product Variants** are enabled (variant list/form UI)
 
 - `product.template` extension
   - Mirrors catalog status from the single underlying variant for list visibility
+  - Writable on template forms (inverse writes the single variant) for Bonuscard
+    users when the product has exactly one variant
   - List columns, filters, and bulk actions on **Inventory > Products** for
     Bonuscard users who do not have the Product Variants user group (hidden via
     a variant-group view override when variants are enabled)

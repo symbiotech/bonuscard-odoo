@@ -9,7 +9,7 @@
         <field name="arch" type="xml">
             <group name="inventory" position="after">
                 <group string="Bonuscard" name="bonuscard_catalog" groups="bonuscard_odoo.bonuscard_odoo_group_user">
-                    <field name="bonuscard_catalog_status" widget="badge"/>
+                    <field name="bonuscard_catalog_status"/>
                     <field name="bonuscard_catalog_updated_at"/>
                 </group>
             </group>

@@ -72,6 +72,11 @@ Configuration
    - Open a variant form and set **Bonuscard Catalog** to ``In Bonuscard Catalog``
    - Or use the same list actions on the Product Variants list
 
+   **From product forms** (backend or POS **Edit Product** modal), Bonuscard
+   users can set **Bonuscard Catalog** directly on the form when the product has
+   exactly one variant (including on the main product form even when Product
+   Variants are enabled).
+
    In both cases you can also import from CSV with columns ``barcode`` (or
    ``default_code``) and ``bonuscard_catalog_status``
 
