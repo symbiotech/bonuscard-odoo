@@ -35,9 +35,10 @@
                     </group>
                     <group string="Bulk Prefetch">
                         <div colspan="2" class="text-muted">
-                            Header buttons prefetch Bonuscard customer links in the background (phone → email → optional name).
+                            Header buttons look up Bonuscard customer links (phone → email → optional name).
                             <strong>Run</strong> processes only never-scanned partners (same as the daily cron).
                             <strong>Refresh</strong> re-checks partners older than the TTL.
+                            Processing runs immediately and may take a moment for large batches.
                         </div>
                         <group>
                             <field name="bulk_partner_prefetch_active"/>
