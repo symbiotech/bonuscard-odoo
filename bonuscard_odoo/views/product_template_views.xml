@@ -62,7 +62,8 @@
         <field name="inherit_id" ref="point_of_sale.product_template_view_form_normalized_pos"/>
         <field name="arch" type="xml">
             <field name="color" position="after">
-                <field name="bonuscard_catalog_status" string="Bonuscard Catalog" groups="bonuscard_odoo.bonuscard_odoo_group_user"/>
+                <field name="product_variant_count" invisible="1"/>
+                <field name="bonuscard_catalog_status" string="Bonuscard Catalog" groups="bonuscard_odoo.bonuscard_odoo_group_user" invisible="product_variant_count != 1"/>
             </field>
         </field>
     </record>
