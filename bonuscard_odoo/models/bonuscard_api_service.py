@@ -709,7 +709,7 @@ class BonuscardApiService(models.AbstractModel):
     def _classify_catalog_probe_response(self, payload):
         """Map a ValidatePurchase probe response to a catalog status."""
         if not isinstance(payload, dict):
-            return "unchanged", self.env._("Unexpected Bonuscard response format.")
+            return "error", self.env._("Unexpected Bonuscard response format.")
 
         if payload.get("error"):
             messages = self._extract_error_messages(payload)
@@ -718,7 +718,7 @@ class BonuscardApiService(models.AbstractModel):
                 if messages
                 else self.env._("Bonuscard returned an error.")
             )
-            return "unchanged", note
+            return "error", note
 
         messages = self._extract_error_messages(payload)
         message_text = " ".join(messages).lower()
@@ -789,14 +789,14 @@ class BonuscardApiService(models.AbstractModel):
             )
         except BonuscardApiError as exc:
             return {
-                "status": "unchanged",
+                "status": "error",
                 "note": self._get_bonuscard_error_message(
                     exc, self.env._("Bonuscard catalog probe failed.")
                 ),
             }
         except (BonuscardHttpError, UserError) as exc:
             return {
-                "status": "unchanged",
+                "status": "error",
                 "note": getattr(exc, "name", None) or str(exc),
             }
         except Exception:  # pylint: disable=broad-except
@@ -805,7 +805,7 @@ class BonuscardApiService(models.AbstractModel):
                 product.id,
             )
             return {
-                "status": "unchanged",
+                "status": "error",
                 "note": self.env._("Bonuscard catalog probe failed."),
             }
 
@@ -835,7 +835,7 @@ class BonuscardApiService(models.AbstractModel):
                     )
                     cancel_note = self.env._("Bonuscard cancel failed.")
                 return {
-                    "status": "unchanged",
+                    "status": "error",
                     "note": cancel_note,
                 }
 

@@ -64,6 +64,17 @@ class TestBonuscardProductCatalogProbe(TransactionCase):
         )
         self.assertEqual(status, "unchanged")
 
+    def test_classify_api_error_returns_error(self):
+        status, note = self.service._classify_catalog_probe_response(
+            {
+                "error": True,
+                "errorCode": 4,
+                "messages": ["Customer not eligible."],
+            }
+        )
+        self.assertEqual(status, "error")
+        self.assertIn("Customer not eligible", note)
+
     def test_probe_known_product_cancels_transaction(self):
         product = self._create_product(barcode="8710000009001")
         validate_payload = {
@@ -116,7 +127,7 @@ class TestBonuscardProductCatalogProbe(TransactionCase):
         self.assertEqual(result["status"], "not_in_catalog")
         mock_cancel.assert_not_called()
 
-    def test_probe_cancel_failure_leaves_status_unchanged(self):
+    def test_probe_cancel_failure_returns_error(self):
         product = self._create_product(barcode="8710000009003")
         validate_payload = {
             "error": False,
@@ -136,7 +147,7 @@ class TestBonuscardProductCatalogProbe(TransactionCase):
         ):
             result = self.service.probe_product_catalog_status(self.instance, product)
 
-        self.assertEqual(result["status"], "unchanged")
+        self.assertEqual(result["status"], "error")
         self.assertIn("Cancel failed", result["note"])
 
     def test_product_action_updates_catalog_status(self):
@@ -170,6 +181,7 @@ class TestBonuscardProductCatalogProbe(TransactionCase):
         self.assertEqual(scanned.bonuscard_catalog_status, "not_in_catalog")
         with patch(
             "odoo.addons.bonuscard_odoo.models.product_product.ProductProduct._bonuscard_probe_catalog_status_single",
+            autospec=True,
             return_value={"status": "in_catalog", "note": "ok"},
         ) as mock_probe:
             summary = self.env["product.product"].action_bulk_probe_catalog_status(
@@ -180,8 +192,7 @@ class TestBonuscardProductCatalogProbe(TransactionCase):
             )
 
         self.assertEqual(summary["processed"], 1)
-        mock_probe.assert_called_once()
-        self.assertNotIn(scanned.id, mock_probe.call_args[0][0].ids)
+        mock_probe.assert_called_once_with(unscanned, self.instance)
 
     def test_manual_probe_processes_selected_products(self):
         product = self._create_product(
@@ -190,6 +201,7 @@ class TestBonuscardProductCatalogProbe(TransactionCase):
         )
         with patch(
             "odoo.addons.bonuscard_odoo.models.product_product.ProductProduct._bonuscard_probe_catalog_status_single",
+            autospec=True,
             return_value={"status": "in_catalog", "note": "now in catalog"},
         ) as mock_probe:
             self.env["product.product"].action_bulk_probe_catalog_status(
@@ -199,7 +211,7 @@ class TestBonuscardProductCatalogProbe(TransactionCase):
                 only_unscanned=False,
             )
 
-        mock_probe.assert_called_once_with(self.instance)
+        mock_probe.assert_called_once_with(product, self.instance)
 
     def test_probe_requires_manager_group(self):
         product = self._create_product(barcode="8710000009013")

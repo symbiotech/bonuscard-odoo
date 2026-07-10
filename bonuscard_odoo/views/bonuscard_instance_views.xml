@@ -50,7 +50,7 @@
                             <field name="bulk_partner_prefetch_batch_size"/>
                         </group>
                     </group>
-                    <group string="Catalog Probe">
+                    <group string="Catalog Probe" groups="bonuscard_odoo.bonuscard_odoo_group_manager">
                         <div colspan="2" class="text-muted">
                             Probes product catalog status by calling
                             <strong>ValidatePurchase</strong> with the dedicated test
