@@ -65,4 +65,24 @@
         <field name="code">records.action_bonuscard_reset_catalog_status()</field>
     </record>
 
+    <record id="action_bonuscard_probe_products_catalog_status" model="ir.actions.server">
+        <field name="name">Check Bonuscard Catalog</field>
+        <field name="model_id" ref="product.model_product_product"/>
+        <field name="binding_model_id" ref="product.model_product_product"/>
+        <field name="binding_view_types">list</field>
+        <field name="group_ids" eval="[(4, ref('bonuscard_odoo.bonuscard_odoo_group_manager'))]"/>
+        <field name="state">code</field>
+        <field name="code">action = records.action_bonuscard_probe_catalog_status()</field>
+    </record>
+
+    <record id="action_bonuscard_probe_templates_catalog_status" model="ir.actions.server">
+        <field name="name">Check Bonuscard Catalog</field>
+        <field name="model_id" ref="product.model_product_template"/>
+        <field name="binding_model_id" ref="product.model_product_template"/>
+        <field name="binding_view_types">list</field>
+        <field name="group_ids" eval="[(4, ref('bonuscard_odoo.bonuscard_odoo_group_manager'))]"/>
+        <field name="state">code</field>
+        <field name="code">action = records.action_bonuscard_probe_catalog_status()</field>
+    </record>
+
 </odoo>

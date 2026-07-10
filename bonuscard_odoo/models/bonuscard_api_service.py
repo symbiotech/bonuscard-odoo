@@ -15,6 +15,7 @@ _REQUEST_RETRY_COUNT = 2
 _REQUEST_RETRY_INITIAL_DELAY = 0.5
 # Probe query for connection tests: phone-shaped, unlikely to match a real customer.
 _CONNECTION_TEST_PROBE_QUERY = "0000000000"
+_NO_VALID_PRODUCTS_MESSAGE_FRAGMENT = "no valid products"
 
 
 class BonuscardHttpError(UserError):
@@ -704,3 +705,141 @@ class BonuscardApiService(models.AbstractModel):
                 )
                 message = self.env._("Bonuscard cancel failed.")
             return {"error": True, "messages": [message]}
+
+    def _classify_catalog_probe_response(self, payload):
+        """Map a ValidatePurchase probe response to a catalog status."""
+        if not isinstance(payload, dict):
+            return "unchanged", self.env._("Unexpected Bonuscard response format.")
+
+        if payload.get("error"):
+            messages = self._extract_error_messages(payload)
+            note = (
+                " | ".join(messages)
+                if messages
+                else self.env._("Bonuscard returned an error.")
+            )
+            return "unchanged", note
+
+        messages = self._extract_error_messages(payload)
+        message_text = " ".join(messages).lower()
+        transaction_id = payload.get("transactionIdentifier")
+
+        if not transaction_id:
+            if _NO_VALID_PRODUCTS_MESSAGE_FRAGMENT in message_text:
+                note = (
+                    messages[0]
+                    if messages
+                    else self.env._("Product not found in Bonuscard catalog.")
+                )
+                return "not_in_catalog", note
+            note = (
+                messages[0]
+                if messages
+                else self.env._("Ambiguous Bonuscard response; status unchanged.")
+            )
+            return "unchanged", note
+
+        note = (
+            messages[0]
+            if messages
+            else self.env._("Product found in Bonuscard catalog.")
+        )
+        return "in_catalog", note
+
+    def probe_product_catalog_status(self, instance, product):
+        """Probe whether a product exists in Bonuscard via ValidatePurchase.
+
+        Returns a dict with keys ``status`` (``in_catalog``, ``not_in_catalog``,
+        ``unchanged``, ``skipped``, or ``error``) and ``note``.
+        """
+        instance.ensure_one()
+        product.ensure_one()
+
+        customer_identifier = (instance.catalog_probe_customer_identifier or "").strip()
+        if not customer_identifier:
+            return {
+                "status": "error",
+                "note": self.env._(
+                    "Catalog probe customer identifier is not configured on the "
+                    "Bonuscard connection."
+                ),
+            }
+
+        ean = product.barcode or product.default_code
+        if not ean:
+            return {
+                "status": "skipped",
+                "note": self.env._("Product has no barcode or article number."),
+            }
+
+        probe_price = float(instance.catalog_probe_price or 100.0)
+        checkout_items = [
+            {
+                "ean": ean,
+                "quantity": 1,
+                "pricePerItem": probe_price,
+            }
+        ]
+
+        try:
+            payload = self._validate_purchase(
+                instance,
+                customer_identifier,
+                checkout_items,
+            )
+        except BonuscardApiError as exc:
+            return {
+                "status": "unchanged",
+                "note": self._get_bonuscard_error_message(
+                    exc, self.env._("Bonuscard catalog probe failed.")
+                ),
+            }
+        except (BonuscardHttpError, UserError) as exc:
+            return {
+                "status": "unchanged",
+                "note": getattr(exc, "name", None) or str(exc),
+            }
+        except Exception:  # pylint: disable=broad-except
+            _logger.exception(
+                "Unexpected error during Bonuscard catalog probe for product %s",
+                product.id,
+            )
+            return {
+                "status": "unchanged",
+                "note": self.env._("Bonuscard catalog probe failed."),
+            }
+
+        catalog_status, note = self._classify_catalog_probe_response(payload)
+        transaction_id = payload.get("transactionIdentifier")
+
+        if catalog_status == "in_catalog" and transaction_id:
+            try:
+                self._cancel_purchase(instance, transaction_id)
+            except Exception as exc:  # pylint: disable=broad-except
+                if isinstance(exc, BonuscardHttpError):
+                    _logger.warning(
+                        "Bonuscard HTTP error during catalog probe cancel (HTTP %s) "
+                        "for product %s",
+                        exc.status_code,
+                        product.id,
+                    )
+                    cancel_note = self.env._(
+                        "Bonuscard service is temporarily unavailable."
+                    )
+                elif isinstance(exc, UserError):
+                    cancel_note = getattr(exc, "name", None) or str(exc)
+                else:
+                    _logger.exception(
+                        "Unexpected error during catalog probe cancel for product %s",
+                        product.id,
+                    )
+                    cancel_note = self.env._("Bonuscard cancel failed.")
+                return {
+                    "status": "unchanged",
+                    "note": cancel_note,
+                }
+
+        return {
+            "status": catalog_status,
+            "note": note,
+        }

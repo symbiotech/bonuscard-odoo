@@ -51,6 +51,8 @@
                 <group string="Bonuscard" name="bonuscard_catalog" groups="bonuscard_odoo.bonuscard_odoo_group_user" invisible="product_variant_count != 1">
                     <field name="bonuscard_catalog_status"/>
                     <field name="bonuscard_catalog_updated_at" readonly="1"/>
+                    <field name="bonuscard_catalog_probe_note" groups="bonuscard_odoo.bonuscard_odoo_group_manager"/>
+                    <button name="action_bonuscard_probe_catalog_status" string="Check Bonuscard Catalog" type="object" class="btn-secondary" groups="bonuscard_odoo.bonuscard_odoo_group_manager"/>
                 </group>
             </group>
         </field>

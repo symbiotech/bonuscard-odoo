@@ -91,9 +91,19 @@ This document explains how the Bonuscard POS integration works in the `bonuscard
   - Products marked `in_catalog` must have a barcode or article number
   - Only `in_catalog` products are sent to Bonuscard from POS
   - Bulk list actions and CSV import can maintain catalog membership manually
+  - **Check Bonuscard Catalog** (managers only) probes catalog membership via
+    `ValidatePurchase` using the dedicated test customer on the connection; unknown
+    products are detected when Bonuscard returns no `transactionIdentifier`
+  - Adds `bonuscard_catalog_probe_note` with the last probe message
   - Form editing on **Inventory > Products** (single-variant setups), **Product
     Variants**, and the POS **Edit Product** modal for Bonuscard users
   - Used when Odoo **Product Variants** are enabled (variant list/form UI)
+
+- `bonuscard.connector.instance` catalog probe settings (managers only)
+  - `catalog_probe_customer_identifier`, `catalog_probe_price` (default 100),
+    `catalog_probe_batch_size`, and `catalog_probe_active`
+  - Daily cron probes never-scanned products (`not_set` with barcode/article)
+  - Manual **Run Catalog Probe** on the connection form uses the same scope as cron
 
 - `product.template` extension
   - Mirrors catalog status from the single underlying variant for list visibility

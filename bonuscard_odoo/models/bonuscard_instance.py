@@ -70,6 +70,29 @@ class BonuscardConnectorInstance(models.Model):
         help="If enabled, the prefetch can use partner name as a last resort when phone and email are missing.",
     )
 
+    catalog_probe_active = fields.Boolean(
+        string="Enable catalog probe",
+        default=True,
+        help="When enabled, the daily cron and manual button probe Bonuscard catalog "
+        "status for products that have not been scanned yet.",
+    )
+    catalog_probe_customer_identifier = fields.Char(
+        string="Catalog Probe Customer",
+        copy=False,
+        help="Dedicated Bonuscard test customer identifier (recruitment code, phone, "
+        "email, etc.) used when probing product catalog status via ValidatePurchase.",
+    )
+    catalog_probe_price = fields.Float(
+        string="Catalog Probe Price",
+        default=100.0,
+        help="Nominal unit price sent to ValidatePurchase when probing products.",
+    )
+    catalog_probe_batch_size = fields.Integer(
+        string="Catalog Probe Batch Size",
+        default=50,
+        help="Maximum number of never-scanned products processed per cron run.",
+    )
+
     connection_status = fields.Selection(
         selection=[
             ("unknown", "Unknown"),
@@ -82,6 +105,21 @@ class BonuscardConnectorInstance(models.Model):
     )
     last_test_at = fields.Datetime(readonly=True, copy=False)
     last_error = fields.Text(readonly=True, copy=False)
+
+    @api.constrains("catalog_probe_price", "catalog_probe_batch_size")
+    def _check_catalog_probe_settings(self):
+        for rec in self:
+            if rec.catalog_probe_price is not None and rec.catalog_probe_price <= 0:
+                raise ValidationError(
+                    self.env._("Catalog probe price must be greater than zero.")
+                )
+            if (
+                rec.catalog_probe_batch_size is not None
+                and rec.catalog_probe_batch_size <= 0
+            ):
+                raise ValidationError(
+                    self.env._("Catalog probe batch size must be greater than zero.")
+                )
 
     @api.constrains("api_base_url")
     def _check_api_base_url(self):
@@ -546,6 +584,99 @@ class BonuscardConnectorInstance(models.Model):
                 "sticky": False,
             },
         }
+
+    def action_run_catalog_probe(self):
+        """Manual UI entry point to probe never-scanned products for this company."""
+        self.ensure_one()
+        if not self.catalog_probe_active:
+            return {
+                "type": "ir.actions.client",
+                "tag": "display_notification",
+                "params": {
+                    "title": self.env._("Bonuscard Catalog Probe"),
+                    "message": self.env._(
+                        "Catalog probe is disabled for this connection."
+                    ),
+                    "type": "warning",
+                    "sticky": False,
+                },
+            }
+        summary = (
+            self.env["product.product"]
+            .with_company(self.company_id)
+            .action_bulk_probe_catalog_status(
+                company_id=self.company_id.id,
+                instance_id=self.id,
+                only_unscanned=True,
+            )
+        )
+        if not summary.get("ok"):
+            return {
+                "type": "ir.actions.client",
+                "tag": "display_notification",
+                "params": {
+                    "title": self.env._("Bonuscard Catalog Probe"),
+                    "message": summary.get("message")
+                    or self.env._("Catalog probe could not be started."),
+                    "type": "warning",
+                    "sticky": True,
+                },
+            }
+        message = self.env._(
+            "Processed: %(processed)s (in_catalog=%(in_catalog)s, "
+            "not_in_catalog=%(not_in_catalog)s, unchanged=%(unchanged)s, "
+            "skipped=%(skipped)s, error=%(error)s).",
+            **summary,
+        )
+        return {
+            "type": "ir.actions.client",
+            "tag": "display_notification",
+            "params": {
+                "title": self.env._("Bonuscard Catalog Probe"),
+                "message": message,
+                "type": "info" if summary.get("error") == 0 else "warning",
+                "sticky": False,
+            },
+        }
+
+    @api.model
+    def _cron_run_catalog_probe(self):
+        """Scheduled entry point: probe never-scanned products per active instance."""
+        instances = self.sudo().search(
+            [("active", "=", True), ("is_current", "=", True)]
+        )
+        for instance in instances:
+            if not instance.catalog_probe_active:
+                continue
+            if not (instance.catalog_probe_customer_identifier or "").strip():
+                continue
+            try:
+                summary = (
+                    self.env["product.product"]
+                    .with_company(instance.company_id)
+                    .sudo()
+                    .action_bulk_probe_catalog_status(
+                        company_id=instance.company_id.id,
+                        instance_id=instance.id,
+                        only_unscanned=True,
+                    )
+                )
+                _logger.info(
+                    "Bonuscard catalog probe complete for company=%s processed=%s "
+                    "in_catalog=%s not_in_catalog=%s unchanged=%s skipped=%s error=%s",
+                    instance.company_id.id,
+                    summary.get("processed"),
+                    summary.get("in_catalog"),
+                    summary.get("not_in_catalog"),
+                    summary.get("unchanged"),
+                    summary.get("skipped"),
+                    summary.get("error"),
+                )
+            except Exception:  # pylint: disable=broad-except
+                _logger.exception(
+                    "Bonuscard catalog probe cron failed for company %s",
+                    instance.company_id.id,
+                )
 
     @api.model
     def _cron_run_bulk_partner_prefetch(self):

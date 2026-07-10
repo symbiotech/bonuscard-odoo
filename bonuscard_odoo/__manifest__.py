@@ -15,6 +15,7 @@
         "security/security.xml",
         "security/ir.model.access.csv",
         "data/bonuscard_bulk_prefetch_cron.xml",
+        "data/bonuscard_catalog_probe_cron.xml",
         "data/product_server_actions.xml",
         "views/bonuscard_instance_views.xml",
         "views/product_product_views.xml",

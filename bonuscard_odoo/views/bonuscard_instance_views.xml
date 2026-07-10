@@ -10,6 +10,7 @@
                     <button name="action_test_connection" string="Test Connection" type="object" class="btn-primary"/>
                     <button name="action_run_bulk_partner_prefetch" string="Run Bulk Prefetch" type="object" groups="bonuscard_odoo.bonuscard_odoo_group_manager" help="Look up Bonuscard status for partners that have never been scanned (same scope as the daily scheduled job). Processes up to the batch size below."/>
                     <button name="action_run_bulk_partner_prefetch_force_refresh" string="Refresh Bulk Prefetch" type="object" groups="bonuscard_odoo.bonuscard_odoo_group_manager" help="Re-check partners already scanned whose last lookup is older than the TTL below. Skips partners checked recently to limit API calls."/>
+                    <button name="action_run_catalog_probe" string="Run Catalog Probe" type="object" groups="bonuscard_odoo.bonuscard_odoo_group_manager" help="Probe Bonuscard catalog status for products that have never been scanned (same scope as the daily catalog probe cron)."/>
                     <field name="connection_status" widget="statusbar" statusbar_visible="unknown,ok,error"/>
                 </header>
                 <sheet>
@@ -47,6 +48,24 @@
                         <group>
                             <field name="bulk_partner_prefetch_ttl_hours"/>
                             <field name="bulk_partner_prefetch_batch_size"/>
+                        </group>
+                    </group>
+                    <group string="Catalog Probe">
+                        <div colspan="2" class="text-muted">
+                            Probes product catalog status by calling
+                            <strong>ValidatePurchase</strong> with the dedicated test
+                            customer below. Unknown products are detected when Bonuscard
+                            returns no transaction identifier. Products are processed one
+                            by one. The daily cron only scans products with catalog
+                            status <strong>Not Set</strong>.
+                        </div>
+                        <group>
+                            <field name="catalog_probe_active"/>
+                            <field name="catalog_probe_customer_identifier"/>
+                        </group>
+                        <group>
+                            <field name="catalog_probe_price"/>
+                            <field name="catalog_probe_batch_size"/>
                         </group>
                     </group>
                     <group string="Diagnostics">
