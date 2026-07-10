@@ -73,23 +73,27 @@ class BonuscardConnectorInstance(models.Model):
     catalog_probe_active = fields.Boolean(
         string="Enable catalog probe",
         default=True,
+        groups="bonuscard_odoo.bonuscard_odoo_group_manager",
         help="When enabled, the daily cron and manual button probe Bonuscard catalog "
         "status for products that have not been scanned yet.",
     )
     catalog_probe_customer_identifier = fields.Char(
         string="Catalog Probe Customer",
         copy=False,
+        groups="bonuscard_odoo.bonuscard_odoo_group_manager",
         help="Dedicated Bonuscard test customer identifier (recruitment code, phone, "
         "email, etc.) used when probing product catalog status via ValidatePurchase.",
     )
     catalog_probe_price = fields.Float(
         string="Catalog Probe Price",
         default=100.0,
+        groups="bonuscard_odoo.bonuscard_odoo_group_manager",
         help="Nominal unit price sent to ValidatePurchase when probing products.",
     )
     catalog_probe_batch_size = fields.Integer(
         string="Catalog Probe Batch Size",
         default=50,
+        groups="bonuscard_odoo.bonuscard_odoo_group_manager",
         help="Maximum number of never-scanned products processed per cron run.",
     )
 
