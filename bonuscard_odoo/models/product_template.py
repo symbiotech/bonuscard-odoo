@@ -17,8 +17,8 @@ class ProductTemplate(models.Model):
         ],
         string="Bonuscard Catalog",
         compute="_compute_bonuscard_catalog_fields",
+        inverse="_inverse_bonuscard_catalog_status",
         store=True,
-        readonly=True,
     )
     bonuscard_catalog_updated_at = fields.Datetime(
         string="Bonuscard Catalog Updated",
@@ -41,6 +41,19 @@ class ProductTemplate(models.Model):
 
             template.bonuscard_catalog_status = variant.bonuscard_catalog_status
             template.bonuscard_catalog_updated_at = variant.bonuscard_catalog_updated_at
+
+    def _inverse_bonuscard_catalog_status(self):
+        for template in self:
+            variant = template._bonuscard_catalog_variant()
+            if not variant:
+                raise UserError(
+                    self.env._(
+                        "Bonuscard catalog status can only be edited on products "
+                        "with exactly one variant."
+                    )
+                )
+            variant.bonuscard_catalog_status = template.bonuscard_catalog_status
+        self._compute_bonuscard_catalog_fields()
 
     def _bonuscard_catalog_variant(self):
         """Return the single variant for template-level catalog management."""

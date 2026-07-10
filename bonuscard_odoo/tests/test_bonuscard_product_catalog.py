@@ -130,6 +130,32 @@ class TestBonuscardProductCatalog(TransactionCase):
             tmpl.action_bonuscard_mark_in_catalog()
         self.env.user.write({"group_ids": [(3, variant_group.id)]})
 
+    def test_template_write_catalog_status_updates_variant(self):
+        tmpl = self._create_template(barcode="8710000000200")
+        variant = tmpl.product_variant_id
+        tmpl.bonuscard_catalog_status = "in_catalog"
+        self.assertEqual(variant.bonuscard_catalog_status, "in_catalog")
+        self.assertEqual(tmpl.bonuscard_catalog_status, "in_catalog")
+        self.assertTrue(tmpl.bonuscard_catalog_updated_at)
+
+    def test_template_write_catalog_status_requires_single_variant(self):
+        tmpl = self._create_multi_variant_template()
+        with self.assertRaises(UserError):
+            tmpl.bonuscard_catalog_status = "in_catalog"
+
+    def test_template_write_in_catalog_requires_identifier(self):
+        tmpl = self._create_template()
+        with self.assertRaises(ValidationError):
+            tmpl.bonuscard_catalog_status = "in_catalog"
+
+    def test_template_write_catalog_status_allowed_for_variant_group_user(self):
+        tmpl = self._create_template(barcode="8710000000300")
+        variant_group = self.env.ref("product.group_product_variant")
+        self.env.user.write({"group_ids": [(4, variant_group.id)]})
+        tmpl.bonuscard_catalog_status = "in_catalog"
+        self.assertEqual(tmpl.product_variant_id.bonuscard_catalog_status, "in_catalog")
+        self.env.user.write({"group_ids": [(3, variant_group.id)]})
+
     def test_load_pos_data_fields_includes_catalog_status(self):
         fields_list = self.env["product.product"]._load_pos_data_fields(
             self.env["pos.config"]
