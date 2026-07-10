@@ -1,5 +1,5 @@
 from odoo import api, fields, models
-from odoo.exceptions import UserError
+from odoo.exceptions import UserError, ValidationError
 
 # Template-level catalog UI is intended for setups where Odoo's Product Variants
 # feature is disabled (users lack product.group_product_variant). Catalog status
@@ -42,6 +42,11 @@ class ProductTemplate(models.Model):
             template.bonuscard_catalog_status = variant.bonuscard_catalog_status
             template.bonuscard_catalog_updated_at = variant.bonuscard_catalog_updated_at
 
+    @api.model
+    def _load_pos_data_fields(self, config):
+        fields_list = super()._load_pos_data_fields(config)
+        return fields_list + ["bonuscard_catalog_status"]
+
     def _inverse_bonuscard_catalog_status(self):
         for template in self:
             variant = template._bonuscard_catalog_variant()
@@ -52,6 +57,14 @@ class ProductTemplate(models.Model):
                         "with exactly one variant."
                     )
                 )
+            if template.bonuscard_catalog_status == "in_catalog":
+                if not (template.barcode or template.default_code):
+                    raise ValidationError(
+                        self.env._(
+                            "A product must have a barcode or article number before it "
+                            "can be marked as in the Bonuscard catalog."
+                        )
+                    )
             variant.bonuscard_catalog_status = template.bonuscard_catalog_status
         self._compute_bonuscard_catalog_fields()
 

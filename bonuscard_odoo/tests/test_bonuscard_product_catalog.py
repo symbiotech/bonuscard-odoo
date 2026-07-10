@@ -64,6 +64,12 @@ class TestBonuscardProductCatalog(TransactionCase):
         )
         self.assertEqual(product.bonuscard_catalog_status, "in_catalog")
 
+        product_with_code = self._create_product(
+            default_code="ART-0001",
+            bonuscard_catalog_status="in_catalog",
+        )
+        self.assertEqual(product_with_code.bonuscard_catalog_status, "in_catalog")
+
     def test_mark_in_catalog_action_sets_timestamp(self):
         product = self._create_product(barcode="8710000000003")
         product.action_bonuscard_mark_in_catalog()
@@ -148,6 +154,11 @@ class TestBonuscardProductCatalog(TransactionCase):
         with self.assertRaises(ValidationError):
             tmpl.bonuscard_catalog_status = "in_catalog"
 
+    def test_template_write_in_catalog_allows_default_code_only(self):
+        tmpl = self._create_template(default_code="ART-0002")
+        tmpl.bonuscard_catalog_status = "in_catalog"
+        self.assertEqual(tmpl.product_variant_id.bonuscard_catalog_status, "in_catalog")
+
     def test_template_write_catalog_status_allowed_for_variant_group_user(self):
         tmpl = self._create_template(barcode="8710000000300")
         variant_group = self.env.ref("product.group_product_variant")
@@ -158,6 +169,12 @@ class TestBonuscardProductCatalog(TransactionCase):
 
     def test_load_pos_data_fields_includes_catalog_status(self):
         fields_list = self.env["product.product"]._load_pos_data_fields(
+            self.env["pos.config"]
+        )
+        self.assertIn("bonuscard_catalog_status", fields_list)
+
+    def test_template_load_pos_data_fields_includes_catalog_status(self):
+        fields_list = self.env["product.template"]._load_pos_data_fields(
             self.env["pos.config"]
         )
         self.assertIn("bonuscard_catalog_status", fields_list)
