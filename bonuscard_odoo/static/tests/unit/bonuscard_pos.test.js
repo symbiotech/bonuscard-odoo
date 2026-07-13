@@ -1,6 +1,7 @@
 /** @odoo-module */
 
 import { test, expect } from "@odoo/hoot";
+import { serializeDateTime } from "@web/core/l10n/dates";
 import { setupPosEnv, getFilledOrder } from "@point_of_sale/../tests/unit/utils";
 import { definePosModels } from "@point_of_sale/../tests/unit/data/generate_model_definitions";
 import { patchTranslations, patchWithCleanup } from "@web/../tests/web_test_helpers";
@@ -1999,7 +2000,10 @@ test("afterOrderValidation records failed audit state when finalize fails but ca
     order.bonuscard_checkout_items = [{ ean: "TEST-555", quantity: 1, pricePerItem: 10 }];
     order.bonuscard_state = "validated";
     order.bonuscard_transaction_identifier = "TXN-FINALIZE-RELEASE";
-    order.bonuscard_validated_at = "2026-07-13 12:00:00";
+    order.bonuscard_validated_at = serializeDateTime(
+        luxon.DateTime.fromObject({ year: 2026, month: 7, day: 13, hour: 12 })
+    );
+    const validatedAtSnapshot = order.bonuscard_validated_at;
 
     const notifications = [];
     patchWithCleanup(store.notification, {
@@ -2035,7 +2039,7 @@ test("afterOrderValidation records failed audit state when finalize fails but ca
     expect(order.bonuscard_checkout_items).toBe(null);
     expect(order.bonuscard_state).toBe("failed");
     expect(order.bonuscard_transaction_identifier).toBe("TXN-FINALIZE-RELEASE");
-    expect(order.bonuscard_validated_at).toBe("2026-07-13 12:00:00");
+    expect(order.bonuscard_validated_at).toBe(validatedAtSnapshot);
     expect(order.bonuscard_last_error_message).toBe(
         "Bonuscard service is temporarily unavailable."
     );
