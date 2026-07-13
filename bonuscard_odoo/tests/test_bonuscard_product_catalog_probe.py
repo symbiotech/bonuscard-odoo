@@ -265,6 +265,50 @@ class TestBonuscardProductCatalogProbe(TransactionCase):
         self.assertEqual(summary["in_catalog"], 1)
         self.assertEqual(summary["not_in_catalog"], 1)
         self.assertEqual(summary["error"], 0)
+        self.assertIn("unlock raised an error", summary.get("message", ""))
+
+    def test_probe_batch_unlock_false_result_surfaces_summary_warning(self):
+        products = [
+            self._create_product(barcode="8710000009030"),
+            self._create_product(barcode="8710000009031"),
+        ]
+        validate_payloads = [
+            {
+                "error": False,
+                "transactionIdentifier": "TXUNLOCK3",
+                "messages": ["Product recognized."],
+            },
+            {
+                "error": False,
+                "messages": [
+                    "No valid products found. The transaction has been cancelled."
+                ],
+            },
+        ]
+
+        with (
+            patch(
+                "odoo.addons.bonuscard_odoo.models.bonuscard_api_service.BonuscardApiService._validate_purchase",
+                side_effect=validate_payloads,
+            ),
+            patch(
+                "odoo.addons.bonuscard_odoo.models.bonuscard_api_service.BonuscardApiService._cancel_purchase",
+                return_value={"error": False},
+            ),
+            patch(
+                "odoo.addons.bonuscard_odoo.models.bonuscard_api_service.BonuscardApiService._release_probe_customer_lock",
+                return_value=False,
+            ),
+        ):
+            summary = self.env["product.product"].action_bulk_probe_catalog_status(
+                company_id=self.env.company.id,
+                instance_id=self.instance.id,
+                product_ids=[product.id for product in products],
+                only_unscanned=False,
+            )
+
+        self.assertEqual(summary["processed"], 2)
+        self.assertIn("could not confirm", summary.get("message", "").lower())
 
     def test_probe_not_in_catalog_clears_open_transaction_identifier(self):
         product = self._create_product(barcode="8710000009018")

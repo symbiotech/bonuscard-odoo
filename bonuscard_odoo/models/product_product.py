@@ -257,11 +257,26 @@ class ProductProduct(models.Model):
                     and unlock_ean
                 ):
                     try:
-                        service._release_probe_customer_lock(instance, unlock_ean)
+                        released = service._release_probe_customer_lock(
+                            instance, unlock_ean
+                        )
+                        if not released:
+                            summary["message"] = self.env._(
+                                "Could not confirm the Bonuscard probe customer was "
+                                "unlocked after probing %(product)s. The customer may "
+                                "remain locked for the next catalog probe.",
+                                product=product.display_name,
+                            )
                     except Exception:  # pylint: disable=broad-except
                         _logger.exception(
                             "Bonuscard catalog probe unlock failed after product %s",
                             product.id,
+                        )
+                        summary["message"] = self.env._(
+                            "Bonuscard probe customer unlock raised an error after "
+                            "probing %(product)s. The customer may remain locked for "
+                            "the next catalog probe.",
+                            product=product.display_name,
                         )
             except Exception:  # pylint: disable=broad-except
                 _logger.exception(
