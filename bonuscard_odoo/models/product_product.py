@@ -109,10 +109,21 @@ class ProductProduct(models.Model):
                 vals["bonuscard_catalog_updated_at"] = now
         return super().write(vals)
 
-    def _bonuscard_probe_catalog_status_single(self, instance):
+    def _bonuscard_probe_catalog_status_single(
+        self,
+        instance,
+        transaction_identifier=None,
+        *,
+        auto_cancel=True,
+    ):
         self.ensure_one()
         service = self.env["bonuscard.api.service"]
-        result = service.probe_product_catalog_status(instance, self)
+        result = service.probe_product_catalog_status(
+            instance,
+            self,
+            transaction_identifier=transaction_identifier,
+            auto_cancel=auto_cancel,
+        )
         status = result.get("status")
         note = result.get("note") or ""
 
@@ -194,21 +205,41 @@ class ProductProduct(models.Model):
         else:
             products = self.search(domain, limit=batch_size, order="id asc")
 
-        for product in products:
-            try:
-                result = product._bonuscard_probe_catalog_status_single(instance)
-                status = result.get("status") or "unchanged"
-                summary["processed"] += 1
-                if status in summary:
-                    summary[status] += 1
-                else:
-                    summary["unchanged"] += 1
-            except Exception:  # pylint: disable=broad-except
-                _logger.exception(
-                    "Bonuscard catalog probe failed for product %s", product.id
+        transaction_identifier = None
+        try:
+            for product in products:
+                try:
+                    result = product._bonuscard_probe_catalog_status_single(
+                        instance,
+                        transaction_identifier=transaction_identifier,
+                        auto_cancel=False,
+                    )
+                    transaction_identifier = (
+                        result.get("transaction_identifier") or transaction_identifier
+                    )
+                    status = result.get("status") or "unchanged"
+                    summary["processed"] += 1
+                    if status in summary:
+                        summary[status] += 1
+                    else:
+                        summary["unchanged"] += 1
+                except Exception:  # pylint: disable=broad-except
+                    _logger.exception(
+                        "Bonuscard catalog probe failed for product %s", product.id
+                    )
+                    summary["processed"] += 1
+                    summary["error"] += 1
+        finally:
+            if transaction_identifier:
+                cancel_note = service._cancel_catalog_probe_transaction(
+                    instance, transaction_identifier
                 )
-                summary["processed"] += 1
-                summary["error"] += 1
+                if cancel_note:
+                    _logger.warning(
+                        "Bonuscard catalog probe batch could not cancel transaction %s: %s",
+                        transaction_identifier,
+                        cancel_note,
+                    )
 
         return summary
 

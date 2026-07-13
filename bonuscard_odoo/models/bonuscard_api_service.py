@@ -746,11 +746,49 @@ class BonuscardApiService(models.AbstractModel):
         )
         return "in_catalog", note
 
-    def probe_product_catalog_status(self, instance, product):
+    def _cancel_catalog_probe_transaction(self, instance, transaction_identifier):
+        """Cancel an open catalog-probe transaction and return an error note if needed."""
+        if not transaction_identifier:
+            return None
+        try:
+            self._cancel_purchase(instance, transaction_identifier)
+        except Exception as exc:  # pylint: disable=broad-except
+            if isinstance(exc, BonuscardHttpError):
+                _logger.warning(
+                    "Bonuscard HTTP error during catalog probe cancel (HTTP %s) "
+                    "for transaction %s",
+                    exc.status_code,
+                    transaction_identifier,
+                )
+                return self.env._("Bonuscard service is temporarily unavailable.")
+            if isinstance(exc, UserError):
+                return getattr(exc, "name", None) or str(exc)
+            _logger.exception(
+                "Unexpected error during catalog probe cancel for transaction %s",
+                transaction_identifier,
+            )
+            return self.env._("Bonuscard cancel failed.")
+        return None
+
+    def probe_product_catalog_status(
+        self,
+        instance,
+        product,
+        transaction_identifier=None,
+        *,
+        auto_cancel=True,
+    ):
         """Probe whether a product exists in Bonuscard via ValidatePurchase.
 
+        Bulk probes should pass ``transaction_identifier`` from the previous call
+        and set ``auto_cancel=False``, then cancel once after the batch. Bonuscard
+        locks a customer to one transaction until CancelPurchase is called; error
+        code 2 is returned when a second transaction is started without reusing
+        the identifier.
+
         Returns a dict with keys ``status`` (``in_catalog``, ``not_in_catalog``,
-        ``unchanged``, ``skipped``, or ``error``) and ``note``.
+        ``unchanged``, ``skipped``, or ``error``), ``note``, and
+        ``transaction_identifier`` when a transaction is open.
         """
         instance.ensure_one()
         product.ensure_one()
@@ -763,6 +801,7 @@ class BonuscardApiService(models.AbstractModel):
                     "Catalog probe customer identifier is not configured on the "
                     "Bonuscard connection."
                 ),
+                "transaction_identifier": transaction_identifier,
             }
 
         ean = product.barcode or product.default_code
@@ -770,6 +809,7 @@ class BonuscardApiService(models.AbstractModel):
             return {
                 "status": "skipped",
                 "note": self.env._("Product has no barcode or article number."),
+                "transaction_identifier": transaction_identifier,
             }
 
         probe_price = float(instance.catalog_probe_price or 100.0)
@@ -786,6 +826,7 @@ class BonuscardApiService(models.AbstractModel):
                 instance,
                 customer_identifier,
                 checkout_items,
+                transaction_identifier=transaction_identifier,
             )
         except BonuscardApiError as exc:
             return {
@@ -793,11 +834,13 @@ class BonuscardApiService(models.AbstractModel):
                 "note": self._get_bonuscard_error_message(
                     exc, self.env._("Bonuscard catalog probe failed.")
                 ),
+                "transaction_identifier": transaction_identifier,
             }
         except (BonuscardHttpError, UserError) as exc:
             return {
                 "status": "error",
                 "note": getattr(exc, "name", None) or str(exc),
+                "transaction_identifier": transaction_identifier,
             }
         except Exception:  # pylint: disable=broad-except
             _logger.exception(
@@ -807,39 +850,26 @@ class BonuscardApiService(models.AbstractModel):
             return {
                 "status": "error",
                 "note": self.env._("Bonuscard catalog probe failed."),
+                "transaction_identifier": transaction_identifier,
             }
 
         catalog_status, note = self._classify_catalog_probe_response(payload)
-        transaction_id = payload.get("transactionIdentifier")
+        transaction_id = payload.get("transactionIdentifier") or transaction_identifier
 
-        if catalog_status == "in_catalog" and transaction_id:
-            try:
-                self._cancel_purchase(instance, transaction_id)
-            except Exception as exc:  # pylint: disable=broad-except
-                if isinstance(exc, BonuscardHttpError):
-                    _logger.warning(
-                        "Bonuscard HTTP error during catalog probe cancel (HTTP %s) "
-                        "for product %s",
-                        exc.status_code,
-                        product.id,
-                    )
-                    cancel_note = self.env._(
-                        "Bonuscard service is temporarily unavailable."
-                    )
-                elif isinstance(exc, UserError):
-                    cancel_note = getattr(exc, "name", None) or str(exc)
-                else:
-                    _logger.exception(
-                        "Unexpected error during catalog probe cancel for product %s",
-                        product.id,
-                    )
-                    cancel_note = self.env._("Bonuscard cancel failed.")
+        if auto_cancel and transaction_id:
+            cancel_note = self._cancel_catalog_probe_transaction(
+                instance, transaction_id
+            )
+            if cancel_note:
                 return {
                     "status": "error",
                     "note": cancel_note,
+                    "transaction_identifier": None,
                 }
+            transaction_id = None
 
         return {
             "status": catalog_status,
             "note": note,
+            "transaction_identifier": transaction_id,
         }
