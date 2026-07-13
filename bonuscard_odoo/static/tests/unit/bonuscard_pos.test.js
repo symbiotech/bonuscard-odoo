@@ -1999,6 +1999,7 @@ test("afterOrderValidation records failed audit state when finalize fails but ca
     order.bonuscard_checkout_items = [{ ean: "TEST-555", quantity: 1, pricePerItem: 10 }];
     order.bonuscard_state = "validated";
     order.bonuscard_transaction_identifier = "TXN-FINALIZE-RELEASE";
+    order.bonuscard_validated_at = "2026-07-13 12:00:00";
 
     const notifications = [];
     patchWithCleanup(store.notification, {
@@ -2034,6 +2035,7 @@ test("afterOrderValidation records failed audit state when finalize fails but ca
     expect(order.bonuscard_checkout_items).toBe(null);
     expect(order.bonuscard_state).toBe("failed");
     expect(order.bonuscard_transaction_identifier).toBe("TXN-FINALIZE-RELEASE");
+    expect(order.bonuscard_validated_at).toBe("2026-07-13 12:00:00");
     expect(order.bonuscard_last_error_message).toBe(
         "Bonuscard service is temporarily unavailable."
     );

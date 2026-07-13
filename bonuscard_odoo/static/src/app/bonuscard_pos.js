@@ -1155,6 +1155,9 @@ patch(OrderPaymentValidation.prototype, {
                 ]
             );
             const pendingTx = this.pos._bonuscardPendingTransactionId(order);
+            const validatedAt = order?.bonuscard_validated_at;
+            const transactionIdentifier =
+                order?.bonuscard_transaction_identifier || pendingTx || false;
             const releaseResult = await this.pos._releaseBonuscardTransactionIfPending(order, {
                 logMethod: "afterOrderValidation_finalizeFallback",
                 notifyOnFailure: false,
@@ -1163,8 +1166,9 @@ patch(OrderPaymentValidation.prototype, {
                 if (order) {
                     this.pos._setBonuscardAuditFields(order, {
                         state: "failed",
-                        transactionIdentifier:
-                            order.bonuscard_transaction_identifier || pendingTx || false,
+                        transactionIdentifier,
+                        validatedAt,
+                        finalizedAt: false,
                         lastErrorMessage:
                             finalizeResult.message || _t("Bonuscard finalization failed."),
                     });
