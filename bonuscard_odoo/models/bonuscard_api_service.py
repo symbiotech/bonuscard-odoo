@@ -885,7 +885,13 @@ class BonuscardApiService(models.AbstractModel):
                 )
                 return False
             raise
-        except (BonuscardHttpError, UserError):
+        except (BonuscardHttpError, UserError) as exc:
+            _logger.warning(
+                "Bonuscard catalog probe unlock failed for probe customer %s (EAN %s): %s",
+                customer_identifier,
+                unlock_ean,
+                getattr(exc, "name", None) or str(exc),
+            )
             return False
 
         transaction_id = payload.get("transactionIdentifier")
