@@ -270,7 +270,19 @@ class ProductProduct(models.Model):
                         )
                 if (
                     not configured_unlock_ean
-                    and status in ("not_in_catalog", "error")
+                    and status == "not_in_catalog"
+                    and not unlock_ean
+                    and not summary.get("message")
+                ):
+                    summary["message"] = self.env._(
+                        "No in-catalog EAN is available yet to release the probe "
+                        "customer after probing %(product)s. Configure catalog probe "
+                        "unlock EAN or probe a known product first.",
+                        product=product.display_name,
+                    )
+                if (
+                    not configured_unlock_ean
+                    and status == "not_in_catalog"
                     and unlock_ean
                 ):
                     try:

@@ -310,6 +310,68 @@ class TestBonuscardProductCatalogProbe(TransactionCase):
         self.assertEqual(summary["processed"], 2)
         self.assertIn("could not confirm", summary.get("message", "").lower())
 
+    def test_bulk_probe_skips_unlock_release_on_error_status(self):
+        product = self._create_product(barcode="8710000009050")
+        validate_payload = {
+            "error": False,
+            "transactionIdentifier": "TXERROR1",
+            "messages": ["Product recognized."],
+        }
+
+        with (
+            patch(
+                "odoo.addons.bonuscard_odoo.models.bonuscard_api_service.BonuscardApiService._validate_purchase",
+                return_value=validate_payload,
+            ),
+            patch(
+                "odoo.addons.bonuscard_odoo.models.bonuscard_api_service.BonuscardApiService._cancel_purchase",
+                side_effect=UserError("Cancel failed."),
+            ),
+            patch(
+                "odoo.addons.bonuscard_odoo.models.bonuscard_api_service.BonuscardApiService._release_probe_customer_lock",
+            ) as mock_release,
+        ):
+            summary = self.env["product.product"].action_bulk_probe_catalog_status(
+                company_id=self.env.company.id,
+                instance_id=self.instance.id,
+                product_ids=product.ids,
+                only_unscanned=False,
+            )
+
+        self.assertEqual(summary["processed"], 1)
+        self.assertEqual(summary["error"], 1)
+        mock_release.assert_not_called()
+
+    def test_bulk_probe_warns_when_no_unlock_ean_after_unknown_product(self):
+        product = self._create_product(barcode="8710000009051")
+        validate_payload = {
+            "error": False,
+            "messages": [
+                "No valid products found. The transaction has been cancelled."
+            ],
+        }
+
+        with (
+            patch(
+                "odoo.addons.bonuscard_odoo.models.bonuscard_api_service.BonuscardApiService._validate_purchase",
+                return_value=validate_payload,
+            ),
+            patch(
+                "odoo.addons.bonuscard_odoo.models.bonuscard_api_service.BonuscardApiService._release_probe_customer_lock",
+            ) as mock_release,
+        ):
+            summary = self.env["product.product"].action_bulk_probe_catalog_status(
+                company_id=self.env.company.id,
+                instance_id=self.instance.id,
+                product_ids=product.ids,
+                only_unscanned=False,
+            )
+
+        self.assertEqual(summary["processed"], 1)
+        self.assertEqual(summary["not_in_catalog"], 1)
+        mock_release.assert_not_called()
+        self.assertIn("no in-catalog ean", summary.get("message", "").lower())
+
     def test_probe_batch_uses_last_in_catalog_ean_for_unlock(self):
         products = [
             self._create_product(barcode="8710000009040"),
