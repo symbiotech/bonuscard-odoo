@@ -48,6 +48,7 @@ This document explains how the Bonuscard POS integration works in the `bonuscard
    - Finalization is retried once on failure; on success the POS clears `order.bonuscard_transaction_id` and `order.bonuscard_checkout_items`
    - If there is a pending transaction but no checkout items to finalize (e.g. the cart ended up with no `in_catalog` products), the POS cancels the pending transaction after payment instead of leaving the customer locked; cancel failure is logged and shown as a sticky warning
    - If finalization fails after payment, the POS attempts cancel as a fallback before showing a sticky warning
+   - If the cancel fallback succeeds, the transaction fields are cleared and the backend audit state is stored as `failed`
    - If finalization and the cancel fallback both fail, the transaction fields are kept and a sticky warning is shown so the loyalty lock can be recovered manually
 
 5. Cancel or rollback flows

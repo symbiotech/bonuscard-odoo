@@ -895,43 +895,9 @@ patch(PosStore.prototype, {
         if (this.router.state.current === "PaymentScreen") {
             const order = this.getOrder();
             if (this._bonuscardPendingTransactionId(order)) {
-                try {
-                    const result = await this.data.call(
-                        "bonuscard.api.service",
-                        "cancel_purchase_for_pos",
-                        [
-                            this._bonuscardPendingTransactionId(order),
-                            order.bonuscard_partner_id || null,
-                        ]
-                    );
-                    if (!result?.error) {
-                        order.bonuscard_transaction_id = null;
-                        order._bonuscardCandidateTxId = null;
-                        order.bonuscard_checkout_items = null;
-                        order.bonuscard_partner_id = false;
-                    } else {
-                        logPosMessage(
-                            "Bonuscard",
-                            "onClickBackButton",
-                            "Bonuscard cancel returned error during back navigation",
-                            false,
-                            [{ transactionId: this._bonuscardPendingTransactionId(order), partnerId: order.bonuscard_partner_id || null, message: result.messages?.[0] }]
-                        );
-                        this.notification.add(
-                            result.messages?.[0] || _t("Bonuscard cancel failed."),
-                            { type: "warning" }
-                        );
-                    }
-                } catch (error) {
-                    logPosMessage(
-                        "Bonuscard",
-                        "onClickBackButton",
-                        "Bonuscard cancel failed during back navigation",
-                        false,
-                        [{ transactionId: this._bonuscardPendingTransactionId(order), partnerId: order.bonuscard_partner_id || null, error }]
-                    );
-                    this.notification.add(_t("Bonuscard cancel failed."), { type: "warning" });
-                }
+                await this._releaseBonuscardTransactionIfPending(order, {
+                    logMethod: "onClickBackButton",
+                });
             }
         }
         return super.onClickBackButton(...arguments);
@@ -1188,11 +1154,21 @@ patch(OrderPaymentValidation.prototype, {
                     },
                 ]
             );
+            const pendingTx = this.pos._bonuscardPendingTransactionId(order);
             const releaseResult = await this.pos._releaseBonuscardTransactionIfPending(order, {
                 logMethod: "afterOrderValidation_finalizeFallback",
                 notifyOnFailure: false,
             });
             if (releaseResult.success) {
+                if (order) {
+                    this.pos._setBonuscardAuditFields(order, {
+                        state: "failed",
+                        transactionIdentifier:
+                            order.bonuscard_transaction_identifier || pendingTx || false,
+                        lastErrorMessage:
+                            finalizeResult.message || _t("Bonuscard finalization failed."),
+                    });
+                }
                 return;
             }
             this.pos.notification.add(
