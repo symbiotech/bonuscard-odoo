@@ -626,11 +626,10 @@ class BonuscardConnectorInstance(models.Model):
                     "sticky": True,
                 },
             }
-        message = self.env._(
-            "Processed: %(processed)s (in_catalog=%(in_catalog)s, "
-            "not_in_catalog=%(not_in_catalog)s, unchanged=%(unchanged)s, "
-            "skipped=%(skipped)s, error=%(error)s).",
-            **summary,
+        message = (
+            self.env["product.product"]
+            .with_company(self.company_id)
+            ._format_catalog_probe_summary_message(summary)
         )
         return {
             "type": "ir.actions.client",
@@ -639,7 +638,7 @@ class BonuscardConnectorInstance(models.Model):
                 "title": self.env._("Bonuscard Catalog Probe"),
                 "message": message,
                 "type": "info" if summary.get("error") == 0 else "warning",
-                "sticky": False,
+                "sticky": bool(summary.get("message")),
             },
         }
 
@@ -676,6 +675,12 @@ class BonuscardConnectorInstance(models.Model):
                     summary.get("skipped"),
                     summary.get("error"),
                 )
+                if summary.get("message"):
+                    _logger.warning(
+                        "Bonuscard catalog probe cancel failed for company=%s: %s",
+                        instance.company_id.id,
+                        summary.get("message"),
+                    )
             except Exception:  # pylint: disable=broad-except
                 _logger.exception(
                     "Bonuscard catalog probe cron failed for company %s",

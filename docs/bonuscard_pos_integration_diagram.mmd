@@ -77,10 +77,14 @@ flowchart LR
     J -->|used by validate/finalize/cancel| H
     J -->|used by validate/finalize/cancel| I
 
-    V -->|not_set products with barcode/article| T
+    V -->|not_set products batch| U
     W -->|selected products| U
-    U --> T
-    T -->|probe checkoutItems| L
-    L -->|no transactionIdentifier → not in catalog| T
-    L -->|recognized product → CancelPurchase| I
+    U -->|bulk or single probe| T
+    T -->|ValidatePurchase\n(reuse transactionIdentifier in batch)| L
+    L -->|no transactionIdentifier +\n"No valid products…" → not in catalog| T
+    L -->|no transactionIdentifier, other message → unchanged| T
+    L -->|transactionIdentifier → in catalog| T
+    U -->|bulk: cancel once after batch| I
+    T -->|single product: auto-cancel open transaction| I
+    I -->|transactionIdentifier| N
     J -->|probe customer + credentials| T

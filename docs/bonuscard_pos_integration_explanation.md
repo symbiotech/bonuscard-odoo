@@ -94,8 +94,13 @@ This document explains how the Bonuscard POS integration works in the `bonuscard
   - Only `in_catalog` products are sent to Bonuscard from POS
   - Bulk list actions and CSV import can maintain catalog membership manually
   - **Check Bonuscard Catalog** (managers only) probes catalog membership via
-    `ValidatePurchase` using the dedicated test customer on the connection; unknown
-    products are detected when Bonuscard returns no `transactionIdentifier`
+    `ValidatePurchase` using the dedicated test customer on the connection.
+    `not_in_catalog` is set only when Bonuscard returns no `transactionIdentifier`
+    and a "No valid products found…" message (transaction auto-cancelled); other
+    responses without a transaction identifier leave the status `unchanged`, and a
+    returned `transactionIdentifier` means `in_catalog`.
+    Bulk probes reuse one `transactionIdentifier` across the batch and cancel once
+    at the end so the probe customer is not locked (Bonuscard API error code 2).
   - Adds `bonuscard_catalog_probe_note` with the last probe message
   - Form editing on **Inventory > Products** (single-variant setups), **Product
     Variants**, and the POS **Edit Product** modal for Bonuscard users
