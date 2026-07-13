@@ -244,7 +244,13 @@ class ProductProduct(models.Model):
                     and status in ("not_in_catalog", "error")
                     and unlock_ean
                 ):
-                    service._release_probe_customer_lock(instance, unlock_ean)
+                    try:
+                        service._release_probe_customer_lock(instance, unlock_ean)
+                    except Exception:  # pylint: disable=broad-except
+                        _logger.exception(
+                            "Bonuscard catalog probe unlock failed after product %s",
+                            product.id,
+                        )
             except Exception:  # pylint: disable=broad-except
                 _logger.exception(
                     "Bonuscard catalog probe failed for product %s", product.id

@@ -76,6 +76,20 @@ class TestBonuscardProductCatalogProbe(TransactionCase):
         self.assertEqual(status, "error")
         self.assertIn("Customer not eligible", note)
 
+    def test_classify_anchor_ignores_result_items(self):
+        status, _note = self.service._classify_catalog_probe_response(
+            {
+                "error": False,
+                "transactionIdentifier": "TXANCHOR",
+                "messages": ["Discount applied."],
+                "checkoutItems": [{"ean": "8710000009021"}],
+                "resultItems": [{"ean": "8710000009022"}],
+            },
+            probe_ean="8710000009022",
+            anchor_ean="8710000009021",
+        )
+        self.assertEqual(status, "not_in_catalog")
+
     def test_probe_known_product_cancels_transaction(self):
         product = self._create_product(barcode="8710000009001")
         validate_payload = {
@@ -206,6 +220,51 @@ class TestBonuscardProductCatalogProbe(TransactionCase):
         )
         mock_cancel.assert_called_once_with(self.instance, "TXBATCH2")
         mock_release.assert_called_once_with(self.instance, "8710000009016")
+
+    def test_probe_batch_unlock_failure_does_not_double_count(self):
+        products = [
+            self._create_product(barcode="8710000009016"),
+            self._create_product(barcode="8710000009017"),
+        ]
+        validate_payloads = [
+            {
+                "error": False,
+                "transactionIdentifier": "TXBATCH2",
+                "messages": ["Product recognized."],
+            },
+            {
+                "error": False,
+                "messages": [
+                    "No valid products found. The transaction has been cancelled."
+                ],
+            },
+        ]
+
+        with (
+            patch(
+                "odoo.addons.bonuscard_odoo.models.bonuscard_api_service.BonuscardApiService._validate_purchase",
+                side_effect=validate_payloads,
+            ),
+            patch(
+                "odoo.addons.bonuscard_odoo.models.bonuscard_api_service.BonuscardApiService._cancel_purchase",
+                return_value={"error": False},
+            ),
+            patch(
+                "odoo.addons.bonuscard_odoo.models.bonuscard_api_service.BonuscardApiService._release_probe_customer_lock",
+                side_effect=BonuscardApiError("Unlock failed", error_code=4),
+            ),
+        ):
+            summary = self.env["product.product"].action_bulk_probe_catalog_status(
+                company_id=self.env.company.id,
+                instance_id=self.instance.id,
+                product_ids=[product.id for product in products],
+                only_unscanned=False,
+            )
+
+        self.assertEqual(summary["processed"], 2)
+        self.assertEqual(summary["in_catalog"], 1)
+        self.assertEqual(summary["not_in_catalog"], 1)
+        self.assertEqual(summary["error"], 0)
 
     def test_probe_not_in_catalog_clears_open_transaction_identifier(self):
         product = self._create_product(barcode="8710000009018")

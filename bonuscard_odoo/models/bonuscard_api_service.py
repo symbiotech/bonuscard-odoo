@@ -707,16 +707,15 @@ class BonuscardApiService(models.AbstractModel):
             return {"error": True, "messages": [message]}
 
     def _extract_recognized_catalog_eans(self, payload):
-        """Return EANs present in a ValidatePurchase response payload."""
+        """Return product EANs from checkoutItems in a ValidatePurchase response."""
         if not isinstance(payload, dict):
             return set()
         recognized = set()
-        for key in ("checkoutItems", "resultItems"):
-            for item in payload.get(key) or []:
-                if isinstance(item, dict):
-                    ean = (item.get("ean") or "").strip()
-                    if ean:
-                        recognized.add(ean)
+        for item in payload.get("checkoutItems") or []:
+            if isinstance(item, dict):
+                ean = (item.get("ean") or "").strip()
+                if ean:
+                    recognized.add(ean)
         return recognized
 
     def _build_catalog_probe_checkout_items(self, instance, probe_ean):
