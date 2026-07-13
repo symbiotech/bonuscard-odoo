@@ -29,6 +29,7 @@ class ProductProduct(models.Model):
         string="Bonuscard Catalog Probe Note",
         copy=False,
         readonly=True,
+        groups="bonuscard_odoo.bonuscard_odoo_group_manager",
     )
 
     @api.model
