@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<odoo>
+    <record id="view_pos_order_tree_bonuscard" model="ir.ui.view">
+        <field name="name">pos.order.tree.bonuscard</field>
+        <field name="model">pos.order</field>
+        <field name="inherit_id" ref="point_of_sale.view_pos_order_tree"/>
+        <field name="arch" type="xml">
+            <xpath expr="//tree" position="inside">
+                <field name="bonuscard_state" widget="badge" optional="hide"/>
+                <field name="bonuscard_transaction_identifier" optional="hide"/>
+            </xpath>
+        </field>
+    </record>
+
+    <record id="view_pos_order_form_bonuscard" model="ir.ui.view">
+        <field name="name">pos.order.form.bonuscard</field>
+        <field name="model">pos.order</field>
+        <field name="inherit_id" ref="point_of_sale.view_pos_pos_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//sheet//group" position="inside">
+                <group string="Bonuscard" name="bonuscard">
+                    <field name="bonuscard_state" widget="badge" readonly="1"/>
+                    <field name="bonuscard_transaction_identifier" readonly="1"/>
+                    <field name="bonuscard_validated_at" readonly="1"/>
+                    <field name="bonuscard_finalized_at" readonly="1"/>
+                    <field name="bonuscard_last_error_message" readonly="1"/>
+                </group>
+            </xpath>
+        </field>
+    </record>
+
+    <record id="view_pos_order_search_bonuscard" model="ir.ui.view">
+        <field name="name">pos.order.search.bonuscard</field>
+        <field name="model">pos.order</field>
+        <field name="inherit_id" ref="point_of_sale.view_pos_order_filter"/>
+        <field name="arch" type="xml">
+            <xpath expr="//search" position="inside">
+                <separator/>
+                <filter
+                    name="bonuscard_finalized"
+                    string="Bonuscard: Finalized"
+                    domain="[('bonuscard_state', '=', 'finalized')]"
+                />
+                <filter
+                    name="bonuscard_validated"
+                    string="Bonuscard: Validated"
+                    domain="[('bonuscard_state', '=', 'validated')]"
+                />
+                <filter
+                    name="bonuscard_skipped"
+                    string="Bonuscard: Skipped"
+                    domain="[('bonuscard_state', '=', 'skipped')]"
+                />
+                <filter
+                    name="bonuscard_failed"
+                    string="Bonuscard: Failed"
+                    domain="[('bonuscard_state', '=', 'failed')]"
+                />
+                <filter
+                    name="bonuscard_not_applicable"
+                    string="Bonuscard: Not applicable"
+                    domain="[('bonuscard_state', '=', 'not_applicable')]"
+                />
+            </xpath>
+        </field>
+    </record>
+</odoo>
