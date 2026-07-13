@@ -38,6 +38,9 @@ class ProductTemplate(models.Model):
         "product_variant_ids.bonuscard_catalog_probe_note",
     )
     def _compute_bonuscard_catalog_fields(self):
+        is_probe_manager = self.env.user.has_group(
+            "bonuscard_odoo.bonuscard_odoo_group_manager"
+        )
         for template in self:
             variant = template._bonuscard_catalog_variant()
             if not variant:
@@ -48,7 +51,9 @@ class ProductTemplate(models.Model):
 
             template.bonuscard_catalog_status = variant.bonuscard_catalog_status
             template.bonuscard_catalog_updated_at = variant.bonuscard_catalog_updated_at
-            template.bonuscard_catalog_probe_note = variant.bonuscard_catalog_probe_note
+            template.bonuscard_catalog_probe_note = (
+                variant.bonuscard_catalog_probe_note if is_probe_manager else False
+            )
 
     def _inverse_bonuscard_catalog_status(self):
         for template in self:

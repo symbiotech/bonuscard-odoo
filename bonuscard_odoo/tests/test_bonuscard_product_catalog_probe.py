@@ -244,6 +244,34 @@ class TestBonuscardProductCatalogProbe(TransactionCase):
 
         self.assertEqual(variant.bonuscard_catalog_status, "not_in_catalog")
 
+    def test_template_probe_note_hidden_for_non_manager(self):
+        user_group = self.env.ref("bonuscard_odoo.bonuscard_odoo_group_user")
+        bonuscard_user = self.env["res.users"].create(
+            {
+                "name": "Bonuscard User",
+                "login": "bonuscard_user_probe@example.com",
+                "group_ids": [(6, 0, [user_group.id])],
+            }
+        )
+        tmpl = self.env["product.template"].create(
+            {
+                "name": "Probe Note Template",
+                "barcode": "8710000009030",
+                "list_price": 10.0,
+            }
+        )
+        variant = tmpl.product_variant_id
+        variant.sudo().write(
+            {
+                "bonuscard_catalog_probe_note": "Secret probe message",
+                "bonuscard_catalog_status": "in_catalog",
+            }
+        )
+
+        tmpl_as_user = tmpl.with_user(bonuscard_user)
+        self.assertFalse(tmpl_as_user.bonuscard_catalog_probe_note)
+        self.assertEqual(tmpl_as_user.bonuscard_catalog_status, "in_catalog")
+
     def test_instance_catalog_probe_price_must_be_positive(self):
         with self.assertRaises(ValidationError):
             self.instance.write({"catalog_probe_price": 0})
