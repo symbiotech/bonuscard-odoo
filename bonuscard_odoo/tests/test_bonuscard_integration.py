@@ -218,7 +218,14 @@ class TestBonuscardIntegration(TransactionCase):
             )
 
         self._mark_shared_customer_test()
-        self._create_integration_instance()
+        instance = self._create_integration_instance()
+        instance.write(
+            {
+                "catalog_probe_customer_identifier": recruitment_code,
+                "catalog_probe_price": 100.0,
+            }
+        )
+        self._ensure_probe_customer_unlocked(instance, bonuscard_ean)
         partner = self._create_partner_with_recruitment_code(recruitment_code)
 
         # Odoo products without barcode/article are never sent to ValidatePurchase.
