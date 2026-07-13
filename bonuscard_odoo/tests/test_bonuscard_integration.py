@@ -65,6 +65,41 @@ class TestBonuscardIntegration(TransactionCase):
                 f"Integration test skipped. Missing variables: {', '.join(missing_vars)}"
             )
 
+    def tearDown(self):
+        super().tearDown()
+        if getattr(self, "_bonuscard_touches_shared_customer", False):
+            self._release_shared_customer_lock()
+
+    def _mark_shared_customer_test(self):
+        """Mark that this test may lock the shared sandbox consumer."""
+        self._bonuscard_touches_shared_customer = True
+
+    def _shared_consumer_recruitment_code(self):
+        return os.getenv("BONUSCARD_TEST_CONSUMER", "").strip()
+
+    def _shared_bonuscard_ean(self):
+        return os.getenv("BONUSCARD_TEST_BONUSCARD_EAN", "").strip()
+
+    def _release_shared_customer_lock(self):
+        """Best-effort unlock for the shared sandbox consumer after a test."""
+        consumer = self._shared_consumer_recruitment_code()
+        unlock_ean = self._shared_bonuscard_ean()
+        if not consumer or not unlock_ean:
+            return
+        instance = self._create_integration_instance()
+        instance.write(
+            {
+                "catalog_probe_customer_identifier": consumer,
+                "catalog_probe_price": 100.0,
+            }
+        )
+        service = self.env["bonuscard.api.service"]
+        if not service._release_probe_customer_lock(instance, unlock_ean):
+            _logger.warning(
+                "Could not release shared Bonuscard test customer lock after %s",
+                self._testMethodName,
+            )
+
     def _create_integration_instance(self):
         return self.env["bonuscard.connector.instance"].create(
             {
@@ -163,7 +198,7 @@ class TestBonuscardIntegration(TransactionCase):
         self.assertIn("phoneNumber", result["customer"])
         self.assertIn("recruitmentCode", result["customer"])
 
-    def test_non_bonuscard_product_purchase_does_not_lock_customer(self):
+    def test_01_non_bonuscard_product_purchase_does_not_lock_customer(self):
         """Non-catalog POS lines must not lock the Bonuscard customer.
 
         Covers the POS scenario where a Bonuscard customer pays for products that
@@ -182,6 +217,7 @@ class TestBonuscardIntegration(TransactionCase):
                 "(a barcode on the Bonuscard API used to verify the customer is not locked)"
             )
 
+        self._mark_shared_customer_test()
         self._create_integration_instance()
         partner = self._create_partner_with_recruitment_code(recruitment_code)
 
@@ -219,19 +255,14 @@ class TestBonuscardIntegration(TransactionCase):
 
         self._assert_customer_not_locked(partner, bonuscard_ean)
 
-    def _probe_customer_identifier(self):
-        return (
-            os.getenv("BONUSCARD_TEST_PROBE_CUSTOMER", "").strip()
-            or os.getenv("BONUSCARD_TEST_CONSUMER", "").strip()
-        )
-
     def _create_probe_instance(self):
-        probe_customer = self._probe_customer_identifier()
+        probe_customer = self._shared_consumer_recruitment_code()
         if not probe_customer:
             self.skipTest(
                 "Catalog probe integration test skipped. Missing "
-                "BONUSCARD_TEST_PROBE_CUSTOMER or BONUSCARD_TEST_CONSUMER"
+                "BONUSCARD_TEST_CONSUMER"
             )
+        self._mark_shared_customer_test()
         instance = self._create_integration_instance()
         instance.write(
             {
@@ -335,7 +366,7 @@ class TestBonuscardIntegration(TransactionCase):
             instance, payload.get("transactionIdentifier")
         )
 
-    def test_catalog_probe_batch_does_not_lock_probe_customer(self):
+    def test_90_catalog_probe_batch_does_not_lock_probe_customer(self):
         """Bulk catalog probe must complete without API error code 2 mid-batch."""
         bonuscard_ean = os.getenv("BONUSCARD_TEST_BONUSCARD_EAN", "").strip()
         non_bonuscard_ean = os.getenv("BONUSCARD_TEST_NON_BONUSCARD_EAN", "").strip()
@@ -396,7 +427,7 @@ class TestBonuscardIntegration(TransactionCase):
         self.assertGreater(summary.get("processed"), 0)
         self._assert_probe_customer_unlocked(instance, bonuscard_ean)
 
-    def test_catalog_probe_raw_validate_reuse_vs_cancel_per_product(self):
+    def test_91_catalog_probe_raw_validate_reuse_vs_cancel_per_product(self):
         """Document sandbox behavior for reused vs per-product-cancel probe flows."""
         bonuscard_ean = os.getenv("BONUSCARD_TEST_BONUSCARD_EAN", "").strip()
         non_bonuscard_ean = os.getenv("BONUSCARD_TEST_NON_BONUSCARD_EAN", "").strip()
@@ -479,3 +510,4 @@ class TestBonuscardIntegration(TransactionCase):
         self._cancel_open_probe_transaction(
             instance, legacy_second.get("transactionIdentifier")
         )
+        self._assert_probe_customer_unlocked(instance, bonuscard_ean)
