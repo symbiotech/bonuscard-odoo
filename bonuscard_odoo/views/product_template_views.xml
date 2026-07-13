@@ -47,14 +47,16 @@
         <field name="model">product.template</field>
         <field name="inherit_id" ref="product.product_template_form_view"/>
         <field name="arch" type="xml">
-            <group name="internal_notes" position="after">
-                <group string="Bonuscard" name="bonuscard_catalog" groups="bonuscard_odoo.bonuscard_odoo_group_user" invisible="product_variant_count != 1">
-                    <field name="bonuscard_catalog_status"/>
-                    <field name="bonuscard_catalog_updated_at" readonly="1"/>
-                    <field name="bonuscard_catalog_probe_note" groups="bonuscard_odoo.bonuscard_odoo_group_manager"/>
-                    <button name="action_bonuscard_probe_catalog_status" string="Check Bonuscard Catalog" type="object" class="btn-secondary" groups="bonuscard_odoo.bonuscard_odoo_group_manager"/>
-                </group>
-            </group>
+            <xpath expr="//page[@name='invoicing']" position="after">
+                <page string="Bonuscard" name="bonuscard" groups="bonuscard_odoo.bonuscard_odoo_group_user" invisible="product_variant_count != 1">
+                    <group>
+                        <field name="bonuscard_catalog_status"/>
+                        <field name="bonuscard_catalog_updated_at" readonly="1"/>
+                        <field name="bonuscard_catalog_probe_note" groups="bonuscard_odoo.bonuscard_odoo_group_manager"/>
+                        <button name="action_bonuscard_probe_catalog_status" string="Check Bonuscard Catalog" type="object" class="btn-secondary" groups="bonuscard_odoo.bonuscard_odoo_group_manager"/>
+                    </group>
+                </page>
+            </xpath>
         </field>
     </record>
 
