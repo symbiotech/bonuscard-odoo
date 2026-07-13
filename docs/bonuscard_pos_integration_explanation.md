@@ -128,3 +128,20 @@ This document explains how the Bonuscard POS integration works in the `bonuscard
 - `order._bonuscardCandidateTxId` — client-generated transaction identifier not yet confirmed by a successful validation; included in cancel paths so a sent-but-unconfirmed ID is not lost before Bonuscard confirms it
 
 These fields ensure the POS finalizes or cancels the exact Bonuscard transaction that was validated before payment, and re-validates when the order content changes.
+
+## Bonuscard audit state stored on POS orders (backend)
+
+For reporting and audit in Odoo, the integration also persists a lightweight
+status on the resulting `pos.order`:
+
+- `pos.order.bonuscard_state` — `not_applicable`, `skipped`, `validated`, `finalized`, `failed`
+- `pos.order.bonuscard_transaction_identifier`
+- `pos.order.bonuscard_validated_at`
+- `pos.order.bonuscard_finalized_at`
+- `pos.order.bonuscard_last_error_message`
+
+The POS frontend includes these keys in `PosOrder.serializeForORM()`, and
+`pos.order._process_order` maps them onto the backend record when the order is
+synced. Runtime Bonuscard transaction fields on the POS order are still cleared
+after finalize/cancel, but the persisted audit fields remain on `pos.order` for
+reporting.

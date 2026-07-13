@@ -28,6 +28,7 @@ Features
 * Smart button for one-click Bonuscard status checks from the partner form
 * Manual customer registration from the partner form or POS partner list when lookup returns ``not_found``
 * Automatic discount application in POS after validation
+* Bonuscard audit fields stored on POS orders (validated/finalized/skipped/failed), even when discount is 0
 * Product catalog status on ``product.product`` to control which lines are sent to Bonuscard
 * Bulk list actions to mark products as in or not in the Bonuscard catalog
 * Scheduled + manual bulk prefetch of Bonuscard customer links (phone → email → optional name fallback) to reduce POS lookup requests

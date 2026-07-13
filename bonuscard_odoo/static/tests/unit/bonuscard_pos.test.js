@@ -2486,6 +2486,9 @@ test("afterOrderValidation finalizes zero-discount transaction when checkout ite
     expect(cancelledId).toBe(null);
     expect(order.bonuscard_transaction_id).toBe(null);
     expect(order.bonuscard_checkout_items).toBe(null);
+    expect(order.bonuscard_state).toBe("finalized");
+    expect(order.bonuscard_transaction_identifier).toBe("TXN-ZERO");
+    expect(order.bonuscard_finalized_at).not.toBe(false);
 });
 
 test("validation recovers from customer lock by cancelling pending tx on finalized orders", async () => {
@@ -2652,4 +2655,58 @@ test("validation cancels pending transaction when last catalog line is removed",
     expect(validateCalled).toBe(false);
     expect(cancelledId).toBe("TXN-LAST-CATALOG-LINE");
     expect(order.bonuscard_transaction_id).toBe(null);
+});
+
+test("serializeForORM exports Bonuscard audit fields for backend sync", async () => {
+    const store = await setupPosEnv();
+    const order = store.addNewOrder();
+    order.bonuscard_state = "validated";
+    order.bonuscard_transaction_identifier = "TXN-SERIALIZE";
+    order.bonuscard_last_error_message = "ignored";
+
+    const data = order.serializeForORM();
+
+    expect(data.bonuscard_state).toBe("validated");
+    expect(data.bonuscard_transaction_identifier).toBe("TXN-SERIALIZE");
+    expect(data.bonuscard_last_error_message).toBe("ignored");
+});
+
+test("validation sets failed audit state when Bonuscard returns an error response", async () => {
+    const store = await setupPosEnv();
+    const product = store.models["product.product"].get(5);
+    markProductBonuscardCatalog(product, "TEST-FAILED-AUDIT");
+
+    const partner = store.models["res.partner"].create({ name: "Bonuscard Customer" });
+    partner.bonuscard_recruitment_code = "ABC123";
+    partner.bonuscard_status = "linked";
+
+    const order = store.addNewOrder();
+    await store.addLineToOrder(
+        {
+            product_id: product,
+            product_tmpl_id: product.product_tmpl_id,
+            qty: 1,
+            price_unit: 10,
+        },
+        order
+    );
+    order.setPartner(partner);
+
+    patchWithCleanup(store.data, {
+        call: async (model, method) => {
+            if (model === "bonuscard.api.service" && method === "validate_purchase_for_pos") {
+                return {
+                    error: true,
+                    messages: ["Bonuscard rejected the cart."],
+                };
+            }
+            return {};
+        },
+    });
+
+    await store._validateBonuscardPurchaseForOrder(order);
+
+    expect(order.bonuscard_state).toBe("failed");
+    expect(order.bonuscard_last_error_message).toBe("Bonuscard rejected the cart.");
+    expect(order.bonuscard_transaction_identifier).not.toBe(false);
 });
