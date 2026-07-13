@@ -2039,7 +2039,8 @@ test("afterOrderValidation records failed audit state when finalize fails but ca
     expect(order.bonuscard_checkout_items).toBe(null);
     expect(order.bonuscard_state).toBe("failed");
     expect(order.bonuscard_transaction_identifier).toBe("TXN-FINALIZE-RELEASE");
-    expect(order.bonuscard_validated_at).toBe(validatedAtSnapshot);
+    expect(order.bonuscard_validated_at).not.toBe(false);
+    expect(order.bonuscard_validated_at.toISO()).toBe(validatedAtSnapshot.toISO());
     expect(order.bonuscard_last_error_message).toBe(
         "Bonuscard service is temporarily unavailable."
     );
