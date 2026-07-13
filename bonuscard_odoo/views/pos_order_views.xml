@@ -5,7 +5,7 @@
         <field name="model">pos.order</field>
         <field name="inherit_id" ref="point_of_sale.view_pos_order_tree"/>
         <field name="arch" type="xml">
-            <xpath expr="//tree" position="inside">
+            <xpath expr="//list" position="inside">
                 <field name="bonuscard_state" widget="badge" optional="hide"/>
                 <field name="bonuscard_transaction_identifier" optional="hide"/>
             </xpath>
@@ -17,14 +17,12 @@
         <field name="model">pos.order</field>
         <field name="inherit_id" ref="point_of_sale.view_pos_pos_form"/>
         <field name="arch" type="xml">
-            <xpath expr="//sheet//group" position="inside">
-                <group string="Bonuscard" name="bonuscard">
-                    <field name="bonuscard_state" widget="badge" readonly="1"/>
-                    <field name="bonuscard_transaction_identifier" readonly="1"/>
-                    <field name="bonuscard_validated_at" readonly="1"/>
-                    <field name="bonuscard_finalized_at" readonly="1"/>
-                    <field name="bonuscard_last_error_message" readonly="1"/>
-                </group>
+            <xpath expr="//field[@name='partner_id']" position="after">
+                <field name="bonuscard_state" widget="badge" readonly="1"/>
+                <field name="bonuscard_transaction_identifier" readonly="1"/>
+                <field name="bonuscard_validated_at" readonly="1"/>
+                <field name="bonuscard_finalized_at" readonly="1"/>
+                <field name="bonuscard_last_error_message" readonly="1"/>
             </xpath>
         </field>
     </record>

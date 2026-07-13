@@ -1,6 +1,7 @@
 /** @odoo-module */
 
 import { patch } from "@web/core/utils/patch";
+import { serializeDateTime } from "@web/core/l10n/dates";
 import { _t } from "@web/core/l10n/translation";
 import { sprintf } from "@web/core/utils/strings";
 import { registry } from "@web/core/registry";
@@ -496,7 +497,7 @@ patch(PosStore.prototype, {
                 order.bonuscard_needs_validation = false;
                 order.bonuscard_state = "validated";
                 order.bonuscard_transaction_identifier = order.bonuscard_transaction_id;
-                order.bonuscard_validated_at = new Date().toISOString();
+                order.bonuscard_validated_at = serializeDateTime(luxon.DateTime.now());
                 order.bonuscard_last_error_message = null;
 
                 if (result.totalDiscount > 0) {
@@ -559,6 +560,7 @@ patch(PosStore.prototype, {
                 }
             }
             const msg = result.messages?.[0] || _t("Bonuscard validation failed.");
+            order.bonuscard_state = "failed";
             order.bonuscard_last_error_message = msg;
             logPosMessage(
                 "Bonuscard",
@@ -577,6 +579,7 @@ patch(PosStore.prototype, {
                 [{ partnerId: partner?.id, transactionId: transactionIdentifier, error }]
             );
             this.notification.add(_t("Bonuscard validation failed."), { type: "warning" });
+            order.bonuscard_state = "failed";
             order.bonuscard_last_error_message = _t("Bonuscard validation failed.");
         }
         return false;
@@ -877,14 +880,14 @@ patch(PosStore.prototype, {
 });
 
 patch(PosOrder.prototype, {
-    export_as_JSON() {
-        const json = super.export_as_JSON(...arguments);
-        json.bonuscard_state = this.bonuscard_state || null;
-        json.bonuscard_transaction_identifier = this.bonuscard_transaction_identifier || null;
-        json.bonuscard_validated_at = this.bonuscard_validated_at || null;
-        json.bonuscard_finalized_at = this.bonuscard_finalized_at || null;
-        json.bonuscard_last_error_message = this.bonuscard_last_error_message || null;
-        return json;
+    serializeForORM(opts = {}) {
+        const data = super.serializeForORM(opts);
+        data.bonuscard_state = this.bonuscard_state || false;
+        data.bonuscard_transaction_identifier = this.bonuscard_transaction_identifier || false;
+        data.bonuscard_validated_at = this.bonuscard_validated_at || false;
+        data.bonuscard_finalized_at = this.bonuscard_finalized_at || false;
+        data.bonuscard_last_error_message = this.bonuscard_last_error_message || false;
+        return data;
     },
 
     clearBonuscardDiscounts() {
@@ -1141,7 +1144,7 @@ patch(OrderPaymentValidation.prototype, {
             order.bonuscard_state = "finalized";
             order.bonuscard_transaction_identifier =
                 order.bonuscard_transaction_identifier || order.bonuscard_transaction_id;
-            order.bonuscard_finalized_at = new Date().toISOString();
+            order.bonuscard_finalized_at = serializeDateTime(luxon.DateTime.now());
             order.bonuscard_last_error_message = null;
         }
         order.bonuscard_transaction_id = null;

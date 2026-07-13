@@ -139,3 +139,7 @@ status on the resulting `pos.order`:
 - `pos.order.bonuscard_validated_at`
 - `pos.order.bonuscard_finalized_at`
 - `pos.order.bonuscard_last_error_message`
+
+The POS frontend includes these keys in `PosOrder.serializeForORM()`, and
+`pos.order._process_order` maps them onto the backend record when the order is
+synced.
