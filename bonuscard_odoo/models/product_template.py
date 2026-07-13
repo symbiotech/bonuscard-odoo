@@ -26,21 +26,34 @@ class ProductTemplate(models.Model):
         store=True,
         readonly=True,
     )
+    bonuscard_catalog_probe_note = fields.Text(
+        string="Bonuscard Catalog Probe Note",
+        compute="_compute_bonuscard_catalog_fields",
+        readonly=True,
+    )
 
     @api.depends(
         "product_variant_ids.bonuscard_catalog_status",
         "product_variant_ids.bonuscard_catalog_updated_at",
+        "product_variant_ids.bonuscard_catalog_probe_note",
     )
     def _compute_bonuscard_catalog_fields(self):
+        is_probe_manager = self.env.user.has_group(
+            "bonuscard_odoo.bonuscard_odoo_group_manager"
+        )
         for template in self:
             variant = template._bonuscard_catalog_variant()
             if not variant:
                 template.bonuscard_catalog_status = False
                 template.bonuscard_catalog_updated_at = False
+                template.bonuscard_catalog_probe_note = False
                 continue
 
             template.bonuscard_catalog_status = variant.bonuscard_catalog_status
             template.bonuscard_catalog_updated_at = variant.bonuscard_catalog_updated_at
+            template.bonuscard_catalog_probe_note = (
+                variant.bonuscard_catalog_probe_note if is_probe_manager else False
+            )
 
     @api.model
     def _load_pos_data_fields(self, config):
@@ -97,8 +110,7 @@ class ProductTemplate(models.Model):
             )
 
         variants = self.mapped("product_variant_ids")
-        getattr(variants, method_name)()
-        return True
+        return getattr(variants, method_name)()
 
     def action_bonuscard_mark_in_catalog(self):
         return self._bonuscard_action_on_single_variant(
@@ -113,4 +125,9 @@ class ProductTemplate(models.Model):
     def action_bonuscard_reset_catalog_status(self):
         return self._bonuscard_action_on_single_variant(
             "action_bonuscard_reset_catalog_status"
+        )
+
+    def action_bonuscard_probe_catalog_status(self):
+        return self._bonuscard_action_on_single_variant(
+            "action_bonuscard_probe_catalog_status"
         )

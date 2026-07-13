@@ -1,5 +1,9 @@
+import logging
+
 from odoo import api, fields, models
-from odoo.exceptions import ValidationError
+from odoo.exceptions import UserError, ValidationError
+
+_logger = logging.getLogger(__name__)
 
 
 class ProductProduct(models.Model):
@@ -21,11 +25,39 @@ class ProductProduct(models.Model):
         copy=False,
         readonly=True,
     )
+    bonuscard_catalog_probe_note = fields.Text(
+        string="Bonuscard Catalog Probe Note",
+        copy=False,
+        readonly=True,
+        groups="bonuscard_odoo.bonuscard_odoo_group_manager",
+    )
 
     @api.model
     def _load_pos_data_fields(self, config):
         fields_list = super()._load_pos_data_fields(config)
         return fields_list + ["bonuscard_catalog_status"]
+
+    @api.model
+    def _check_catalog_probe_access(self):
+        """Allow managers (or sudo/cron) to probe Bonuscard catalog status."""
+        if self.env.is_superuser() or self.env.su:
+            return
+        if not self.env.user.has_group("bonuscard_odoo.bonuscard_odoo_group_manager"):
+            raise UserError(
+                self.env._(
+                    "You do not have permission to probe Bonuscard catalog status."
+                )
+            )
+
+    @api.model
+    def _build_catalog_probe_domain(self):
+        return [
+            ("bonuscard_catalog_status", "=", "not_set"),
+            ("active", "=", True),
+            "|",
+            ("barcode", "!=", False),
+            ("default_code", "!=", False),
+        ]
 
     @api.constrains("bonuscard_catalog_status", "barcode", "default_code")
     def _check_bonuscard_catalog_requires_identifier(self):
@@ -76,6 +108,157 @@ class ProductProduct(models.Model):
             ):
                 vals["bonuscard_catalog_updated_at"] = now
         return super().write(vals)
+
+    def _bonuscard_probe_catalog_status_single(self, instance):
+        self.ensure_one()
+        service = self.env["bonuscard.api.service"]
+        result = service.probe_product_catalog_status(instance, self)
+        status = result.get("status")
+        note = result.get("note") or ""
+
+        vals = {"bonuscard_catalog_probe_note": note}
+        if status in ("in_catalog", "not_in_catalog"):
+            vals["bonuscard_catalog_status"] = status
+            vals["bonuscard_catalog_updated_at"] = fields.Datetime.now()
+        self.write(vals)
+        return result
+
+    @api.model
+    def action_bulk_probe_catalog_status(
+        self,
+        company_id=None,
+        instance_id=None,
+        product_ids=None,
+        *,
+        only_unscanned=True,
+    ):
+        """Manual/cron entry point: probe Bonuscard catalog status for products."""
+        self._check_catalog_probe_access()
+        company = (
+            self.env["res.company"].browse(company_id).exists()
+            if company_id
+            else self.env.company
+        )
+        service = self.env["bonuscard.api.service"]
+        instance = (
+            self.env["bonuscard.connector.instance"].browse(instance_id).exists()
+            if instance_id
+            else service._get_company_instance(company)
+        )
+        summary = {
+            "ok": True,
+            "company_id": company.id,
+            "processed": 0,
+            "in_catalog": 0,
+            "not_in_catalog": 0,
+            "unchanged": 0,
+            "skipped": 0,
+            "error": 0,
+        }
+        if not instance:
+            summary["ok"] = False
+            summary["message"] = self.env._(
+                "No active Bonuscard connection is configured for this company."
+            )
+            return summary
+        if company_id and instance.company_id and instance.company_id != company:
+            raise UserError(
+                self.env._(
+                    "Selected Bonuscard connection does not belong to the requested company."
+                )
+            )
+        if not instance.catalog_probe_active:
+            summary["ok"] = False
+            summary["message"] = self.env._(
+                "Catalog probe is disabled for this connection."
+            )
+            return summary
+        if not (instance.catalog_probe_customer_identifier or "").strip():
+            summary["ok"] = False
+            summary["message"] = self.env._(
+                "Catalog probe customer identifier is not configured on the Bonuscard connection."
+            )
+            return summary
+
+        domain = (
+            self._build_catalog_probe_domain()
+            if only_unscanned
+            else [("active", "=", True)]
+        )
+        if product_ids is not None:
+            domain = [("id", "in", product_ids)] + domain
+
+        batch_size = int(instance.catalog_probe_batch_size or 50)
+        if product_ids and not only_unscanned:
+            products = self.search(domain, order="id asc")
+        else:
+            products = self.search(domain, limit=batch_size, order="id asc")
+
+        for product in products:
+            try:
+                result = product._bonuscard_probe_catalog_status_single(instance)
+                status = result.get("status") or "unchanged"
+                summary["processed"] += 1
+                if status in summary:
+                    summary[status] += 1
+                else:
+                    summary["unchanged"] += 1
+            except Exception:  # pylint: disable=broad-except
+                _logger.exception(
+                    "Bonuscard catalog probe failed for product %s", product.id
+                )
+                summary["processed"] += 1
+                summary["error"] += 1
+
+        return summary
+
+    def action_bonuscard_probe_catalog_status(self):
+        self._check_catalog_probe_access()
+        company = self.env.company
+        service = self.env["bonuscard.api.service"]
+        instance = service._get_company_instance(company)
+        if not instance:
+            raise UserError(
+                self.env._(
+                    "No active Bonuscard connection is configured for this company."
+                )
+            )
+        if not (instance.catalog_probe_customer_identifier or "").strip():
+            raise UserError(
+                self.env._(
+                    "Catalog probe customer identifier is not configured on the "
+                    "Bonuscard connection."
+                )
+            )
+
+        summary = self.with_company(company).action_bulk_probe_catalog_status(
+            company_id=company.id,
+            instance_id=instance.id,
+            product_ids=self.ids,
+            only_unscanned=False,
+        )
+        if not summary.get("ok"):
+            raise UserError(
+                summary.get("message")
+                or self.env._("Bonuscard catalog probe could not be started.")
+            )
+
+        message = self.env._(
+            "Processed: %(processed)s (in_catalog=%(in_catalog)s, "
+            "not_in_catalog=%(not_in_catalog)s, unchanged=%(unchanged)s, "
+            "skipped=%(skipped)s, error=%(error)s).",
+            **summary,
+        )
+        return {
+            "type": "ir.actions.client",
+            "tag": "display_notification",
+            "params": {
+                "title": self.env._("Bonuscard Catalog Probe"),
+                "message": message,
+                "type": "info" if summary.get("error") == 0 else "warning",
+                "sticky": False,
+            },
+        }
 
     def action_bonuscard_mark_in_catalog(self):
         invalid = self.filtered(

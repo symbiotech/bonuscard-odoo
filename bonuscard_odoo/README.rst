@@ -80,6 +80,27 @@ Configuration
    In both cases you can also import from CSV with columns ``barcode`` (or
    ``default_code``) and ``bonuscard_catalog_status``
 
+8. Configure catalog probe (optional, managers only):
+
+   **Bonuscard > Connections** → open the current connection:
+
+   - Set **Catalog Probe Customer** to your dedicated Bonuscard test customer
+     identifier (recruitment code, phone, email, etc.)
+   - Adjust **Catalog Probe Price** (default ``100``) and **Catalog Probe Batch Size**
+   - Enable/disable the daily catalog probe cron
+
+   Probe never-scanned products manually:
+
+   - **Inventory > Products** or **Product Variants**: select products and run
+     **Check Bonuscard Catalog**
+   - Or use **Check Bonuscard Catalog** on a product form
+
+   The scheduled job probes products with catalog status **Not Set** that have a
+   barcode or article number. Each product is checked individually via
+   ``ValidatePurchase``. Unknown products are detected when Bonuscard returns no
+   ``transactionIdentifier``. Recognized products trigger ``CancelPurchase`` so
+   the probe customer is not left locked.
+
 Usage
 =====
 
