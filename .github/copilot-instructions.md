@@ -15,7 +15,7 @@
 
 - Primary Odoo surface: Point of Sale.
 - Authentication: Basic auth via `bonuscard.connector.instance._build_headers`.
-- **Implemented**: SearchCustomers lookup from POS partner selection; Bonuscard status fields on `res.partner`; smart button and manual check/reset on partner form; OWL badges in POS partner list; ValidatePurchase / FinalizePurchase / CancelPurchase lifecycle with automatic discount application; RegisterCustomer from partner form and POS partner list.
+- **Implemented**: SearchCustomers lookup from POS partner selection; Bonuscard status fields on `res.partner`; smart button and manual check/reset on partner form; OWL badges in POS partner list; ValidatePurchase / FinalizePurchase / CancelPurchase lifecycle with automatic discount application; RegisterCustomer from partner form and POS partner list; product catalog gating and manager catalog probe; bulk partner prefetch (cron + manual); Bonuscard audit fields on `pos.order`.
 
 ## Immediate Planning Constraints
 
@@ -32,7 +32,7 @@
 - Support the Bonuscard test environment when configuration allows it.
 - `BonuscardApiService._get_company_instance(company)` resolves the active connector for a given company, falling back to any active instance.
 - `BonuscardApiService.search_customers(instance, query)` wraps the `SearchCustomers` endpoint using URL query params.
-- Bonuscard status is written to the **commercial partner** (`partner.commercial_partner_id`) and propagated to child contacts.
+- When Bonuscard status is written on a contact, the same status is mirrored on its **commercial partner** (`partner.commercial_partner_id`) when both records share the same normalized phone number (Bonuscard's unique customer key).
 - Partner lookup uses phone (normalised digits-only), email, and name as search terms in priority order. Exact deduplication is keyed on Bonuscard customer `id` or `recruitmentCode` to avoid counting the same record twice.
 
 ## POS Flow Rules
@@ -115,7 +115,9 @@ pre-commit run --all-files   # run everything now
 5. ~~Implement FinalizePurchase and CancelPurchase lifecycle handling.~~ ✅
 6. ~~Add logging, diagnostics, and retry-safe error handling.~~ ✅
 7. ~~RegisterCustomer (partner form and POS partner list).~~ ✅
-8. Add follow-up features only after the purchase flow is stable:
+8. ~~Product catalog gating, bulk partner prefetch, and catalog probe.~~ ✅
+9. ~~Bonuscard audit fields on `pos.order` (validated/finalized/skipped/failed).~~ ✅
+10. Add follow-up features only after the purchase flow is stable:
 	 - ActivateDiscountCode
 	 - Sales report import
 

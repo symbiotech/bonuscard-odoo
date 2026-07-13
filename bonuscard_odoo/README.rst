@@ -188,6 +188,15 @@ Only order lines with a barcode or article number and a positive unit price are
 sent to Bonuscard. Returned discounts are applied as line percentages or as
 separate discount lines (requires the POS discount product above).
 
+POS Order Reporting
+-------------------
+
+After payment, Bonuscard audit fields are stored on the synced ``pos.order``
+record (state, transaction identifier, validated/finalized timestamps, and last
+error message). Open **Point of Sale > Orders** to review them; use the Bonuscard
+search filters to list finalized, validated, skipped, failed, or not-applicable
+orders.
+
 Manual Integration Tests
 ========================
 
@@ -202,7 +211,7 @@ exercise a barcoded product that the Bonuscard API rejects.
 
 Run only the manual integration suite with::
 
-  --test-tags /bonuscard_integration
+  --test-tags bonuscard_integration
 
 Use runtime or local secret configuration. Never commit real credentials.
 
