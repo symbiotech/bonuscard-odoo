@@ -256,16 +256,6 @@ class ProductProduct(models.Model):
                 if (
                     not configured_unlock_ean
                     and status in ("not_in_catalog", "error")
-                    and not unlock_ean
-                ):
-                    summary["message"] = self.env._(
-                        "Catalog probe cannot release the probe customer lock because no unlock EAN is available. Configure 'Catalog Probe Unlock EAN' on the Bonuscard connection."
-                    )
-                    break
-
-                if (
-                    not configured_unlock_ean
-                    and status in ("not_in_catalog", "error")
                     and unlock_ean
                 ):
                     try:
