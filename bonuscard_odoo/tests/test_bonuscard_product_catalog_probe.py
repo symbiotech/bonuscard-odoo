@@ -119,7 +119,6 @@ class TestBonuscardProductCatalogProbe(TransactionCase):
             },
             {
                 "error": False,
-                "transactionIdentifier": "TXBATCH1",
                 "messages": [
                     "No valid products found. The transaction has been cancelled."
                 ],
@@ -144,6 +143,10 @@ class TestBonuscardProductCatalogProbe(TransactionCase):
             )
 
         self.assertEqual(summary["processed"], 2)
+        self.assertEqual(summary["in_catalog"], 1)
+        self.assertEqual(summary["not_in_catalog"], 1)
+        self.assertEqual(products[0].bonuscard_catalog_status, "in_catalog")
+        self.assertEqual(products[1].bonuscard_catalog_status, "not_in_catalog")
         self.assertEqual(mock_validate.call_count, 2)
         self.assertIsNone(
             mock_validate.call_args_list[0].kwargs.get("transaction_identifier")
