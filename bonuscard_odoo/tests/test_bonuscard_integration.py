@@ -1,9 +1,12 @@
+import logging
 import os
 import uuid
 from pathlib import Path
 from unittest import SkipTest
 
 from odoo.tests import TransactionCase, tagged
+
+_logger = logging.getLogger(__name__)
 
 
 def _load_dotenv_if_present():
@@ -60,6 +63,47 @@ class TestBonuscardIntegration(TransactionCase):
         if missing_vars:
             raise SkipTest(
                 f"Integration test skipped. Missing variables: {', '.join(missing_vars)}"
+            )
+
+    def tearDown(self):
+        if getattr(self, "_bonuscard_touches_shared_customer", False):
+            try:
+                self._release_shared_customer_lock()
+            except Exception:  # pylint: disable=broad-except
+                _logger.exception(
+                    "Bonuscard shared customer unlock failed during tearDown for %s",
+                    self._testMethodName,
+                )
+        super().tearDown()
+
+    def _mark_shared_customer_test(self):
+        """Mark that this test may lock the shared sandbox consumer."""
+        self._bonuscard_touches_shared_customer = True
+
+    def _shared_consumer_recruitment_code(self):
+        return os.getenv("BONUSCARD_TEST_CONSUMER", "").strip()
+
+    def _shared_bonuscard_ean(self):
+        return os.getenv("BONUSCARD_TEST_BONUSCARD_EAN", "").strip()
+
+    def _release_shared_customer_lock(self):
+        """Best-effort unlock for the shared sandbox consumer after a test."""
+        consumer = self._shared_consumer_recruitment_code()
+        unlock_ean = self._shared_bonuscard_ean()
+        if not consumer or not unlock_ean:
+            return
+        instance = self._create_integration_instance()
+        instance.write(
+            {
+                "catalog_probe_customer_identifier": consumer,
+                "catalog_probe_price": 100.0,
+            }
+        )
+        service = self.env["bonuscard.api.service"]
+        if not service._release_probe_customer_lock(instance, unlock_ean):
+            _logger.warning(
+                "Could not release shared Bonuscard test customer lock after %s",
+                self._testMethodName,
             )
 
     def _create_integration_instance(self):
@@ -160,7 +204,7 @@ class TestBonuscardIntegration(TransactionCase):
         self.assertIn("phoneNumber", result["customer"])
         self.assertIn("recruitmentCode", result["customer"])
 
-    def test_non_bonuscard_product_purchase_does_not_lock_customer(self):
+    def test_01_non_bonuscard_product_purchase_does_not_lock_customer(self):
         """Non-catalog POS lines must not lock the Bonuscard customer.
 
         Covers the POS scenario where a Bonuscard customer pays for products that
@@ -179,7 +223,15 @@ class TestBonuscardIntegration(TransactionCase):
                 "(a barcode on the Bonuscard API used to verify the customer is not locked)"
             )
 
-        self._create_integration_instance()
+        self._mark_shared_customer_test()
+        instance = self._create_integration_instance()
+        instance.write(
+            {
+                "catalog_probe_customer_identifier": recruitment_code,
+                "catalog_probe_price": 100.0,
+            }
+        )
+        self._ensure_probe_customer_unlocked(instance, bonuscard_ean)
         partner = self._create_partner_with_recruitment_code(recruitment_code)
 
         # Odoo products without barcode/article are never sent to ValidatePurchase.
@@ -215,3 +267,260 @@ class TestBonuscardIntegration(TransactionCase):
             )
 
         self._assert_customer_not_locked(partner, bonuscard_ean)
+
+    def _create_probe_instance(self):
+        probe_customer = self._shared_consumer_recruitment_code()
+        if not probe_customer:
+            self.skipTest(
+                "Catalog probe integration test skipped. Missing "
+                "BONUSCARD_TEST_CONSUMER"
+            )
+        self._mark_shared_customer_test()
+        instance = self._create_integration_instance()
+        instance.write(
+            {
+                "catalog_probe_customer_identifier": probe_customer,
+                "catalog_probe_price": 100.0,
+                "catalog_probe_batch_size": 10,
+            }
+        )
+        unlock_ean = os.getenv("BONUSCARD_TEST_BONUSCARD_EAN", "").strip()
+        if unlock_ean:
+            instance.catalog_probe_unlock_ean = unlock_ean
+        return instance
+
+    def _create_probe_product(self, barcode, name):
+        existing = self.env["product.product"].search(
+            [("barcode", "=", barcode)], limit=1
+        )
+        if existing:
+            existing.write(
+                {
+                    "bonuscard_catalog_status": "not_set",
+                    "bonuscard_catalog_probe_note": False,
+                }
+            )
+            return existing
+        return self.env["product.product"].create(
+            {
+                "name": name,
+                "barcode": barcode,
+                "list_price": 10.0,
+                "bonuscard_catalog_status": "not_set",
+            }
+        )
+
+    def _cancel_open_probe_transaction(self, instance, transaction_identifier):
+        if not transaction_identifier:
+            return
+        service = self.env["bonuscard.api.service"]
+        try:
+            service._cancel_purchase(instance, transaction_identifier)
+        except Exception:  # pylint: disable=broad-except
+            _logger.warning(
+                "Could not cancel open probe transaction %s during test cleanup",
+                transaction_identifier,
+                exc_info=True,
+            )
+
+    def _validate_probe_purchase(
+        self, instance, bonuscard_ean, transaction_identifier=None
+    ):
+        service = self.env["bonuscard.api.service"]
+        customer = instance.catalog_probe_customer_identifier
+        try:
+            return service._validate_purchase(
+                instance,
+                customer,
+                [{"ean": bonuscard_ean, "quantity": 1, "pricePerItem": 100.0}],
+                transaction_identifier=transaction_identifier,
+            )
+        except Exception as exc:  # pylint: disable=broad-except
+            from odoo.addons.bonuscard_odoo.models.bonuscard_api_service import (
+                BonuscardApiError,
+            )
+
+            if isinstance(exc, BonuscardApiError):
+                return {
+                    "error": True,
+                    "errorCode": exc.error_code,
+                    "messages": [getattr(exc, "name", None) or str(exc)],
+                }
+            raise
+
+    def _ensure_probe_customer_unlocked(self, instance, bonuscard_ean):
+        """Best-effort unlock before catalog probe tests."""
+        payload = self._validate_probe_purchase(instance, bonuscard_ean)
+        if payload.get("error"):
+            if payload.get("errorCode") == 2:
+                self.skipTest(
+                    "Probe customer is locked before the test started. "
+                    "Wait for the lock to expire or cancel the open transaction "
+                    f"in Bonuscard. Messages: {payload.get('messages')}"
+                )
+            self.fail(
+                f"Could not verify probe customer is unlocked: {payload.get('messages')}"
+            )
+        transaction_id = payload.get("transactionIdentifier")
+        self._cancel_open_probe_transaction(instance, transaction_id)
+
+    def _assert_probe_customer_unlocked(self, instance, bonuscard_ean):
+        payload = self._validate_probe_purchase(instance, bonuscard_ean)
+        if payload.get("errorCode") == 2:
+            self.fail(
+                "Probe customer is locked after catalog probe batch: "
+                f"{payload.get('messages')}"
+            )
+        self.assertFalse(
+            payload.get("error"),
+            f"Probe customer validation failed after batch: {payload.get('messages')}",
+        )
+        self._cancel_open_probe_transaction(
+            instance, payload.get("transactionIdentifier")
+        )
+
+    def test_90_catalog_probe_batch_does_not_lock_probe_customer(self):
+        """Bulk catalog probe must complete without API error code 2 mid-batch."""
+        bonuscard_ean = os.getenv("BONUSCARD_TEST_BONUSCARD_EAN", "").strip()
+        non_bonuscard_ean = os.getenv("BONUSCARD_TEST_NON_BONUSCARD_EAN", "").strip()
+        if not bonuscard_ean:
+            self.skipTest(
+                "Catalog probe batch test skipped. Missing BONUSCARD_TEST_BONUSCARD_EAN"
+            )
+        if not non_bonuscard_ean:
+            self.skipTest(
+                "Catalog probe batch test skipped. Missing "
+                "BONUSCARD_TEST_NON_BONUSCARD_EAN"
+            )
+
+        instance = self._create_probe_instance()
+        self._ensure_probe_customer_unlocked(instance, bonuscard_ean)
+
+        products = self.env["product.product"]
+        batch = products.browse(
+            [
+                self._create_probe_product(bonuscard_ean, "Probe Catalog Product A").id,
+                self._create_probe_product(
+                    non_bonuscard_ean, "Probe Unknown Product B"
+                ).id,
+                self._create_probe_product(
+                    "8710000000002", "Probe Unknown Product C"
+                ).id,
+                self._create_probe_product(
+                    "8710000000003", "Probe Unknown Product D"
+                ).id,
+                self._create_probe_product(
+                    "8710000000004", "Probe Unknown Product E"
+                ).id,
+            ]
+        )
+
+        summary = products.action_bulk_probe_catalog_status(
+            company_id=self.env.company.id,
+            instance_id=instance.id,
+            product_ids=batch.ids,
+            only_unscanned=False,
+        )
+
+        lock_errors = []
+        for product in batch:
+            note = product.bonuscard_catalog_probe_note or ""
+            if "error (2)" in note.lower() or "locked" in note.lower():
+                lock_errors.append(f"{product.barcode}: {note}")
+
+        self.assertFalse(
+            lock_errors,
+            "Catalog probe hit customer-lock errors:\n" + "\n".join(lock_errors),
+        )
+        self.assertEqual(
+            summary.get("error"),
+            0,
+            f"Unexpected probe errors in summary: {summary}",
+        )
+        self.assertGreater(summary.get("processed"), 0)
+        self._assert_probe_customer_unlocked(instance, bonuscard_ean)
+
+    def test_91_catalog_probe_raw_validate_reuse_vs_cancel_per_product(self):
+        """Document sandbox behavior for reused vs per-product-cancel probe flows."""
+        bonuscard_ean = os.getenv("BONUSCARD_TEST_BONUSCARD_EAN", "").strip()
+        non_bonuscard_ean = os.getenv("BONUSCARD_TEST_NON_BONUSCARD_EAN", "").strip()
+        if not bonuscard_ean or not non_bonuscard_ean:
+            self.skipTest(
+                "Raw catalog probe sequence skipped. Missing BONUSCARD_TEST_* EAN vars"
+            )
+
+        instance = self._create_probe_instance()
+        service = self.env["bonuscard.api.service"]
+        customer = instance.catalog_probe_customer_identifier
+        self._ensure_probe_customer_unlocked(instance, bonuscard_ean)
+
+        def _validate(ean, transaction_identifier=None):
+            try:
+                return service._validate_purchase(
+                    instance,
+                    customer,
+                    [{"ean": ean, "quantity": 1, "pricePerItem": 100.0}],
+                    transaction_identifier=transaction_identifier,
+                )
+            except Exception as exc:  # pylint: disable=broad-except
+                from odoo.addons.bonuscard_odoo.models.bonuscard_api_service import (
+                    BonuscardApiError,
+                )
+
+                if isinstance(exc, BonuscardApiError):
+                    return {
+                        "error": True,
+                        "errorCode": exc.error_code,
+                        "messages": [getattr(exc, "name", None) or str(exc)],
+                    }
+                raise
+
+        # Strategy A: reusing transactionIdentifier fails on sandbox for unknown products.
+        first = _validate(bonuscard_ean)
+        self.assertFalse(first.get("error"), first.get("messages"))
+        tx_id = first.get("transactionIdentifier")
+        self.assertTrue(tx_id, "Expected a transaction identifier from first validate")
+
+        second = _validate(non_bonuscard_ean, transaction_identifier=tx_id)
+        if second.get("errorCode") == 2:
+            self._cancel_open_probe_transaction(instance, tx_id)
+            _logger.info(
+                "Strategy A (reuse): sandbox returned error 2 as expected: %s",
+                second.get("messages"),
+            )
+        else:
+            third_tx = second.get("transactionIdentifier") or tx_id
+            if second.get("transactionIdentifier") is None and (
+                "no valid products" in " ".join(second.get("messages") or []).lower()
+            ):
+                third_tx = None
+
+            third = _validate(bonuscard_ean, transaction_identifier=third_tx)
+            if third.get("errorCode") == 2:
+                self._cancel_open_probe_transaction(instance, third_tx or tx_id)
+                self.fail(
+                    "Reused-transaction probe failed on third product with error 2: "
+                    f"{third.get('messages')}"
+                )
+
+            self._cancel_open_probe_transaction(
+                instance, third.get("transactionIdentifier") or third_tx
+            )
+
+        # Strategy B: cancel after each single-item probe still locks after unknown-only.
+        self._ensure_probe_customer_unlocked(instance, bonuscard_ean)
+        legacy_first = _validate(bonuscard_ean)
+        self.assertFalse(legacy_first.get("error"), legacy_first.get("messages"))
+        legacy_tx = legacy_first.get("transactionIdentifier")
+        self._cancel_open_probe_transaction(instance, legacy_tx)
+
+        legacy_second = _validate(non_bonuscard_ean)
+        if legacy_second.get("errorCode") == 2:
+            self.fail(
+                "Cancel-per-product probe failed on second product with error 2: "
+                f"{legacy_second.get('messages')}"
+            )
+        self._cancel_open_probe_transaction(
+            instance, legacy_second.get("transactionIdentifier")
+        )
+        self._assert_probe_customer_unlocked(instance, bonuscard_ean)

@@ -99,8 +99,9 @@ Configuration
    The scheduled job probes products with catalog status **Not Set** that have a
    barcode or article number. Each product is checked individually via
    ``ValidatePurchase``. Unknown products are detected when Bonuscard returns no
-   ``transactionIdentifier``. Recognized products trigger ``CancelPurchase`` so
-   the probe customer is not left locked.
+   ``transactionIdentifier``, or when an unlock/anchor EAN is configured and only
+   the anchor appears in ``checkoutItems``. Recognized products trigger
+   ``CancelPurchase`` so the probe customer is not left locked.
 
 Usage
 =====
@@ -207,7 +208,10 @@ Configure ``BONUSCARD_TEST_*`` values in a local ``.env`` file (see
 ``.env.example``). The non-Bonuscard customer-lock test requires
 ``BONUSCARD_TEST_CONSUMER`` and ``BONUSCARD_TEST_BONUSCARD_EAN`` (a product on
 the Bonuscard API). Optionally set ``BONUSCARD_TEST_NON_BONUSCARD_EAN`` to also
-exercise a barcoded product that the Bonuscard API rejects.
+exercise a barcoded product that the Bonuscard API rejects. Catalog probe tests
+use the same ``BONUSCARD_TEST_CONSUMER`` as the POS lock test; tests run in a
+fixed order and release the customer lock in ``tearDown`` so they do not
+interfere with each other.
 
 Run only the manual integration suite with::
 

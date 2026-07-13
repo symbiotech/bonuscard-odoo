@@ -706,7 +706,39 @@ class BonuscardApiService(models.AbstractModel):
                 message = self.env._("Bonuscard cancel failed.")
             return {"error": True, "messages": [message]}
 
-    def _classify_catalog_probe_response(self, payload):
+    def _extract_recognized_catalog_eans(self, payload):
+        """Return product EANs from checkoutItems in a ValidatePurchase response."""
+        if not isinstance(payload, dict):
+            return set()
+        recognized = set()
+        for item in payload.get("checkoutItems") or []:
+            if isinstance(item, dict):
+                ean = (item.get("ean") or "").strip()
+                if ean:
+                    recognized.add(ean)
+        return recognized
+
+    def _build_catalog_probe_checkout_items(self, instance, probe_ean):
+        """Build ValidatePurchase checkout lines for a catalog probe."""
+        probe_price = float(instance.catalog_probe_price or 100.0)
+        probe_item = {
+            "ean": probe_ean,
+            "quantity": 1,
+            "pricePerItem": probe_price,
+        }
+        unlock_ean = (instance.catalog_probe_unlock_ean or "").strip()
+        if unlock_ean and probe_ean != unlock_ean:
+            anchor_item = {
+                "ean": unlock_ean,
+                "quantity": 1,
+                "pricePerItem": probe_price,
+            }
+            return [anchor_item, probe_item], unlock_ean
+        return [probe_item], None
+
+    def _classify_catalog_probe_response(
+        self, payload, *, probe_ean=None, anchor_ean=None
+    ):
         """Map a ValidatePurchase probe response to a catalog status."""
         if not isinstance(payload, dict):
             return "error", self.env._("Unexpected Bonuscard response format.")
@@ -723,6 +755,56 @@ class BonuscardApiService(models.AbstractModel):
         messages = self._extract_error_messages(payload)
         message_text = " ".join(messages).lower()
         transaction_id = payload.get("transactionIdentifier")
+        probe_ean = (probe_ean or "").strip()
+        anchor_ean = (anchor_ean or "").strip()
+        uses_anchor = bool(anchor_ean and probe_ean and probe_ean != anchor_ean)
+
+        if uses_anchor:
+            if not transaction_id:
+                if _NO_VALID_PRODUCTS_MESSAGE_FRAGMENT in message_text:
+                    note = (
+                        messages[0]
+                        if messages
+                        else self.env._("Product not found in Bonuscard catalog.")
+                    )
+                    return "not_in_catalog", note
+                note = (
+                    messages[0]
+                    if messages
+                    else self.env._("Ambiguous Bonuscard response; status unchanged.")
+                )
+                return "unchanged", note
+
+            if _NO_VALID_PRODUCTS_MESSAGE_FRAGMENT in message_text:
+                note = (
+                    messages[0]
+                    if messages
+                    else self.env._("Product not found in Bonuscard catalog.")
+                )
+                return "not_in_catalog", note
+
+            recognized = self._extract_recognized_catalog_eans(payload)
+            if probe_ean in recognized:
+                note = (
+                    messages[0]
+                    if messages
+                    else self.env._("Product found in Bonuscard catalog.")
+                )
+                return "in_catalog", note
+            if anchor_ean in recognized:
+                note = (
+                    messages[0]
+                    if messages
+                    else self.env._("Product not found in Bonuscard catalog.")
+                )
+                return "not_in_catalog", note
+
+            note = (
+                messages[0]
+                if messages
+                else self.env._("Ambiguous Bonuscard response; status unchanged.")
+            )
+            return "unchanged", note
 
         if not transaction_id:
             if _NO_VALID_PRODUCTS_MESSAGE_FRAGMENT in message_text:
@@ -774,6 +856,54 @@ class BonuscardApiService(models.AbstractModel):
             return self.env._("Bonuscard cancel failed.")
         return None
 
+    def _release_probe_customer_lock(self, instance, unlock_ean):
+        """Release a locked probe customer via a known-catalog ValidatePurchase."""
+        instance.ensure_one()
+        unlock_ean = (unlock_ean or "").strip()
+        customer_identifier = (instance.catalog_probe_customer_identifier or "").strip()
+        if not unlock_ean or not customer_identifier:
+            return False
+
+        probe_price = float(instance.catalog_probe_price or 100.0)
+        checkout_items = [
+            {
+                "ean": unlock_ean,
+                "quantity": 1,
+                "pricePerItem": probe_price,
+            }
+        ]
+        try:
+            payload = self._validate_purchase(
+                instance,
+                customer_identifier,
+                checkout_items,
+            )
+        except BonuscardApiError as exc:
+            if exc.error_code == 2:
+                _logger.warning(
+                    "Bonuscard catalog probe unlock skipped: probe customer still locked."
+                )
+                return False
+            raise
+        except (BonuscardHttpError, UserError) as exc:
+            _logger.warning(
+                "Bonuscard catalog probe unlock failed for probe customer %s (EAN %s): %s",
+                customer_identifier,
+                unlock_ean,
+                getattr(exc, "name", None) or str(exc),
+            )
+            return False
+
+        transaction_id = payload.get("transactionIdentifier")
+        if not transaction_id:
+            _logger.warning(
+                "Bonuscard catalog probe unlock returned no transaction identifier for probe customer %s (EAN %s).",
+                customer_identifier,
+                unlock_ean,
+            )
+            return False
+        return self._cancel_catalog_probe_transaction(instance, transaction_id) is None
+
     def probe_product_catalog_status(
         self,
         instance,
@@ -784,11 +914,13 @@ class BonuscardApiService(models.AbstractModel):
     ):
         """Probe whether a product exists in Bonuscard via ValidatePurchase.
 
-        Bulk probes should pass ``transaction_identifier`` from the previous call
-        and set ``auto_cancel=False``, then cancel once after the batch. Bonuscard
-        locks a customer to one transaction until CancelPurchase is called; error
-        code 2 is returned when a second transaction is started without reusing
-        the identifier.
+        Bulk probes call this once per product with the default ``auto_cancel=True``
+        so each open transaction is cancelled before the next product is probed.
+        When ``catalog_probe_unlock_ean`` is configured, unknown products are
+        probed together with that anchor EAN so Bonuscard always returns a
+        cancellable ``transactionIdentifier``. Bonuscard locks a probe customer to
+        one transaction at a time; error code 2 is returned when a new transaction
+        is started while another is still open.
 
         Returns a dict with keys ``status`` (``in_catalog``, ``not_in_catalog``,
         ``unchanged``, ``skipped``, or ``error``), ``note``, and
@@ -816,14 +948,9 @@ class BonuscardApiService(models.AbstractModel):
                 "transaction_identifier": transaction_identifier,
             }
 
-        probe_price = float(instance.catalog_probe_price or 100.0)
-        checkout_items = [
-            {
-                "ean": ean,
-                "quantity": 1,
-                "pricePerItem": probe_price,
-            }
-        ]
+        checkout_items, anchor_ean = self._build_catalog_probe_checkout_items(
+            instance, ean
+        )
 
         try:
             payload = self._validate_purchase(
@@ -857,7 +984,9 @@ class BonuscardApiService(models.AbstractModel):
                 "transaction_identifier": transaction_identifier,
             }
 
-        catalog_status, note = self._classify_catalog_probe_response(payload)
+        catalog_status, note = self._classify_catalog_probe_response(
+            payload, probe_ean=ean, anchor_ean=anchor_ean
+        )
         response_transaction_id = payload.get("transactionIdentifier")
         if response_transaction_id:
             transaction_id = response_transaction_id
