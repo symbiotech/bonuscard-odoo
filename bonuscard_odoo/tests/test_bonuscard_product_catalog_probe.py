@@ -520,7 +520,9 @@ class TestBonuscardProductCatalogProbe(TransactionCase):
         self.assertEqual(summary["error"], 1)
         self.assertIn("Cancel failed", product.bonuscard_catalog_probe_note)
         self.assertIn("Cancel failed", summary.get("message", ""))
-        self.assertEqual(mock_cancel.call_count, 2)
+        # One cancel attempt inside probe_product_catalog_status, plus two retry
+        # attempts from the bulk probe loop.
+        self.assertEqual(mock_cancel.call_count, 3)
         mock_cancel.assert_any_call(self.instance, "TXBATCH3")
 
     def test_bulk_probe_retries_cancel_and_continues_batch(self):

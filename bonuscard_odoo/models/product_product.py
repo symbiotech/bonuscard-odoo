@@ -243,12 +243,16 @@ class ProductProduct(models.Model):
                         instance, open_transaction_id
                     )
                     if cancel_note:
-                        summary["message"] = self.env._(
-                            "Could not cancel the open Bonuscard catalog probe "
-                            "transaction: %s",
-                            cancel_note,
+                        cancel_note_retry = service._cancel_catalog_probe_transaction(
+                            instance, open_transaction_id
                         )
-                        break
+                        if cancel_note_retry:
+                            summary["message"] = self.env._(
+                                "Could not cancel the open Bonuscard catalog probe "
+                                "transaction: %s",
+                                cancel_note_retry,
+                            )
+                            break
                 if (
                     not configured_unlock_ean
                     and status in ("not_in_catalog", "error")
