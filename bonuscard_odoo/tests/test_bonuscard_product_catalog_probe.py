@@ -230,7 +230,7 @@ class TestBonuscardProductCatalogProbe(TransactionCase):
         self.assertEqual(result["status"], "not_in_catalog")
         self.assertIsNone(result["transaction_identifier"])
 
-    def test_bulk_probe_releases_probe_customer_after_unknown_product(self):
+    def test_bulk_probe_uses_anchor_checkout_when_unlock_ean_configured(self):
         known = self._create_product(barcode="8710000009021")
         unknown = self._create_product(barcode="8710000009022")
         self.instance.catalog_probe_unlock_ean = "8710000009021"
@@ -242,9 +242,11 @@ class TestBonuscardProductCatalogProbe(TransactionCase):
             },
             {
                 "error": False,
+                "transactionIdentifier": "TXUNLOCK2",
                 "messages": [
                     "No valid products found. The transaction has been cancelled."
                 ],
+                "checkoutItems": [{"ean": "8710000009021"}],
             },
         ]
 
@@ -252,7 +254,7 @@ class TestBonuscardProductCatalogProbe(TransactionCase):
             patch(
                 "odoo.addons.bonuscard_odoo.models.bonuscard_api_service.BonuscardApiService._validate_purchase",
                 side_effect=validate_payloads,
-            ),
+            ) as mock_validate,
             patch(
                 "odoo.addons.bonuscard_odoo.models.bonuscard_api_service.BonuscardApiService._cancel_purchase",
                 return_value={"error": False},
@@ -269,9 +271,18 @@ class TestBonuscardProductCatalogProbe(TransactionCase):
                 only_unscanned=False,
             )
 
-        mock_release.assert_any_call(self.instance, "8710000009021")
-        self.assertEqual(mock_release.call_count, 2)
-        mock_cancel.assert_called_once_with(self.instance, "TXUNLOCK1")
+        unknown_items = mock_validate.call_args_list[1].args[2]
+        self.assertEqual(
+            unknown_items,
+            [
+                {"ean": "8710000009021", "quantity": 1, "pricePerItem": 100.0},
+                {"ean": "8710000009022", "quantity": 1, "pricePerItem": 100.0},
+            ],
+        )
+        mock_release.assert_not_called()
+        self.assertEqual(mock_cancel.call_count, 2)
+        mock_cancel.assert_any_call(self.instance, "TXUNLOCK1")
+        mock_cancel.assert_any_call(self.instance, "TXUNLOCK2")
 
     def test_probe_unknown_product_does_not_cancel(self):
         product = self._create_product(barcode="8710000009002")

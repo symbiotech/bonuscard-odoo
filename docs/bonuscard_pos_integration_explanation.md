@@ -100,9 +100,12 @@ This document explains how the Bonuscard POS integration works in the `bonuscard
     responses without a transaction identifier leave the status `unchanged`, and a
     returned `transactionIdentifier` means `in_catalog`.
     Bulk probes cancel each open transaction before probing the next product so
-    the probe customer is not locked (Bonuscard API error code 2). After unknown
-    products (`not_in_catalog`), the connection can run a short unlock cycle using
-    `catalog_probe_unlock_ean` (a barcode known to exist in Bonuscard).
+    the probe customer is not locked (Bonuscard API error code 2). Configure
+    `catalog_probe_unlock_ean` with a barcode known to exist in Bonuscard: unknown
+    products are then probed in the same ValidatePurchase call as that anchor EAN,
+    which keeps a cancellable transaction open. Without an unlock EAN, a short
+    release cycle runs after unknown-product probes using the last in-catalog EAN
+    discovered in the batch.
   - Adds `bonuscard_catalog_probe_note` with the last probe message
   - Form editing on **Inventory > Products** (single-variant setups), **Product
     Variants**, and the POS **Edit Product** modal for Bonuscard users

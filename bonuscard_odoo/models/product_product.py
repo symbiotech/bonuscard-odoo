@@ -239,11 +239,11 @@ class ProductProduct(models.Model):
                     summary[status] += 1
                 else:
                     summary["unchanged"] += 1
-                if configured_unlock_ean:
-                    service._release_probe_customer_lock(
-                        instance, configured_unlock_ean
-                    )
-                elif status in ("not_in_catalog", "error") and unlock_ean:
+                if (
+                    not configured_unlock_ean
+                    and status in ("not_in_catalog", "error")
+                    and unlock_ean
+                ):
                     service._release_probe_customer_lock(instance, unlock_ean)
             except Exception:  # pylint: disable=broad-except
                 _logger.exception(
