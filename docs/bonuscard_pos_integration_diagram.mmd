@@ -80,8 +80,7 @@ flowchart LR
     V -->|not_set products batch| U
     W -->|selected products| U
     U -->|bulk or single probe| T
-    T -->|ValidatePurchase per product| L
-    L -->|anchor + probe EAN when unlock EAN configured| T
+    T -->|ValidatePurchase per product;\nanchor + probe EAN when unlock configured| L
     L -->|no transactionIdentifier +\n"No valid products…" → not in catalog| T
     L -->|no transactionIdentifier, other message → unchanged| T
     L -->|transactionIdentifier → in catalog| T

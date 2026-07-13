@@ -230,10 +230,8 @@ class ProductProduct(models.Model):
             try:
                 result = product._bonuscard_probe_catalog_status_single(instance)
                 status = result.get("status") or "unchanged"
-                if status == "in_catalog":
-                    unlock_ean = (
-                        unlock_ean or product.barcode or product.default_code or None
-                    )
+                if status == "in_catalog" and not configured_unlock_ean:
+                    unlock_ean = product.barcode or product.default_code or None
                 summary["processed"] += 1
                 if status in summary:
                     summary[status] += 1

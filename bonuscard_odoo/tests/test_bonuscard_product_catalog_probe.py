@@ -310,6 +310,63 @@ class TestBonuscardProductCatalogProbe(TransactionCase):
         self.assertEqual(summary["processed"], 2)
         self.assertIn("could not confirm", summary.get("message", "").lower())
 
+    def test_probe_batch_uses_last_in_catalog_ean_for_unlock(self):
+        products = [
+            self._create_product(barcode="8710000009040"),
+            self._create_product(barcode="8710000009041"),
+            self._create_product(barcode="8710000009042"),
+            self._create_product(barcode="8710000009043"),
+        ]
+        validate_payloads = [
+            {
+                "error": False,
+                "transactionIdentifier": "TXLAST1",
+                "messages": ["Product recognized."],
+            },
+            {
+                "error": False,
+                "messages": [
+                    "No valid products found. The transaction has been cancelled."
+                ],
+            },
+            {
+                "error": False,
+                "transactionIdentifier": "TXLAST2",
+                "messages": ["Product recognized."],
+            },
+            {
+                "error": False,
+                "messages": [
+                    "No valid products found. The transaction has been cancelled."
+                ],
+            },
+        ]
+
+        with (
+            patch(
+                "odoo.addons.bonuscard_odoo.models.bonuscard_api_service.BonuscardApiService._validate_purchase",
+                side_effect=validate_payloads,
+            ),
+            patch(
+                "odoo.addons.bonuscard_odoo.models.bonuscard_api_service.BonuscardApiService._cancel_purchase",
+                return_value={"error": False},
+            ),
+            patch(
+                "odoo.addons.bonuscard_odoo.models.bonuscard_api_service.BonuscardApiService._release_probe_customer_lock",
+                return_value=True,
+            ) as mock_release,
+        ):
+            self.env["product.product"].action_bulk_probe_catalog_status(
+                company_id=self.env.company.id,
+                instance_id=self.instance.id,
+                product_ids=[product.id for product in products],
+                only_unscanned=False,
+            )
+
+        self.assertEqual(mock_release.call_count, 2)
+        mock_release.assert_any_call(self.instance, "8710000009040")
+        mock_release.assert_any_call(self.instance, "8710000009042")
+
     def test_probe_not_in_catalog_clears_open_transaction_identifier(self):
         product = self._create_product(barcode="8710000009018")
         validate_payload = {
