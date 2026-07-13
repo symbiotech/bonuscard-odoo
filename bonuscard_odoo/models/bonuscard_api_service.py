@@ -761,6 +761,10 @@ class BonuscardApiService(models.AbstractModel):
                     transaction_identifier,
                 )
                 return self.env._("Bonuscard service is temporarily unavailable.")
+            if isinstance(exc, BonuscardApiError):
+                return self._get_bonuscard_error_message(
+                    exc, self.env._("Bonuscard cancel failed.")
+                )
             if isinstance(exc, UserError):
                 return getattr(exc, "name", None) or str(exc)
             _logger.exception(
@@ -854,7 +858,14 @@ class BonuscardApiService(models.AbstractModel):
             }
 
         catalog_status, note = self._classify_catalog_probe_response(payload)
-        transaction_id = payload.get("transactionIdentifier") or transaction_identifier
+        response_transaction_id = payload.get("transactionIdentifier")
+        if response_transaction_id:
+            transaction_id = response_transaction_id
+        elif catalog_status == "not_in_catalog":
+            # Bonuscard auto-cancelled the open transaction for unknown products.
+            transaction_id = None
+        else:
+            transaction_id = transaction_identifier
 
         if auto_cancel and transaction_id:
             cancel_note = self._cancel_catalog_probe_transaction(

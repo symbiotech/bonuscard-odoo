@@ -214,9 +214,7 @@ class ProductProduct(models.Model):
                         transaction_identifier=transaction_identifier,
                         auto_cancel=False,
                     )
-                    transaction_identifier = (
-                        result.get("transaction_identifier") or transaction_identifier
-                    )
+                    transaction_identifier = result.get("transaction_identifier")
                     status = result.get("status") or "unchanged"
                     summary["processed"] += 1
                     if status in summary:
