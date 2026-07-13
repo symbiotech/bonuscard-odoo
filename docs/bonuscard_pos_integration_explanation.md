@@ -99,8 +99,10 @@ This document explains how the Bonuscard POS integration works in the `bonuscard
     and a "No valid products found…" message (transaction auto-cancelled); other
     responses without a transaction identifier leave the status `unchanged`, and a
     returned `transactionIdentifier` means `in_catalog`.
-    Bulk probes reuse one `transactionIdentifier` across the batch and cancel once
-    at the end so the probe customer is not locked (Bonuscard API error code 2).
+    Bulk probes cancel each open transaction before probing the next product so
+    the probe customer is not locked (Bonuscard API error code 2). After unknown
+    products (`not_in_catalog`), the connection can run a short unlock cycle using
+    `catalog_probe_unlock_ean` (a barcode known to exist in Bonuscard).
   - Adds `bonuscard_catalog_probe_note` with the last probe message
   - Form editing on **Inventory > Products** (single-variant setups), **Product
     Variants**, and the POS **Edit Product** modal for Bonuscard users
@@ -110,7 +112,7 @@ This document explains how the Bonuscard POS integration works in the `bonuscard
 
 - `bonuscard.connector.instance` catalog probe settings (managers only)
   - `catalog_probe_customer_identifier`, `catalog_probe_price` (default 100),
-    `catalog_probe_batch_size`, and `catalog_probe_active`
+    `catalog_probe_batch_size`, `catalog_probe_unlock_ean`, and `catalog_probe_active`
   - Daily cron probes never-scanned products (`not_set` with barcode/article)
   - Manual **Run Catalog Probe** on the connection form uses the same scope as cron
 

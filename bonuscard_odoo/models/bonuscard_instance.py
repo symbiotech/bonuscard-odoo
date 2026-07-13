@@ -96,6 +96,14 @@ class BonuscardConnectorInstance(models.Model):
         groups="bonuscard_odoo.bonuscard_odoo_group_manager",
         help="Maximum number of never-scanned products processed per cron run.",
     )
+    catalog_probe_unlock_ean = fields.Char(
+        string="Catalog Probe Unlock EAN",
+        copy=False,
+        groups="bonuscard_odoo.bonuscard_odoo_group_manager",
+        help="Barcode or article number of a product known to exist in the Bonuscard "
+        "catalog. After probing unknown products, a short ValidatePurchase + "
+        "CancelPurchase cycle with this EAN releases the dedicated probe customer.",
+    )
 
     connection_status = fields.Selection(
         selection=[

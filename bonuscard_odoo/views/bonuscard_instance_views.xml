@@ -66,6 +66,7 @@
                         <group>
                             <field name="catalog_probe_price"/>
                             <field name="catalog_probe_batch_size"/>
+                            <field name="catalog_probe_unlock_ean"/>
                         </group>
                     </group>
                     <group string="Diagnostics">

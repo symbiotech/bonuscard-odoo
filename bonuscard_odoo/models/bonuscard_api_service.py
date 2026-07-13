@@ -774,6 +774,44 @@ class BonuscardApiService(models.AbstractModel):
             return self.env._("Bonuscard cancel failed.")
         return None
 
+    def _release_probe_customer_lock(self, instance, unlock_ean):
+        """Release a locked probe customer via a known-catalog ValidatePurchase."""
+        instance.ensure_one()
+        unlock_ean = (unlock_ean or "").strip()
+        customer_identifier = (instance.catalog_probe_customer_identifier or "").strip()
+        if not unlock_ean or not customer_identifier:
+            return False
+
+        probe_price = float(instance.catalog_probe_price or 100.0)
+        checkout_items = [
+            {
+                "ean": unlock_ean,
+                "quantity": 1,
+                "pricePerItem": probe_price,
+            }
+        ]
+        try:
+            payload = self._validate_purchase(
+                instance,
+                customer_identifier,
+                checkout_items,
+            )
+        except BonuscardApiError as exc:
+            if exc.error_code == 2:
+                _logger.warning(
+                    "Bonuscard catalog probe unlock skipped: probe customer still locked."
+                )
+                return False
+            raise
+        except (BonuscardHttpError, UserError):
+            return False
+
+        transaction_id = payload.get("transactionIdentifier")
+        if not transaction_id:
+            return not payload.get("error")
+
+        return self._cancel_catalog_probe_transaction(instance, transaction_id) is None
+
     def probe_product_catalog_status(
         self,
         instance,
@@ -784,11 +822,10 @@ class BonuscardApiService(models.AbstractModel):
     ):
         """Probe whether a product exists in Bonuscard via ValidatePurchase.
 
-        Bulk probes should pass ``transaction_identifier`` from the previous call
-        and set ``auto_cancel=False``, then cancel once after the batch. Bonuscard
-        locks a customer to one transaction until CancelPurchase is called; error
-        code 2 is returned when a second transaction is started without reusing
-        the identifier.
+        Bulk probes call this once per product with the default ``auto_cancel=True``
+        so each open transaction is cancelled before the next product is probed.
+        Bonuscard locks a probe customer to one transaction at a time; error code 2
+        is returned when a new transaction is started while another is still open.
 
         Returns a dict with keys ``status`` (``in_catalog``, ``not_in_catalog``,
         ``unchanged``, ``skipped``, or ``error``), ``note``, and

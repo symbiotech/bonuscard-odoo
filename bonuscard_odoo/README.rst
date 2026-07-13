@@ -207,7 +207,9 @@ Configure ``BONUSCARD_TEST_*`` values in a local ``.env`` file (see
 ``.env.example``). The non-Bonuscard customer-lock test requires
 ``BONUSCARD_TEST_CONSUMER`` and ``BONUSCARD_TEST_BONUSCARD_EAN`` (a product on
 the Bonuscard API). Optionally set ``BONUSCARD_TEST_NON_BONUSCARD_EAN`` to also
-exercise a barcoded product that the Bonuscard API rejects.
+exercise a barcoded product that the Bonuscard API rejects. Catalog probe batch
+tests also use ``BONUSCARD_TEST_PROBE_CUSTOMER`` when set (otherwise
+``BONUSCARD_TEST_CONSUMER``).
 
 Run only the manual integration suite with::
 

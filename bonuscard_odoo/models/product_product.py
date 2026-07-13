@@ -222,45 +222,35 @@ class ProductProduct(models.Model):
         else:
             products = self.search(domain, limit=batch_size, order="id asc")
 
-        transaction_identifier = None
-        try:
-            for product in products:
-                try:
-                    result = product._bonuscard_probe_catalog_status_single(
-                        instance,
-                        transaction_identifier=transaction_identifier,
-                        auto_cancel=False,
+        configured_unlock_ean = (
+            instance.catalog_probe_unlock_ean or ""
+        ).strip() or None
+        unlock_ean = configured_unlock_ean
+        for product in products:
+            try:
+                result = product._bonuscard_probe_catalog_status_single(instance)
+                status = result.get("status") or "unchanged"
+                if status == "in_catalog":
+                    unlock_ean = (
+                        unlock_ean or product.barcode or product.default_code or None
                     )
-                    transaction_identifier = result.get("transaction_identifier")
-                    status = result.get("status") or "unchanged"
-                    summary["processed"] += 1
-                    if status in summary:
-                        summary[status] += 1
-                    else:
-                        summary["unchanged"] += 1
-                except Exception:  # pylint: disable=broad-except
-                    _logger.exception(
-                        "Bonuscard catalog probe failed for product %s", product.id
+                summary["processed"] += 1
+                if status in summary:
+                    summary[status] += 1
+                else:
+                    summary["unchanged"] += 1
+                if configured_unlock_ean:
+                    service._release_probe_customer_lock(
+                        instance, configured_unlock_ean
                     )
-                    summary["processed"] += 1
-                    summary["error"] += 1
-        finally:
-            if transaction_identifier:
-                cancel_note = service._cancel_catalog_probe_transaction(
-                    instance, transaction_identifier
+                elif status in ("not_in_catalog", "error") and unlock_ean:
+                    service._release_probe_customer_lock(instance, unlock_ean)
+            except Exception:  # pylint: disable=broad-except
+                _logger.exception(
+                    "Bonuscard catalog probe failed for product %s", product.id
                 )
-                if cancel_note:
-                    _logger.warning(
-                        "Bonuscard catalog probe batch could not cancel transaction %s: %s",
-                        transaction_identifier,
-                        cancel_note,
-                    )
-                    summary["error"] += 1
-                    summary["message"] = self.env._(
-                        "Could not cancel the open Bonuscard catalog probe "
-                        "transaction: %s",
-                        cancel_note,
-                    )
+                summary["processed"] += 1
+                summary["error"] += 1
 
         return summary
 

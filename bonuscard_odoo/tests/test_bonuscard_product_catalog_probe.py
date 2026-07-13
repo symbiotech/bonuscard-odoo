@@ -107,7 +107,7 @@ class TestBonuscardProductCatalogProbe(TransactionCase):
         self.assertIsNone(mock_validate.call_args.kwargs.get("transaction_identifier"))
         mock_cancel.assert_called_once_with(self.instance, "TXPROBE1")
 
-    def test_probe_batch_reuses_transaction_identifier(self):
+    def test_probe_batch_cancels_each_open_transaction(self):
         products = [
             self._create_product(barcode="8710000009014"),
             self._create_product(barcode="8710000009015"),
@@ -120,7 +120,7 @@ class TestBonuscardProductCatalogProbe(TransactionCase):
             },
             {
                 "error": False,
-                "transactionIdentifier": "TXBATCH1",
+                "transactionIdentifier": "TXBATCH2",
                 "messages": ["Product recognized."],
             },
         ]
@@ -150,11 +150,12 @@ class TestBonuscardProductCatalogProbe(TransactionCase):
         self.assertIsNone(
             mock_validate.call_args_list[0].kwargs.get("transaction_identifier")
         )
-        self.assertEqual(
-            mock_validate.call_args_list[1].kwargs.get("transaction_identifier"),
-            "TXBATCH1",
+        self.assertIsNone(
+            mock_validate.call_args_list[1].kwargs.get("transaction_identifier")
         )
-        mock_cancel.assert_called_once_with(self.instance, "TXBATCH1")
+        self.assertEqual(mock_cancel.call_count, 2)
+        mock_cancel.assert_any_call(self.instance, "TXBATCH1")
+        mock_cancel.assert_any_call(self.instance, "TXBATCH2")
 
     def test_probe_batch_skips_cancel_when_bonuscard_cancels_transaction(self):
         products = [
@@ -184,6 +185,10 @@ class TestBonuscardProductCatalogProbe(TransactionCase):
                 "odoo.addons.bonuscard_odoo.models.bonuscard_api_service.BonuscardApiService._cancel_purchase",
                 return_value={"error": False},
             ) as mock_cancel,
+            patch(
+                "odoo.addons.bonuscard_odoo.models.bonuscard_api_service.BonuscardApiService._release_probe_customer_lock",
+                return_value=True,
+            ) as mock_release,
         ):
             summary = self.env["product.product"].action_bulk_probe_catalog_status(
                 company_id=self.env.company.id,
@@ -196,11 +201,11 @@ class TestBonuscardProductCatalogProbe(TransactionCase):
         self.assertEqual(summary["in_catalog"], 1)
         self.assertEqual(summary["not_in_catalog"], 1)
         self.assertEqual(mock_validate.call_count, 2)
-        self.assertEqual(
-            mock_validate.call_args_list[1].kwargs.get("transaction_identifier"),
-            "TXBATCH2",
+        self.assertIsNone(
+            mock_validate.call_args_list[1].kwargs.get("transaction_identifier")
         )
-        mock_cancel.assert_not_called()
+        mock_cancel.assert_called_once_with(self.instance, "TXBATCH2")
+        mock_release.assert_called_once_with(self.instance, "8710000009016")
 
     def test_probe_not_in_catalog_clears_open_transaction_identifier(self):
         product = self._create_product(barcode="8710000009018")
@@ -224,6 +229,49 @@ class TestBonuscardProductCatalogProbe(TransactionCase):
 
         self.assertEqual(result["status"], "not_in_catalog")
         self.assertIsNone(result["transaction_identifier"])
+
+    def test_bulk_probe_releases_probe_customer_after_unknown_product(self):
+        known = self._create_product(barcode="8710000009021")
+        unknown = self._create_product(barcode="8710000009022")
+        self.instance.catalog_probe_unlock_ean = "8710000009021"
+        validate_payloads = [
+            {
+                "error": False,
+                "transactionIdentifier": "TXUNLOCK1",
+                "messages": ["Product recognized."],
+            },
+            {
+                "error": False,
+                "messages": [
+                    "No valid products found. The transaction has been cancelled."
+                ],
+            },
+        ]
+
+        with (
+            patch(
+                "odoo.addons.bonuscard_odoo.models.bonuscard_api_service.BonuscardApiService._validate_purchase",
+                side_effect=validate_payloads,
+            ),
+            patch(
+                "odoo.addons.bonuscard_odoo.models.bonuscard_api_service.BonuscardApiService._cancel_purchase",
+                return_value={"error": False},
+            ) as mock_cancel,
+            patch(
+                "odoo.addons.bonuscard_odoo.models.bonuscard_api_service.BonuscardApiService._release_probe_customer_lock",
+                return_value=True,
+            ) as mock_release,
+        ):
+            self.env["product.product"].action_bulk_probe_catalog_status(
+                company_id=self.env.company.id,
+                instance_id=self.instance.id,
+                product_ids=[known.id, unknown.id],
+                only_unscanned=False,
+            )
+
+        mock_release.assert_any_call(self.instance, "8710000009021")
+        self.assertEqual(mock_release.call_count, 2)
+        mock_cancel.assert_called_once_with(self.instance, "TXUNLOCK1")
 
     def test_probe_unknown_product_does_not_cancel(self):
         product = self._create_product(barcode="8710000009002")
@@ -286,9 +334,9 @@ class TestBonuscardProductCatalogProbe(TransactionCase):
                 return_value=validate_payload,
             ),
             patch(
-                "odoo.addons.bonuscard_odoo.models.bonuscard_api_service.BonuscardApiService._cancel_catalog_probe_transaction",
-                return_value="Cancel failed.",
-            ),
+                "odoo.addons.bonuscard_odoo.models.bonuscard_api_service.BonuscardApiService._cancel_purchase",
+                side_effect=UserError("Cancel failed."),
+            ) as mock_cancel,
         ):
             summary = self.env["product.product"].action_bulk_probe_catalog_status(
                 company_id=self.env.company.id,
@@ -298,10 +346,9 @@ class TestBonuscardProductCatalogProbe(TransactionCase):
             )
 
         self.assertEqual(summary["processed"], 1)
-        self.assertEqual(summary["in_catalog"], 1)
         self.assertEqual(summary["error"], 1)
-        self.assertIn("Could not cancel", summary["message"])
-        self.assertIn("Cancel failed", summary["message"])
+        self.assertIn("Cancel failed", product.bonuscard_catalog_probe_note)
+        mock_cancel.assert_called_once_with(self.instance, "TXBATCH3")
 
     def test_cancel_catalog_probe_transaction_maps_bonuscard_api_error(self):
         with patch(
@@ -362,12 +409,7 @@ class TestBonuscardProductCatalogProbe(TransactionCase):
             )
 
         self.assertEqual(summary["processed"], 1)
-        mock_probe.assert_called_once_with(
-            unscanned,
-            self.instance,
-            transaction_identifier=None,
-            auto_cancel=False,
-        )
+        mock_probe.assert_called_once_with(unscanned, self.instance)
 
     def test_manual_probe_processes_selected_products(self):
         product = self._create_product(
@@ -386,12 +428,7 @@ class TestBonuscardProductCatalogProbe(TransactionCase):
                 only_unscanned=False,
             )
 
-        mock_probe.assert_called_once_with(
-            product,
-            self.instance,
-            transaction_identifier=None,
-            auto_cancel=False,
-        )
+        mock_probe.assert_called_once_with(product, self.instance)
 
     def test_probe_requires_manager_group(self):
         product = self._create_product(barcode="8710000009013")

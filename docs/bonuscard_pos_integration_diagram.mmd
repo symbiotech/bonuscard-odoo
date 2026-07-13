@@ -80,11 +80,10 @@ flowchart LR
     V -->|not_set products batch| U
     W -->|selected products| U
     U -->|bulk or single probe| T
-    T -->|ValidatePurchase\n(reuse transactionIdentifier in batch)| L
+    T -->|ValidatePurchase per product| L
     L -->|no transactionIdentifier +\n"No valid products…" → not in catalog| T
     L -->|no transactionIdentifier, other message → unchanged| T
     L -->|transactionIdentifier → in catalog| T
-    U -->|bulk: cancel once after batch| I
-    T -->|single product: auto-cancel open transaction| I
+    T -->|auto-cancel open transaction before next product| I
     I -->|transactionIdentifier| N
     J -->|probe customer + credentials| T
