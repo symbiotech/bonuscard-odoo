@@ -239,6 +239,18 @@ class ProductProduct(models.Model):
                     summary[status] += 1
                 else:
                     summary["unchanged"] += 1
+                open_transaction_id = result.get("transaction_identifier")
+                if open_transaction_id:
+                    cancel_note = service._cancel_catalog_probe_transaction(
+                        instance, open_transaction_id
+                    )
+                    if cancel_note:
+                        summary["message"] = self.env._(
+                            "Could not cancel the open Bonuscard catalog probe "
+                            "transaction: %s",
+                            cancel_note,
+                        )
+                        break
                 if (
                     not configured_unlock_ean
                     and status in ("not_in_catalog", "error")

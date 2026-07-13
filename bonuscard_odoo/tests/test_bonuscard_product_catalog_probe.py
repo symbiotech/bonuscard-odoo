@@ -418,7 +418,55 @@ class TestBonuscardProductCatalogProbe(TransactionCase):
         self.assertEqual(summary["processed"], 1)
         self.assertEqual(summary["error"], 1)
         self.assertIn("Cancel failed", product.bonuscard_catalog_probe_note)
-        mock_cancel.assert_called_once_with(self.instance, "TXBATCH3")
+        self.assertIn("Cancel failed", summary.get("message", ""))
+        self.assertEqual(mock_cancel.call_count, 2)
+        mock_cancel.assert_any_call(self.instance, "TXBATCH3")
+
+    def test_bulk_probe_retries_cancel_and_continues_batch(self):
+        products = [
+            self._create_product(barcode="8710000009023"),
+            self._create_product(barcode="8710000009024"),
+        ]
+        validate_payloads = [
+            {
+                "error": False,
+                "transactionIdentifier": "TXRETRY1",
+                "messages": ["Product recognized."],
+            },
+            {
+                "error": False,
+                "transactionIdentifier": "TXRETRY2",
+                "messages": ["Product recognized."],
+            },
+        ]
+
+        with (
+            patch(
+                "odoo.addons.bonuscard_odoo.models.bonuscard_api_service.BonuscardApiService._validate_purchase",
+                side_effect=validate_payloads,
+            ),
+            patch(
+                "odoo.addons.bonuscard_odoo.models.bonuscard_api_service.BonuscardApiService._cancel_purchase",
+                side_effect=[
+                    UserError("Cancel failed."),
+                    {"error": False},
+                    {"error": False},
+                ],
+            ) as mock_cancel,
+        ):
+            summary = self.env["product.product"].action_bulk_probe_catalog_status(
+                company_id=self.env.company.id,
+                instance_id=self.instance.id,
+                product_ids=[product.id for product in products],
+                only_unscanned=False,
+            )
+
+        self.assertEqual(summary["processed"], 2)
+        self.assertEqual(summary["error"], 1)
+        self.assertEqual(summary["in_catalog"], 1)
+        self.assertFalse(summary.get("message"))
+        self.assertEqual(mock_cancel.call_count, 3)
+        mock_cancel.assert_any_call(self.instance, "TXRETRY1")
 
     def test_cancel_catalog_probe_transaction_maps_bonuscard_api_error(self):
         with patch(

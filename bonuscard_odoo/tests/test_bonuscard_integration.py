@@ -66,9 +66,15 @@ class TestBonuscardIntegration(TransactionCase):
             )
 
     def tearDown(self):
-        super().tearDown()
         if getattr(self, "_bonuscard_touches_shared_customer", False):
-            self._release_shared_customer_lock()
+            try:
+                self._release_shared_customer_lock()
+            except Exception:  # pylint: disable=broad-except
+                _logger.exception(
+                    "Bonuscard shared customer unlock failed during tearDown for %s",
+                    self._testMethodName,
+                )
+        super().tearDown()
 
     def _mark_shared_customer_test(self):
         """Mark that this test may lock the shared sandbox consumer."""
