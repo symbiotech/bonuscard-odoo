@@ -57,6 +57,9 @@ Configuration and functional usage are documented in
 | ValidatePurchase / FinalizePurchase / CancelPurchase in POS | Done |
 | Automatic discount application in POS | Done |
 | RegisterCustomer (partner form and POS) | Done |
+| Product catalog gating and manager catalog probe | Done |
+| Bulk partner prefetch (cron + manual) | Done |
+| Bonuscard audit fields on POS orders | Done |
 | ActivateDiscountCode | Planned |
 | Sales report import | Planned |
 

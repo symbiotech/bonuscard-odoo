@@ -17,6 +17,8 @@ flowchart LR
         H[bonuscard.api.service.finalize_purchase_for_pos]
         I[bonuscard.api.service.cancel_purchase_for_pos]
         J[bonuscard.connector.instance\nBonuscard API credentials]
+        T[bonuscard.api.service.probe_product_catalog_status]
+        U[product.product / product.template\ncatalog probe actions]
     end
 
     subgraph Bonuscard API
@@ -25,6 +27,11 @@ flowchart LR
         L[ValidatePurchase]
         M[FinalizePurchase]
         N[CancelPurchase]
+    end
+
+    subgraph Catalog Probe
+        V[Daily cron / Run Catalog Probe]
+        W[Check Bonuscard Catalog\nproduct list/form action]
     end
 
     A -->|setPartnerToCurrentOrder| F
@@ -69,3 +76,11 @@ flowchart LR
     J -->|used by validate/finalize/cancel| G
     J -->|used by validate/finalize/cancel| H
     J -->|used by validate/finalize/cancel| I
+
+    V -->|not_set products with barcode/article| T
+    W -->|selected products| U
+    U --> T
+    T -->|probe checkoutItems| L
+    L -->|no transactionIdentifier → not in catalog| T
+    L -->|recognized product → CancelPurchase| I
+    J -->|probe customer + credentials| T
