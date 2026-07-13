@@ -185,7 +185,7 @@ class ProductProduct(models.Model):
             if only_unscanned
             else [("active", "=", True)]
         )
-        if product_ids:
+        if product_ids is not None:
             domain = [("id", "in", product_ids)] + domain
 
         batch_size = int(instance.catalog_probe_batch_size or 50)
