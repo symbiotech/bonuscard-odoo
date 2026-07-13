@@ -1,6 +1,7 @@
 /** @odoo-module */
 
 import { test, expect } from "@odoo/hoot";
+import { serializeDateTime } from "@web/core/l10n/dates";
 import { setupPosEnv, getFilledOrder } from "@point_of_sale/../tests/unit/utils";
 import { definePosModels } from "@point_of_sale/../tests/unit/data/generate_model_definitions";
 import { patchTranslations, patchWithCleanup } from "@web/../tests/web_test_helpers";
@@ -1820,6 +1821,65 @@ test("closePos retries cancel once before clearing transaction state", async () 
     expect(order.bonuscard_partner_id).toBe(false);
 });
 
+test("onClickBackButton clears Bonuscard transaction state after cancelling on PaymentScreen", async () => {
+    const store = await setupPosEnv();
+    const order = store.addNewOrder();
+
+    const partner = store.models["res.partner"].create({
+        name: "Bonuscard Customer",
+    });
+    partner.bonuscard_recruitment_code = "ABC123";
+    partner.bonuscard_status = "linked";
+    order.setPartner(partner);
+    order.bonuscard_transaction_id = "TXN-BACK";
+    order.bonuscard_checkout_items = [{ ean: "TEST-123", quantity: 1, pricePerItem: 10 }];
+    order.bonuscard_partner_id = partner.id;
+    order.bonuscard_state = "validated";
+    order.bonuscard_transaction_identifier = "TXN-BACK";
+    order.bonuscard_needs_validation = false;
+
+    let cancelledId = null;
+    patchBonuscardCancelCall(store, (model, method, args) => {
+        if (model === "bonuscard.api.service" && method === "cancel_purchase_for_pos") {
+            cancelledId = args[0];
+            return { error: false, messages: [] };
+        }
+    });
+
+    patchWithCleanup(store.router.state, { current: "PaymentScreen" });
+
+    await store.onClickBackButton();
+
+    expect(cancelledId).toBe("TXN-BACK");
+    expect(order.bonuscard_transaction_id).toBe(null);
+    expect(order.bonuscard_checkout_items).toBe(null);
+    expect(order.bonuscard_partner_id).toBe(false);
+    expect(order.bonuscard_needs_validation).toBe(true);
+    expect(order.bonuscard_state).toBe(false);
+    expect(order.bonuscard_transaction_identifier).toBe(false);
+});
+
+test("onClickBackButton does not cancel when not on PaymentScreen", async () => {
+    const store = await setupPosEnv();
+    const order = store.addNewOrder();
+    order.bonuscard_transaction_id = "TXN-NO-CANCEL";
+
+    let cancelCalled = false;
+    patchBonuscardCancelCall(store, (model, method) => {
+        if (model === "bonuscard.api.service" && method === "cancel_purchase_for_pos") {
+            cancelCalled = true;
+            return { error: false, messages: [] };
+        }
+    });
+
+    patchWithCleanup(store.router.state, { current: "ProductScreen" });
+
+    await store.onClickBackButton();
+
+    expect(cancelCalled).toBe(false);
+    expect(order.bonuscard_transaction_id).toBe("TXN-NO-CANCEL");
+});
+
 test("afterOrderValidation clears Bonuscard transaction state on successful finalize", async () => {
     const store = await setupPosEnv();
     const order = store.addNewOrder();
@@ -1930,6 +1990,61 @@ test("afterOrderValidation keeps transaction state when finalize fails after ret
     );
     expect(notifications[0].options.type).toBe("warning");
     expect(notifications[0].options.sticky).toBe(true);
+});
+
+test("afterOrderValidation records failed audit state when finalize fails but cancel fallback succeeds", async () => {
+    const store = await setupPosEnv();
+    const order = store.addNewOrder();
+    order.bonuscard_partner_id = 42;
+    order.bonuscard_transaction_id = "TXN-FINALIZE-RELEASE";
+    order.bonuscard_checkout_items = [{ ean: "TEST-555", quantity: 1, pricePerItem: 10 }];
+    order.bonuscard_state = "validated";
+    order.bonuscard_transaction_identifier = "TXN-FINALIZE-RELEASE";
+    order.bonuscard_validated_at = serializeDateTime(
+        luxon.DateTime.fromObject({ year: 2026, month: 7, day: 13, hour: 12 })
+    );
+    const validatedAtSnapshot = order.bonuscard_validated_at;
+
+    const notifications = [];
+    patchWithCleanup(store.notification, {
+        add: (message, options) => notifications.push({ message, options }),
+    });
+
+    let finalizeCallCount = 0;
+    const originalCall = store.data.call.bind(store.data);
+    patchWithCleanup(store.data, {
+        call: async function (model, method, args) {
+            if (model === "bonuscard.api.service" && method === "finalize_purchase_for_pos") {
+                finalizeCallCount++;
+                return {
+                    error: true,
+                    messages: ["Bonuscard service is temporarily unavailable."],
+                };
+            }
+            if (model === "bonuscard.api.service" && method === "cancel_purchase_for_pos") {
+                return { error: false, messages: [] };
+            }
+            return originalCall(...arguments);
+        },
+    });
+
+    stubAfterOrderValidationSideEffects(store);
+    const validation = createPaymentValidation(store, order);
+    const finalizePromise = validation.afterOrderValidation();
+    await runAllTimers();
+    await finalizePromise;
+
+    expect(finalizeCallCount).toBe(2);
+    expect(order.bonuscard_transaction_id).toBe(null);
+    expect(order.bonuscard_checkout_items).toBe(null);
+    expect(order.bonuscard_state).toBe("failed");
+    expect(order.bonuscard_transaction_identifier).toBe("TXN-FINALIZE-RELEASE");
+    expect(order.bonuscard_validated_at).not.toBe(false);
+    expect(order.bonuscard_validated_at.toISO()).toBe(validatedAtSnapshot.toISO());
+    expect(order.bonuscard_last_error_message).toBe(
+        "Bonuscard service is temporarily unavailable."
+    );
+    expect(notifications.length).toBe(0);
 });
 
 test("afterOrderValidation shows payment-succeeded warning without API detail when finalize returns no message", async () => {
