@@ -253,6 +253,21 @@ class ProductProduct(models.Model):
                                 cancel_note_retry,
                             )
                             break
+                        product.write(
+                            {
+                                "bonuscard_catalog_probe_note": self.env._(
+                                    "Open catalog probe transaction cancelled on retry."
+                                )
+                            }
+                        )
+                    else:
+                        product.write(
+                            {
+                                "bonuscard_catalog_probe_note": self.env._(
+                                    "Open catalog probe transaction cancelled."
+                                )
+                            }
+                        )
                 if (
                     not configured_unlock_ean
                     and status in ("not_in_catalog", "error")
