@@ -896,8 +896,12 @@ class BonuscardApiService(models.AbstractModel):
 
         transaction_id = payload.get("transactionIdentifier")
         if not transaction_id:
-            return not payload.get("error")
-
+            _logger.warning(
+                "Bonuscard catalog probe unlock returned no transaction identifier for probe customer %s (EAN %s).",
+                customer_identifier,
+                unlock_ean,
+            )
+            return False
         return self._cancel_catalog_probe_transaction(instance, transaction_id) is None
 
     def probe_product_catalog_status(
