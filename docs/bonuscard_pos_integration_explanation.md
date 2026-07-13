@@ -142,4 +142,6 @@ status on the resulting `pos.order`:
 
 The POS frontend includes these keys in `PosOrder.serializeForORM()`, and
 `pos.order._process_order` maps them onto the backend record when the order is
-synced.
+synced. Runtime Bonuscard transaction fields on the POS order are still cleared
+after finalize/cancel, but the persisted audit fields remain on `pos.order` for
+reporting.

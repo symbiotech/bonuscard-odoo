@@ -24,7 +24,17 @@ class TestBonuscardPosOrder(TransactionCase):
             vals["bonuscard_finalized_at"].strftime("%Y-%m-%d %H:%M:%S"),
             validated_at,
         )
-        self.assertNotIn("bonuscard_last_error_message", vals)
+        self.assertFalse(vals["bonuscard_last_error_message"])
+
+    def test_bonuscard_audit_fields_from_ui_clears_with_false(self):
+        vals = self.env["pos.order"]._bonuscard_audit_fields_from_ui(
+            {
+                "bonuscard_last_error_message": False,
+                "bonuscard_validated_at": False,
+            }
+        )
+        self.assertFalse(vals["bonuscard_last_error_message"])
+        self.assertFalse(vals["bonuscard_validated_at"])
 
     def test_bonuscard_audit_fields_from_ui_ignores_empty_values(self):
         vals = self.env["pos.order"]._bonuscard_audit_fields_from_ui(

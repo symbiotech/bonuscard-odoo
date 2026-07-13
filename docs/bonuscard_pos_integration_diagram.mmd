@@ -51,17 +51,17 @@ flowchart LR
     C -->|afterOrderValidation| H
     H -->|transactionIdentifier + checkoutItems| M
     M -->|commit purchase| H
-    H -->|finalize success: clear bonuscard state| C
+    H -->|finalize success: persist audit on pos.order| C
     H -->|finalize failed after retry: cancel fallback| I
     H -->|finalize and cancel fallback failed: sticky warning| C
     C -->|no checkoutItems: cancel pending transaction| I
-    I -->|release success: clear bonuscard state| C
+    I -->|release success: persist audit on pos.order| C
     I -->|release failed after payment: sticky warning| C
 
     E -->|cancel pending transaction| I
     I -->|transactionIdentifier| N
     N -->|cancel purchase| I
-    I -->|clear order bonuscard state| E
+    I -->|persist audit on pos.order| E
 
     J -->|used by search/status sync| F
     J -->|used by bulk prefetch| Q

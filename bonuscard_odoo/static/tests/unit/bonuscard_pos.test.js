@@ -2708,4 +2708,5 @@ test("validation sets failed audit state when Bonuscard returns an error respons
 
     expect(order.bonuscard_state).toBe("failed");
     expect(order.bonuscard_last_error_message).toBe("Bonuscard rejected the cart.");
+    expect(order.bonuscard_transaction_identifier).not.toBe(false);
 });

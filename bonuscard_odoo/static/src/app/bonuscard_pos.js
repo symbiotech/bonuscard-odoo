@@ -37,6 +37,40 @@ patch(PosStore.prototype, {
         return Array.isArray(items) && items.length > 0;
     },
 
+    _setBonuscardAuditFields(
+        order,
+        { state, transactionIdentifier, validatedAt, finalizedAt, lastErrorMessage } = {}
+    ) {
+        if (!order) {
+            return;
+        }
+        if (state !== undefined) {
+            order.bonuscard_state = state;
+        }
+        if (transactionIdentifier !== undefined) {
+            order.bonuscard_transaction_identifier = transactionIdentifier;
+        }
+        if (validatedAt !== undefined) {
+            order.bonuscard_validated_at = validatedAt;
+        }
+        if (finalizedAt !== undefined) {
+            order.bonuscard_finalized_at = finalizedAt;
+        }
+        if (lastErrorMessage !== undefined) {
+            order.bonuscard_last_error_message = lastErrorMessage;
+        }
+    },
+
+    _clearBonuscardAuditFields(order) {
+        this._setBonuscardAuditFields(order, {
+            state: false,
+            transactionIdentifier: false,
+            validatedAt: false,
+            finalizedAt: false,
+            lastErrorMessage: false,
+        });
+    },
+
     async _cancelBonuscardPurchaseForOrder(order, { retries = 0, logMethod = "cancel" } = {}) {
         const transactionId = this._bonuscardPendingTransactionId(order);
         if (!transactionId) {
@@ -133,12 +167,7 @@ patch(PosStore.prototype, {
         order.bonuscard_needs_validation = true;
         order.clearBonuscardDiscounts?.();
 
-        // Persisted backend audit fields (pos.order): reset when purchase context resets.
-        order.bonuscard_state = null;
-        order.bonuscard_transaction_identifier = null;
-        order.bonuscard_validated_at = null;
-        order.bonuscard_finalized_at = null;
-        order.bonuscard_last_error_message = null;
+        this._clearBonuscardAuditFields(order);
     },
 
     _isBonuscardCustomerLockError(result) {
@@ -425,7 +454,13 @@ patch(PosStore.prototype, {
         }
         const partner = order.getPartner();
         if (!partner?.bonuscard_recruitment_code) {
-            order.bonuscard_state = "not_applicable";
+            this._setBonuscardAuditFields(order, {
+                state: "not_applicable",
+                transactionIdentifier: false,
+                validatedAt: false,
+                finalizedAt: false,
+                lastErrorMessage: false,
+            });
             return false;
         }
 
@@ -442,8 +477,8 @@ patch(PosStore.prototype, {
         order.bonuscard_checkout_items = null;
 
         if (orderLines.length === 0) {
-            order.bonuscard_state = "skipped";
-            if (this._bonuscardPendingTransactionId(order)) {
+            const pendingTx = this._bonuscardPendingTransactionId(order);
+            if (pendingTx) {
                 await this._releaseBonuscardTransactionIfPending(order, {
                     logMethod: "_validateBonuscardPurchaseForOrder",
                     failureMessage: _t(
@@ -451,6 +486,13 @@ patch(PosStore.prototype, {
                     ),
                 });
             }
+            this._setBonuscardAuditFields(order, {
+                state: "skipped",
+                transactionIdentifier: pendingTx || false,
+                validatedAt: false,
+                finalizedAt: false,
+                lastErrorMessage: false,
+            });
             return false;
         }
 
@@ -495,10 +537,13 @@ patch(PosStore.prototype, {
                         : orderLines;
                 order.bonuscard_partner_id = partner.id;
                 order.bonuscard_needs_validation = false;
-                order.bonuscard_state = "validated";
-                order.bonuscard_transaction_identifier = order.bonuscard_transaction_id;
-                order.bonuscard_validated_at = serializeDateTime(luxon.DateTime.now());
-                order.bonuscard_last_error_message = null;
+                this._setBonuscardAuditFields(order, {
+                    state: "validated",
+                    transactionIdentifier: order.bonuscard_transaction_id,
+                    validatedAt: serializeDateTime(luxon.DateTime.now()),
+                    finalizedAt: false,
+                    lastErrorMessage: false,
+                });
 
                 if (result.totalDiscount > 0) {
                     order._bonuscardApplying = true;
@@ -560,8 +605,12 @@ patch(PosStore.prototype, {
                 }
             }
             const msg = result.messages?.[0] || _t("Bonuscard validation failed.");
-            order.bonuscard_state = "failed";
-            order.bonuscard_last_error_message = msg;
+            this._setBonuscardAuditFields(order, {
+                state: "failed",
+                transactionIdentifier:
+                    order.bonuscard_transaction_identifier || transactionIdentifier || false,
+                lastErrorMessage: msg,
+            });
             logPosMessage(
                 "Bonuscard",
                 "_validateBonuscardPurchaseForOrder",
@@ -579,8 +628,12 @@ patch(PosStore.prototype, {
                 [{ partnerId: partner?.id, transactionId: transactionIdentifier, error }]
             );
             this.notification.add(_t("Bonuscard validation failed."), { type: "warning" });
-            order.bonuscard_state = "failed";
-            order.bonuscard_last_error_message = _t("Bonuscard validation failed.");
+            this._setBonuscardAuditFields(order, {
+                state: "failed",
+                transactionIdentifier:
+                    order.bonuscard_transaction_identifier || transactionIdentifier || false,
+                lastErrorMessage: _t("Bonuscard validation failed."),
+            });
         }
         return false;
     },
@@ -753,7 +806,13 @@ patch(PosStore.prototype, {
         if (partner?.bonuscard_recruitment_code) {
             await this._validateBonuscardPurchaseForOrder(order, { notifyOnDiscount: true });
         } else if (order) {
-            order.bonuscard_state = "not_applicable";
+            this._setBonuscardAuditFields(order, {
+                state: "not_applicable",
+                transactionIdentifier: false,
+                validatedAt: false,
+                finalizedAt: false,
+                lastErrorMessage: false,
+            });
         }
 
         return super.pay(...arguments);
@@ -1076,8 +1135,14 @@ patch(OrderPaymentValidation.prototype, {
         const order = this.order;
 
         if (!this.pos._bonuscardPendingTransactionId(order)) {
-            if (order) {
-                order.bonuscard_state = order.bonuscard_state || "not_applicable";
+            if (order && !order.bonuscard_state) {
+                this.pos._setBonuscardAuditFields(order, {
+                    state: "not_applicable",
+                    transactionIdentifier: false,
+                    validatedAt: false,
+                    finalizedAt: false,
+                    lastErrorMessage: false,
+                });
             }
             return;
         }
@@ -1085,6 +1150,7 @@ patch(OrderPaymentValidation.prototype, {
         const shouldFinalize = this.pos._bonuscardHasCheckoutItems(order);
 
         if (!shouldFinalize) {
+            const pendingTx = this.pos._bonuscardPendingTransactionId(order);
             const releaseResult = await this.pos._releaseBonuscardTransactionIfPending(order, {
                 logMethod: "afterOrderValidation",
                 notifyOnFailure: false,
@@ -1096,10 +1162,13 @@ patch(OrderPaymentValidation.prototype, {
                 );
             }
             if (order) {
-                order.bonuscard_state = "skipped";
-                order.bonuscard_transaction_identifier =
-                    order.bonuscard_transaction_identifier ||
-                    this.pos._bonuscardPendingTransactionId(order);
+                this.pos._setBonuscardAuditFields(order, {
+                    state: "skipped",
+                    transactionIdentifier:
+                        order.bonuscard_transaction_identifier || pendingTx || false,
+                    finalizedAt: false,
+                    lastErrorMessage: false,
+                });
             }
             return;
         }
@@ -1131,21 +1200,26 @@ patch(OrderPaymentValidation.prototype, {
                 { type: "warning", sticky: true }
             );
             if (order) {
-                order.bonuscard_state = "failed";
-                order.bonuscard_transaction_identifier =
-                    order.bonuscard_transaction_identifier ||
-                    this.pos._bonuscardPendingTransactionId(order);
-                order.bonuscard_last_error_message =
-                    finalizeResult.message || _t("Bonuscard finalization failed.");
+                this.pos._setBonuscardAuditFields(order, {
+                    state: "failed",
+                    transactionIdentifier:
+                        order.bonuscard_transaction_identifier ||
+                        this.pos._bonuscardPendingTransactionId(order) ||
+                        false,
+                    lastErrorMessage:
+                        finalizeResult.message || _t("Bonuscard finalization failed."),
+                });
             }
             return;
         }
         if (order) {
-            order.bonuscard_state = "finalized";
-            order.bonuscard_transaction_identifier =
-                order.bonuscard_transaction_identifier || order.bonuscard_transaction_id;
-            order.bonuscard_finalized_at = serializeDateTime(luxon.DateTime.now());
-            order.bonuscard_last_error_message = null;
+            this.pos._setBonuscardAuditFields(order, {
+                state: "finalized",
+                transactionIdentifier:
+                    order.bonuscard_transaction_identifier || order.bonuscard_transaction_id,
+                finalizedAt: serializeDateTime(luxon.DateTime.now()),
+                lastErrorMessage: false,
+            });
         }
         order.bonuscard_transaction_id = null;
         order.bonuscard_checkout_items = null;

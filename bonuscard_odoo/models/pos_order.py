@@ -43,7 +43,10 @@ class PosOrder(models.Model):
             if field_name not in ui_order:
                 continue
             value = ui_order[field_name]
-            if value in (None, False, ""):
+            if value is False:
+                vals[field_name] = False
+                continue
+            if value in (None, ""):
                 continue
             if field_name in ("bonuscard_validated_at", "bonuscard_finalized_at"):
                 value = fields.Datetime.to_datetime(value)
