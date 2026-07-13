@@ -875,7 +875,7 @@ class BonuscardApiService(models.AbstractModel):
                 return {
                     "status": "error",
                     "note": cancel_note,
-                    "transaction_identifier": None,
+                    "transaction_identifier": transaction_id,
                 }
             transaction_id = None
 

@@ -135,6 +135,23 @@ class ProductProduct(models.Model):
         return result
 
     @api.model
+    def _format_catalog_probe_summary_message(self, summary):
+        stats = self.env._(
+            "Processed: %(processed)s (in_catalog=%(in_catalog)s, "
+            "not_in_catalog=%(not_in_catalog)s, unchanged=%(unchanged)s, "
+            "skipped=%(skipped)s, error=%(error)s).",
+            **summary,
+        )
+        cancel_message = summary.get("message")
+        if cancel_message:
+            return self.env._(
+                "%(stats)s %(cancel_message)s",
+                stats=stats,
+                cancel_message=cancel_message,
+            )
+        return stats
+
+    @api.model
     def action_bulk_probe_catalog_status(
         self,
         company_id=None,
@@ -238,6 +255,12 @@ class ProductProduct(models.Model):
                         transaction_identifier,
                         cancel_note,
                     )
+                    summary["error"] += 1
+                    summary["message"] = self.env._(
+                        "Could not cancel the open Bonuscard catalog probe "
+                        "transaction: %s",
+                        cancel_note,
+                    )
 
         return summary
 
@@ -272,12 +295,7 @@ class ProductProduct(models.Model):
                 or self.env._("Bonuscard catalog probe could not be started.")
             )
 
-        message = self.env._(
-            "Processed: %(processed)s (in_catalog=%(in_catalog)s, "
-            "not_in_catalog=%(not_in_catalog)s, unchanged=%(unchanged)s, "
-            "skipped=%(skipped)s, error=%(error)s).",
-            **summary,
-        )
+        message = self._format_catalog_probe_summary_message(summary)
         return {
             "type": "ir.actions.client",
             "tag": "display_notification",
@@ -285,7 +303,7 @@ class ProductProduct(models.Model):
                 "title": self.env._("Bonuscard Catalog Probe"),
                 "message": message,
                 "type": "info" if summary.get("error") == 0 else "warning",
-                "sticky": False,
+                "sticky": bool(summary.get("message")),
             },
         }
 

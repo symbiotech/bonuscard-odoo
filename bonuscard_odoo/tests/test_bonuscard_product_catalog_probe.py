@@ -270,6 +270,38 @@ class TestBonuscardProductCatalogProbe(TransactionCase):
 
         self.assertEqual(result["status"], "error")
         self.assertIn("Cancel failed", result["note"])
+        self.assertEqual(result["transaction_identifier"], "TXPROBE2")
+
+    def test_bulk_probe_reports_cancel_failure_in_summary(self):
+        product = self._create_product(barcode="8710000009019")
+        validate_payload = {
+            "error": False,
+            "transactionIdentifier": "TXBATCH3",
+            "messages": ["Product recognized."],
+        }
+
+        with (
+            patch(
+                "odoo.addons.bonuscard_odoo.models.bonuscard_api_service.BonuscardApiService._validate_purchase",
+                return_value=validate_payload,
+            ),
+            patch(
+                "odoo.addons.bonuscard_odoo.models.bonuscard_api_service.BonuscardApiService._cancel_catalog_probe_transaction",
+                return_value="Cancel failed.",
+            ),
+        ):
+            summary = self.env["product.product"].action_bulk_probe_catalog_status(
+                company_id=self.env.company.id,
+                instance_id=self.instance.id,
+                product_ids=product.ids,
+                only_unscanned=False,
+            )
+
+        self.assertEqual(summary["processed"], 1)
+        self.assertEqual(summary["in_catalog"], 1)
+        self.assertEqual(summary["error"], 1)
+        self.assertIn("Could not cancel", summary["message"])
+        self.assertIn("Cancel failed", summary["message"])
 
     def test_cancel_catalog_probe_transaction_maps_bonuscard_api_error(self):
         with patch(
