@@ -818,9 +818,9 @@ class BonuscardApiService(models.AbstractModel):
         note = (
             messages[0]
             if messages
-            else self.env._("Product found in Bonuscard catalog.")
+            else self.env._("Ambiguous Bonuscard response; status unchanged.")
         )
-        return "in_catalog", note
+        return "unchanged", note
 
     def _cancel_catalog_probe_transaction(self, instance, transaction_identifier):
         """Cancel an open catalog-probe transaction and return an error note if needed."""

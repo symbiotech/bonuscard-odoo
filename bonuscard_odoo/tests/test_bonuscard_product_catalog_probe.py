@@ -60,15 +60,16 @@ class TestBonuscardProductCatalogProbe(TransactionCase):
         self.assertEqual(status, "not_in_catalog")
         self.assertIn("No valid products", note)
 
-    def test_classify_in_catalog_with_transaction(self):
+    def test_classify_transaction_only_is_not_in_catalog(self):
         status, _note = self.service._classify_catalog_probe_response(
             {
                 "error": False,
                 "transactionIdentifier": "TX001",
                 "messages": ["Discount available."],
-            }
+            },
+            probe_ean="8710000009001",
         )
-        self.assertEqual(status, "in_catalog")
+        self.assertEqual(status, "not_in_catalog")
 
     def test_classify_in_catalog_requires_confirmed_probe_checkout_item(self):
         status, _note = self.service._classify_catalog_probe_response(
