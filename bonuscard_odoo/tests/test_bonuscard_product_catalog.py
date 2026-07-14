@@ -128,12 +128,12 @@ class TestBonuscardProductCatalog(TransactionCase):
         with self.assertRaises(UserError):
             tmpl.action_bonuscard_mark_in_catalog()
 
-    def test_template_actions_reject_when_variants_enabled_for_user(self):
+    def test_template_actions_allowed_for_variant_group_user(self):
         tmpl = self._create_template(barcode="8710000000400")
         variant_group = self.env.ref("product.group_product_variant")
         self.env.user.write({"group_ids": [(4, variant_group.id)]})
-        with self.assertRaises(UserError):
-            tmpl.action_bonuscard_mark_in_catalog()
+        tmpl.action_bonuscard_mark_in_catalog()
+        self.assertEqual(tmpl.product_variant_id.bonuscard_catalog_status, "in_catalog")
         self.env.user.write({"group_ids": [(3, variant_group.id)]})
 
     def test_template_write_catalog_status_updates_variant(self):
