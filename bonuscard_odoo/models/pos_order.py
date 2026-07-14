@@ -60,7 +60,10 @@ class PosOrder(models.Model):
                 continue
             value = ui_order[field_name]
             if value is False:
-                vals[field_name] = False
+                if field_name == "bonuscard_state":
+                    vals[field_name] = "not_applicable"
+                else:
+                    vals[field_name] = False
                 continue
             if value in (None, ""):
                 continue

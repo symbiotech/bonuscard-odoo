@@ -42,6 +42,16 @@ class TestBonuscardPosOrder(TransactionCase):
         self.assertFalse(vals["bonuscard_last_error_message"])
         self.assertFalse(vals["bonuscard_validated_at"])
 
+    def test_bonuscard_audit_fields_from_ui_maps_false_state_to_not_applicable(self):
+        vals = self.env["pos.order"]._bonuscard_audit_fields_from_ui(
+            {
+                "bonuscard_state": False,
+                "bonuscard_transaction_identifier": False,
+            }
+        )
+        self.assertEqual(vals["bonuscard_state"], "not_applicable")
+        self.assertFalse(vals["bonuscard_transaction_identifier"])
+
     def test_bonuscard_audit_fields_from_ui_ignores_empty_values(self):
         vals = self.env["pos.order"]._bonuscard_audit_fields_from_ui(
             {
