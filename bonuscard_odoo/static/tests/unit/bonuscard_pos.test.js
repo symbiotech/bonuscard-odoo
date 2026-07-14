@@ -101,7 +101,7 @@ function patchBonuscardCancelCall(store, handler) {
 
 async function applyBonuscardAuditAfterPayment(store, order) {
     order.state = "paid";
-    await store._applyBonuscardAuditAfterPayment(order);
+    await store.preSyncAllOrders([order]);
 }
 
 function markLineBonuscardDiscount(line, discountPercent = 10) {

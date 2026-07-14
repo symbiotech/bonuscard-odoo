@@ -1091,15 +1091,15 @@ patch(PosStore.prototype, {
         this._clearBonuscardRuntimeTransactionState(order);
     },
 
-async preSyncAllOrders(orders = []) {
-    await super.preSyncAllOrders(...arguments);
-    const ordersToProcess = Array.isArray(orders) ? orders : [];
-    for (const order of ordersToProcess) {
-        if (order?.state === "paid") {
-            await this._applyBonuscardAuditAfterPayment(order);
+    async preSyncAllOrders(orders = []) {
+        const ordersToProcess = Array.isArray(orders) ? orders : [];
+        for (const order of ordersToProcess) {
+            if (order?.state === "paid") {
+                await this._applyBonuscardAuditAfterPayment(order);
+            }
         }
-    }
-}
+        return await super.preSyncAllOrders(...arguments);
+    },
 });
 
 patch(PosOrder.prototype, {
