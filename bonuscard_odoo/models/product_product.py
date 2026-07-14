@@ -110,12 +110,13 @@ class ProductProduct(models.Model):
         }
 
     def _bonuscard_filter_products_for_identifier_auto_probe(self, before_snapshot):
+        after_snapshot = self._bonuscard_identifier_snapshot()
         return self.filtered(
             lambda product: (
                 product.bonuscard_catalog_status == "not_set"
                 and product.active
                 and (product.barcode or product.default_code)
-                and self._bonuscard_identifier_snapshot()[product.id]
+                and after_snapshot.get(product.id, ("", ""))
                 != before_snapshot.get(product.id, ("", ""))
             )
         )
