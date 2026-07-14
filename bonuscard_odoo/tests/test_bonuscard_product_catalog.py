@@ -178,3 +178,29 @@ class TestBonuscardProductCatalog(TransactionCase):
             self.env["pos.config"]
         )
         self.assertIn("bonuscard_catalog_status", fields_list)
+
+    def test_template_search_read_exposes_catalog_status(self):
+        tmpl = self._create_template(barcode="8710000002000")
+        variant = tmpl.product_variant_id
+        variant.bonuscard_catalog_status = "in_catalog"
+
+        data = self.env["product.template"].search_read(
+            [("id", "=", tmpl.id)],
+            ["bonuscard_catalog_status", "bonuscard_catalog_updated_at"],
+        )[0]
+        self.assertEqual(data["bonuscard_catalog_status"], "in_catalog")
+        self.assertTrue(data["bonuscard_catalog_updated_at"])
+
+    def test_template_search_read_catalog_status_for_variant_group_user(self):
+        variant_group = self.env.ref("product.group_product_variant")
+        user = self.env.user
+        user.write({"group_ids": [(4, variant_group.id)]})
+        tmpl = self._create_template(barcode="8710000002100")
+        tmpl.product_variant_id.bonuscard_catalog_status = "in_catalog"
+
+        data = (
+            self.env["product.template"]
+            .with_user(user)
+            .search_read([("id", "=", tmpl.id)], ["bonuscard_catalog_status"])[0]
+        )
+        self.assertEqual(data["bonuscard_catalog_status"], "in_catalog")

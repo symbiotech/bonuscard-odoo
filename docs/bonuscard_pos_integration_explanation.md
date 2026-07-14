@@ -129,9 +129,9 @@ This document explains how the Bonuscard POS integration works in the `bonuscard
   - Mirrors catalog status from the single underlying variant for list visibility
   - Writable on template forms (inverse writes the single variant) for Bonuscard
     users when the product has exactly one variant
-  - List columns, filters, and bulk actions on **Inventory > Products** for
-    Bonuscard users who do not have the Product Variants user group (hidden via
-    a variant-group view override when variants are enabled)
+  - List columns on **Inventory > Products** for all Bonuscard users; search
+    filters on that list stay hidden for users with the Product Variants group
+    (use **Product Variants** filters when variants are enabled)
   - Refuses template-level bulk updates when a template does not have exactly
     one variant (form actions and field edits work for single-variant products
     even when Product Variants are enabled)
