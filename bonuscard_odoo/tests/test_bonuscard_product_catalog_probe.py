@@ -32,7 +32,12 @@ class TestBonuscardProductCatalogProbe(TransactionCase):
             "available_in_pos": True,
         }
         defaults.update(values)
-        return self.env["product.product"].create(defaults)
+        product = (
+            self.env["product.product"]
+            .with_context(bonuscard_skip_catalog_probe=True)
+            .create(defaults)
+        )
+        return self.env["product.product"].browse(product.ids)
 
     def test_classify_not_in_catalog_without_transaction(self):
         status, note = self.service._classify_catalog_probe_response(
@@ -798,12 +803,16 @@ class TestBonuscardProductCatalogProbe(TransactionCase):
             product.with_user(regular_user).action_bonuscard_probe_catalog_status()
 
     def test_template_probe_forwards_to_single_variant(self):
-        tmpl = self.env["product.template"].create(
-            {
-                "name": "Probe Template",
-                "barcode": "8710000009020",
-                "list_price": 10.0,
-            }
+        tmpl = (
+            self.env["product.template"]
+            .with_context(bonuscard_skip_catalog_probe=True)
+            .create(
+                {
+                    "name": "Probe Template",
+                    "barcode": "8710000009020",
+                    "list_price": 10.0,
+                }
+            )
         )
         variant = tmpl.product_variant_id
         with patch(
@@ -826,12 +835,16 @@ class TestBonuscardProductCatalogProbe(TransactionCase):
                 "group_ids": [(6, 0, [user_group.id])],
             }
         )
-        tmpl = self.env["product.template"].create(
-            {
-                "name": "Probe Note Template",
-                "barcode": "8710000009030",
-                "list_price": 10.0,
-            }
+        tmpl = (
+            self.env["product.template"]
+            .with_context(bonuscard_skip_catalog_probe=True)
+            .create(
+                {
+                    "name": "Probe Note Template",
+                    "barcode": "8710000009030",
+                    "list_price": 10.0,
+                }
+            )
         )
         variant = tmpl.product_variant_id
         variant.sudo().write(
@@ -848,3 +861,145 @@ class TestBonuscardProductCatalogProbe(TransactionCase):
     def test_instance_catalog_probe_price_must_be_positive(self):
         with self.assertRaises(ValidationError):
             self.instance.write({"catalog_probe_price": 0})
+
+    def test_create_triggers_auto_catalog_probe(self):
+        with patch(
+            "odoo.addons.bonuscard_odoo.models.product_product.ProductProduct._bonuscard_trigger_auto_catalog_probe",
+        ) as mock_trigger:
+            self.env["product.product"].create(
+                {
+                    "name": "Auto Probe Product",
+                    "barcode": "8710000009100",
+                    "list_price": 10.0,
+                }
+            )
+
+        mock_trigger.assert_called_once()
+
+    def test_should_auto_probe_rejects_import(self):
+        self.assertFalse(
+            self.env["product.product"]
+            .with_context(import_file=True)
+            ._bonuscard_should_auto_probe_catalog()
+        )
+
+    def test_should_auto_probe_allows_manual_create(self):
+        self.assertTrue(
+            self.env["product.product"]._bonuscard_should_auto_probe_catalog()
+        )
+
+    def test_auto_probe_updates_catalog_status(self):
+        product = (
+            self.env["product.product"]
+            .with_context(bonuscard_skip_catalog_probe=True)
+            .create(
+                {
+                    "name": "Auto Probe Status Product",
+                    "barcode": "8710000009101",
+                    "list_price": 10.0,
+                }
+            )
+        )
+        product = self.env["product.product"].browse(product.ids)
+        with patch(
+            "odoo.addons.bonuscard_odoo.models.bonuscard_api_service.BonuscardApiService.probe_product_catalog_status",
+            return_value={
+                "status": "in_catalog",
+                "note": "Product found in Bonuscard catalog.",
+            },
+        ):
+            product._bonuscard_run_auto_catalog_probe(
+                self.env.company.id,
+                self.instance.id,
+            )
+
+        self.assertEqual(product.bonuscard_catalog_status, "in_catalog")
+        self.assertTrue(product.bonuscard_catalog_updated_at)
+
+    def test_auto_probe_skipped_on_import(self):
+        product = self._create_product(barcode="8710000009102")
+        with patch(
+            "odoo.addons.bonuscard_odoo.models.product_product.ProductProduct._bonuscard_run_auto_catalog_probe",
+        ) as mock_run:
+            product.with_context(
+                import_file=True
+            )._bonuscard_trigger_auto_catalog_probe()
+
+        mock_run.assert_not_called()
+
+    def test_auto_probe_skipped_without_identifier(self):
+        product = self._create_product()
+        with patch(
+            "odoo.addons.bonuscard_odoo.models.product_product.ProductProduct._bonuscard_run_auto_catalog_probe",
+        ) as mock_run:
+            product._bonuscard_trigger_auto_catalog_probe()
+
+        mock_run.assert_not_called()
+
+    def test_auto_probe_skipped_when_probe_disabled(self):
+        self.instance.write({"catalog_probe_active": False})
+        product = self._create_product(barcode="8710000009103")
+        with patch(
+            "odoo.addons.bonuscard_odoo.models.product_product.ProductProduct._bonuscard_run_auto_catalog_probe",
+        ) as mock_run:
+            product._bonuscard_trigger_auto_catalog_probe()
+
+        mock_run.assert_not_called()
+
+    def test_write_triggers_auto_catalog_probe_when_barcode_added(self):
+        product = self._create_product()
+        with patch(
+            "odoo.addons.bonuscard_odoo.models.product_product.ProductProduct._bonuscard_trigger_auto_catalog_probe",
+        ) as mock_trigger:
+            product.write({"barcode": "8710000009110"})
+
+        mock_trigger.assert_called_once()
+
+    def test_write_triggers_auto_catalog_probe_when_default_code_added(self):
+        product = self._create_product()
+        with patch(
+            "odoo.addons.bonuscard_odoo.models.product_product.ProductProduct._bonuscard_trigger_auto_catalog_probe",
+        ) as mock_trigger:
+            product.write({"default_code": "ART-9111"})
+
+        mock_trigger.assert_called_once()
+
+    def test_write_skips_probe_when_identifier_unchanged(self):
+        product = self._create_product(barcode="8710000009112")
+        with patch(
+            "odoo.addons.bonuscard_odoo.models.product_product.ProductProduct._bonuscard_trigger_auto_catalog_probe",
+        ) as mock_trigger:
+            product.write({"name": "Renamed Product"})
+
+        mock_trigger.assert_not_called()
+
+    def test_write_skips_probe_when_status_already_set(self):
+        product = self._create_product(
+            barcode="8710000009113",
+            bonuscard_catalog_status="not_in_catalog",
+        )
+        with patch(
+            "odoo.addons.bonuscard_odoo.models.product_product.ProductProduct._bonuscard_trigger_auto_catalog_probe",
+        ) as mock_trigger:
+            product.write({"barcode": "8710000009114"})
+
+        mock_trigger.assert_not_called()
+
+    def test_template_write_triggers_auto_catalog_probe_when_barcode_added(self):
+        tmpl = (
+            self.env["product.template"]
+            .with_context(bonuscard_skip_catalog_probe=True)
+            .create(
+                {
+                    "name": "Template Barcode Late",
+                    "list_price": 10.0,
+                }
+            )
+        )
+        tmpl = self.env["product.template"].browse(tmpl.ids)
+        with patch(
+            "odoo.addons.bonuscard_odoo.models.product_product.ProductProduct._bonuscard_trigger_auto_catalog_probe",
+        ) as mock_trigger:
+            tmpl.write({"barcode": "8710000009120"})
+
+        mock_trigger.assert_called_once()

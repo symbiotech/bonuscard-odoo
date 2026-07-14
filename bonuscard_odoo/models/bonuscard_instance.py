@@ -74,8 +74,9 @@ class BonuscardConnectorInstance(models.Model):
         string="Enable catalog probe",
         default=True,
         groups="bonuscard_odoo.bonuscard_odoo_group_manager",
-        help="When enabled, the daily cron and manual button probe Bonuscard catalog "
-        "status for products that have not been scanned yet.",
+        help="When enabled, the daily cron, manual button, and automatic probes on "
+        "manual product create or identifier update check Bonuscard catalog status "
+        "for products that have not been scanned yet.",
     )
     catalog_probe_customer_identifier = fields.Char(
         string="Catalog Probe Customer",

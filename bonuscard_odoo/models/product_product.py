@@ -1,6 +1,6 @@
 import logging
 
-from odoo import api, fields, models
+from odoo import SUPERUSER_ID, api, fields, models
 from odoo.exceptions import UserError, ValidationError
 
 _logger = logging.getLogger(__name__)
@@ -80,6 +80,98 @@ class ProductProduct(models.Model):
             }
         )
 
+    @api.model
+    def _bonuscard_should_auto_probe_catalog(self):
+        if self.env.context.get("bonuscard_skip_catalog_probe"):
+            return False
+        if self.env.context.get("import_file") or self.env.context.get("install_mode"):
+            return False
+        return True
+
+    def _bonuscard_run_auto_catalog_probe(self, company_id, instance_id):
+        """Probe catalog status for eligible products (sudo/cron-safe entry point)."""
+        if not self:
+            return {}
+        return (
+            self.sudo()
+            .with_company(company_id)
+            .action_bulk_probe_catalog_status(
+                company_id=company_id,
+                instance_id=instance_id,
+                product_ids=self.ids,
+                only_unscanned=True,
+            )
+        )
+
+    def _bonuscard_identifier_snapshot(self):
+        return {
+            product.id: (product.barcode or "", product.default_code or "")
+            for product in self
+        }
+
+    def _bonuscard_filter_products_for_identifier_auto_probe(self, before_snapshot):
+        return self.filtered(
+            lambda product: (
+                product.bonuscard_catalog_status == "not_set"
+                and product.active
+                and (product.barcode or product.default_code)
+                and self._bonuscard_identifier_snapshot()[product.id]
+                != before_snapshot.get(product.id, ("", ""))
+            )
+        )
+
+    def _bonuscard_trigger_auto_catalog_probe(self):
+        """Queue a catalog probe after commit for eligible manual product updates."""
+        if not self._bonuscard_should_auto_probe_catalog():
+            return
+
+        candidates = self.filtered(
+            lambda product: (
+                product.bonuscard_catalog_status == "not_set"
+                and product.active
+                and (product.barcode or product.default_code)
+            )
+        )
+        if not candidates:
+            return
+
+        company = self.env.company
+        service = self.env["bonuscard.api.service"]
+        instance = service._get_company_instance(company)
+        if (
+            not instance
+            or not instance.catalog_probe_active
+            or not (instance.catalog_probe_customer_identifier or "").strip()
+        ):
+            return
+
+        product_ids = candidates.ids
+        company_id = company.id
+        instance_id = instance.id
+        registry = self.env.registry
+        ctx = dict(self.env.context)
+
+        @self.env.cr.postcommit.add
+        def _run_bonuscard_auto_catalog_probe():
+            with registry.cursor() as cr:
+                env = api.Environment(cr, SUPERUSER_ID, ctx)
+                try:
+                    summary = (
+                        env["product.product"]
+                        .browse(product_ids)
+                        ._bonuscard_run_auto_catalog_probe(company_id, instance_id)
+                    )
+                    if summary.get("message"):
+                        _logger.warning(
+                            "Bonuscard auto catalog probe: %s",
+                            summary["message"],
+                        )
+                except Exception:  # pylint: disable=broad-except
+                    _logger.exception(
+                        "Bonuscard auto catalog probe failed for products %s",
+                        product_ids,
+                    )
+
     @api.model_create_multi
     def create(self, vals_list):
         now = fields.Datetime.now()
@@ -92,7 +184,9 @@ class ProductProduct(models.Model):
             ):
                 vals["bonuscard_catalog_updated_at"] = now
             patched.append(vals)
-        return super().create(patched)
+        products = super().create(patched)
+        products._bonuscard_trigger_auto_catalog_probe()
+        return products
 
     def write(self, vals):
         vals = dict(vals or {})
@@ -107,7 +201,24 @@ class ProductProduct(models.Model):
                 for product in self
             ):
                 vals["bonuscard_catalog_updated_at"] = now
-        return super().write(vals)
+
+        probe_on_identifier_change = self._bonuscard_should_auto_probe_catalog() and (
+            "barcode" in vals or "default_code" in vals
+        )
+        before_identifiers = (
+            self._bonuscard_identifier_snapshot() if probe_on_identifier_change else {}
+        )
+
+        result = super().write(vals)
+
+        if probe_on_identifier_change:
+            to_probe = self._bonuscard_filter_products_for_identifier_auto_probe(
+                before_identifiers
+            )
+            if to_probe:
+                to_probe._bonuscard_trigger_auto_catalog_probe()
+
+        return result
 
     def _bonuscard_probe_catalog_status_single(
         self,
