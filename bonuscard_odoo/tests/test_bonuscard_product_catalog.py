@@ -200,7 +200,9 @@ class TestBonuscardProductCatalog(TransactionCase):
         original_group_ids = user.group_ids.ids
         user.write({"group_ids": [(4, variant_group.id), (4, bonuscard_group.id)]})
         try:
-            view = self.env["product.template"].with_user(user).get_view(view_type="tree")
+            view = (
+                self.env["product.template"].with_user(user).get_view(view_type="list")
+            )
             arch = etree.fromstring(view["arch"].encode())
             field = arch.xpath(".//field[@name='bonuscard_catalog_status']")[0]
             self.assertNotEqual(field.get("invisible"), "1")
