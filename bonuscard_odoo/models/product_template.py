@@ -1,9 +1,9 @@
 from odoo import api, fields, models
 from odoo.exceptions import UserError, ValidationError
 
-# Template-level catalog UI is intended for setups where Odoo's Product Variants
-# feature is disabled (users lack product.group_product_variant). Catalog status
-# is still stored on product.product; templates mirror the single variant.
+# Catalog status is stored on product.product; templates mirror the single
+# variant. Template-level actions and form editing apply when a product has
+# exactly one variant (list columns/filters stay hidden for variant users).
 
 
 class ProductTemplate(models.Model):
@@ -90,15 +90,6 @@ class ProductTemplate(models.Model):
         return self.env["product.product"]
 
     def _bonuscard_action_on_single_variant(self, method_name):
-        if self.env.user.has_group("product.group_product_variant"):
-            raise UserError(
-                self.env._(
-                    "Bonuscard catalog actions on the Products list are only "
-                    "available when Product Variants are disabled. Open "
-                    "Inventory > Products > Product Variants instead."
-                )
-            )
-
         invalid = self.filtered(lambda t: not t._bonuscard_catalog_variant())
         if invalid:
             raise UserError(

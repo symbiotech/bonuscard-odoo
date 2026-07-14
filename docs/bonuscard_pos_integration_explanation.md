@@ -132,8 +132,9 @@ This document explains how the Bonuscard POS integration works in the `bonuscard
   - List columns, filters, and bulk actions on **Inventory > Products** for
     Bonuscard users who do not have the Product Variants user group (hidden via
     a variant-group view override when variants are enabled)
-  - Refuses template-level bulk updates when the user has Product Variants
-    enabled or when a template does not have exactly one variant
+  - Refuses template-level bulk updates when a template does not have exactly
+    one variant (form actions and field edits work for single-variant products
+    even when Product Variants are enabled)
 
 - `pos.order` extension
   - Adds audit fields: `bonuscard_state`, `bonuscard_transaction_identifier`,
