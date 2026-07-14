@@ -1879,7 +1879,7 @@ test("onClickBackButton does not cancel when not on PaymentScreen", async () => 
     expect(order.bonuscard_transaction_id).toBe("TXN-NO-CANCEL");
 });
 
-test("afterOrderValidation clears Bonuscard transaction state on successful finalize", async () => {
+test("preSyncAllOrders clears Bonuscard transaction state on successful finalize", async () => {
     const store = await setupPosEnv();
     const order = store.addNewOrder();
     order.bonuscard_partner_id = 42;
@@ -1911,7 +1911,7 @@ test("afterOrderValidation clears Bonuscard transaction state on successful fina
     expect(order._bonuscardCandidateTxId).toBe(null);
 });
 
-test("afterOrderValidation retries finalize once before clearing transaction state", async () => {
+test("preSyncAllOrders retries finalize once before clearing transaction state", async () => {
     const store = await setupPosEnv();
     const order = store.addNewOrder();
     order.bonuscard_partner_id = 42;
@@ -1942,7 +1942,7 @@ test("afterOrderValidation retries finalize once before clearing transaction sta
     expect(order.bonuscard_checkout_items).toBe(null);
 });
 
-test("afterOrderValidation keeps transaction state when finalize fails after retry", async () => {
+test("preSyncAllOrders keeps transaction state when finalize fails after retry", async () => {
     const store = await setupPosEnv();
     const order = store.addNewOrder();
     order.bonuscard_partner_id = 42;
@@ -1987,7 +1987,7 @@ test("afterOrderValidation keeps transaction state when finalize fails after ret
     expect(notifications[0].options.sticky).toBe(true);
 });
 
-test("afterOrderValidation records failed audit state when finalize fails but cancel fallback succeeds", async () => {
+test("preSyncAllOrders records failed audit state when finalize fails but cancel fallback succeeds", async () => {
     const store = await setupPosEnv();
     const order = store.addNewOrder();
     order.bonuscard_partner_id = 42;
@@ -2055,7 +2055,7 @@ test("afterOrderValidation records failed audit state when finalize fails but ca
     expect(notifications.length).toBe(0);
 });
 
-test("afterOrderValidation shows payment-succeeded warning without API detail when finalize returns no message", async () => {
+test("preSyncAllOrders shows payment-succeeded warning without API detail when finalize returns no message", async () => {
     const store = await setupPosEnv();
     const order = store.addNewOrder();
     order.bonuscard_partner_id = 42;
@@ -2091,7 +2091,7 @@ test("afterOrderValidation shows payment-succeeded warning without API detail wh
     );
 });
 
-test("afterOrderValidation retries finalize once when the RPC throws", async () => {
+test("preSyncAllOrders retries finalize once when the RPC throws", async () => {
     const store = await setupPosEnv();
     const order = store.addNewOrder();
     order.bonuscard_partner_id = 42;
@@ -2455,7 +2455,7 @@ test("validation releases pending transaction when cart has no Bonuscard-eligibl
     expect(order.bonuscard_checkout_items).toBe(null);
 });
 
-test("afterOrderValidation releases pending transaction when checkout items are missing", async () => {
+test("preSyncAllOrders releases pending transaction when checkout items are missing", async () => {
     const store = await setupPosEnv();
     const order = store.addNewOrder();
     const partner = store.models["res.partner"].create({ name: "Bonuscard Customer" });
@@ -2525,7 +2525,7 @@ test("post-payment release keeps Bonuscard discount lines before order sync", as
     expect(order.bonuscard_state).toBe("skipped");
 });
 
-test("afterOrderValidation shows sticky warning when release fails after payment", async () => {
+test("preSyncAllOrders shows sticky warning when release fails after payment", async () => {
     const store = await setupPosEnv();
     const order = store.addNewOrder();
     const partner = store.models["res.partner"].create({ name: "Bonuscard Customer" });
@@ -2604,7 +2604,7 @@ test("validation keeps transaction state when release fails for ineligible cart 
     expect(notifications[0].options.sticky).toBe(false);
 });
 
-test("afterOrderValidation finalizes zero-discount transaction when checkout items exist", async () => {
+test("preSyncAllOrders finalizes zero-discount transaction when checkout items exist", async () => {
     const store = await setupPosEnv();
     const order = store.addNewOrder();
     order.bonuscard_partner_id = 42;
