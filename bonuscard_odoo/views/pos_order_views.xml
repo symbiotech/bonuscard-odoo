@@ -17,12 +17,16 @@
         <field name="model">pos.order</field>
         <field name="inherit_id" ref="point_of_sale.view_pos_pos_form"/>
         <field name="arch" type="xml">
-            <xpath expr="//field[@name='partner_id']" position="after">
-                <field name="bonuscard_state" widget="badge" readonly="1"/>
-                <field name="bonuscard_transaction_identifier" readonly="1"/>
-                <field name="bonuscard_validated_at" readonly="1"/>
-                <field name="bonuscard_finalized_at" readonly="1"/>
-                <field name="bonuscard_last_error_message" readonly="1"/>
+            <xpath expr="//page[@name='notes']" position="after">
+                <page string="Bonuscard" name="bonuscard">
+                    <group>
+                        <field name="bonuscard_state" widget="badge" readonly="1"/>
+                        <field name="bonuscard_transaction_identifier" readonly="1"/>
+                        <field name="bonuscard_validated_at" readonly="1"/>
+                        <field name="bonuscard_finalized_at" readonly="1"/>
+                        <field name="bonuscard_last_error_message" readonly="1"/>
+                    </group>
+                </page>
             </xpath>
         </field>
     </record>
