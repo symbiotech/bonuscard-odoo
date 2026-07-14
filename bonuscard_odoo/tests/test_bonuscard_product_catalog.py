@@ -178,3 +178,33 @@ class TestBonuscardProductCatalog(TransactionCase):
             self.env["pos.config"]
         )
         self.assertIn("bonuscard_catalog_status", fields_list)
+
+    def test_template_search_read_exposes_catalog_status(self):
+        tmpl = self._create_template(barcode="8710000002000")
+        variant = tmpl.product_variant_id
+        variant.bonuscard_catalog_status = "in_catalog"
+
+        data = self.env["product.template"].search_read(
+            [("id", "=", tmpl.id)],
+            ["bonuscard_catalog_status", "bonuscard_catalog_updated_at"],
+        )[0]
+        self.assertEqual(data["bonuscard_catalog_status"], "in_catalog")
+        self.assertTrue(data["bonuscard_catalog_updated_at"])
+
+    def test_template_tree_view_exposes_catalog_fields_for_variant_group_user(self):
+        from lxml import etree
+
+        variant_group = self.env.ref("product.group_product_variant")
+        bonuscard_group = self.env.ref("bonuscard_odoo.bonuscard_odoo_group_user")
+        user = self.env.user
+        original_group_ids = user.group_ids.ids
+        user.write({"group_ids": [(4, variant_group.id), (4, bonuscard_group.id)]})
+        try:
+            view = (
+                self.env["product.template"].with_user(user).get_view(view_type="list")
+            )
+            arch = etree.fromstring(view["arch"].encode())
+            field = arch.xpath(".//field[@name='bonuscard_catalog_status']")[0]
+            self.assertNotEqual(field.get("invisible"), "1")
+        finally:
+            user.write({"group_ids": [(6, 0, original_group_ids)]})
