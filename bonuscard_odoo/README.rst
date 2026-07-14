@@ -98,10 +98,13 @@ Configuration
 
    The scheduled job probes products with catalog status **Not Set** that have a
    barcode or article number. Each product is checked individually via
-   ``ValidatePurchase``. Unknown products are detected when Bonuscard returns no
-   ``transactionIdentifier``, or when an unlock/anchor EAN is configured and only
-   the anchor appears in ``checkoutItems``. Recognized products trigger
-   ``CancelPurchase`` so the probe customer is not left locked.
+    ``ValidatePurchase``. A product is **in catalog** only when Bonuscard returns
+    the probed EAN on an enriched ``checkoutItems`` line (catalog metadata such as
+    ``identifier`` or ``description``). Unknown products are detected when that
+    enrichment is missing, when only an unlock/anchor EAN is recognized, or when
+    Bonuscard returns the ``No valid products found...`` message (transaction auto-cancelled).
+    Other responses without a ``transactionIdentifier`` leave the status unchanged. Recognized products trigger
+    ``CancelPurchase`` so the probe customer is not left locked.
 
 Usage
 =====
@@ -211,7 +214,9 @@ the Bonuscard API). Optionally set ``BONUSCARD_TEST_NON_BONUSCARD_EAN`` to also
 exercise a barcoded product that the Bonuscard API rejects. Catalog probe tests
 use the same ``BONUSCARD_TEST_CONSUMER`` as the POS lock test; tests run in a
 fixed order and release the customer lock in ``tearDown`` so they do not
-interfere with each other.
+interfere with each other. ``test_92_catalog_probe_classifies_known_and_unknown_eans``
+asserts that a known Bonuscard EAN is marked **in_catalog** and an unknown EAN
+is marked **not_in_catalog** against the live API.
 
 Run only the manual integration suite with::
 
