@@ -7,7 +7,15 @@
         <field name="inherit_id" ref="product.product_product_tree_view"/>
         <field name="arch" type="xml">
             <field name="default_code" position="after">
-                <field name="bonuscard_catalog_status" widget="badge" optional="hide" groups="bonuscard_odoo.bonuscard_odoo_group_user"/>
+                <field
+                    name="bonuscard_catalog_status"
+                    widget="badge"
+                    optional="hide"
+                    groups="bonuscard_odoo.bonuscard_odoo_group_user"
+                    decoration-success="bonuscard_catalog_status == 'in_catalog'"
+                    decoration-danger="bonuscard_catalog_status == 'not_in_catalog'"
+                    decoration-muted="bonuscard_catalog_status == 'not_set'"
+                />
             </field>
         </field>
     </record>
