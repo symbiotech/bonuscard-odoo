@@ -1,3 +1,5 @@
+from datetime import datetime, timedelta, timezone
+
 from odoo.tests import TransactionCase, tagged
 
 
@@ -61,3 +63,16 @@ class TestBonuscardPosOrder(TransactionCase):
             vals["bonuscard_finalized_at"].strftime("%Y-%m-%d %H:%M:%S"),
             "2026-07-14 12:12:47",
         )
+
+    def test_bonuscard_parse_ui_datetime_normalizes_timezone_aware_datetime(self):
+        aware_validated_at = datetime(
+            2026,
+            7,
+            14,
+            14,
+            12,
+            47,
+            tzinfo=timezone(timedelta(hours=2)),
+        )
+        parsed = self.env["pos.order"]._bonuscard_parse_ui_datetime(aware_validated_at)
+        self.assertEqual(parsed.strftime("%Y-%m-%d %H:%M:%S"), "2026-07-14 12:12:47")

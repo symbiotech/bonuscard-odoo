@@ -41,14 +41,15 @@ class PosOrder(models.Model):
     @api.model
     def _bonuscard_parse_ui_datetime(self, value):
         if isinstance(value, datetime):
-            return value.replace(tzinfo=None) if value.tzinfo else value
-        try:
-            return fields.Datetime.to_datetime(value)
-        except (ValueError, TypeError):
-            parsed = datetime.fromisoformat(str(value).replace("Z", "+00:00"))
-            if parsed.tzinfo is not None:
-                parsed = parsed.astimezone(timezone.utc).replace(tzinfo=None)
-            return parsed
+            parsed = value
+        else:
+            try:
+                return fields.Datetime.to_datetime(value)
+            except (ValueError, TypeError):
+                parsed = datetime.fromisoformat(str(value).replace("Z", "+00:00"))
+        if parsed.tzinfo is not None:
+            parsed = parsed.astimezone(timezone.utc).replace(tzinfo=None)
+        return parsed
 
     @api.model
     def _bonuscard_audit_fields_from_ui(self, ui_order):
