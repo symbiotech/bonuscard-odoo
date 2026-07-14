@@ -45,8 +45,9 @@ This document explains how the Bonuscard POS integration works in the `bonuscard
    - `PosStore.preSyncAllOrders()` finalizes or cancels the pending Bonuscard transaction **before** the paid order is synced to the backend, so audit fields such as `bonuscard_finalized_at` are included in the first `sync_from_ui` payload
    - When checkout items exist (including zero-discount validations for accumulation programs), it calls `bonuscard.api.service.finalize_purchase_for_pos` to register the purchase with Bonuscard
    - This sends the stored `transactionIdentifier` and `checkoutItems` to Bonuscard
-   - Finalization is retried once on failure; on success the POS clears `order.bonuscard_transaction_id` and `order.bonuscard_checkout_items`
+   - Finalization is retried once on failure; on success the POS clears runtime transaction fields (`bonuscard_transaction_id`, `_bonuscardCandidateTxId`, `bonuscard_checkout_items`) via `_clearBonuscardRuntimeTransactionState`
    - If there is a pending transaction but no checkout items to finalize (e.g. the cart ended up with no `in_catalog` products), the POS cancels the pending transaction after payment instead of leaving the customer locked; cancel failure is logged and shown as a sticky warning
+   - Post-payment cancel paths (skip and finalize-failure fallback) use `preserveOrderLines: true` so already-paid Bonuscard discount lines are not removed before sync; only runtime transaction identifiers are cleared
    - If finalization fails after payment, the POS attempts cancel as a fallback before showing a sticky warning
    - If the cancel fallback succeeds, the transaction fields are cleared and the backend audit state is stored as `failed`
    - If finalization and the cancel fallback both fail, the transaction fields are kept and a sticky warning is shown so the loyalty lock can be recovered manually
@@ -55,6 +56,8 @@ This document explains how the Bonuscard POS integration works in the `bonuscard
    - `PosStore.onClickBackButton()` (only when on the Payment Screen), `onDeleteOrder()`, `closePos()`, `addNewOrder()`, and `setOrder()` cancel pending Bonuscard transactions on the order being left behind
    - `setPartnerToCurrentOrder` cancels an open transaction **before** changing the partner; if cancel fails, the partner change is blocked to avoid orphaning the Bonuscard lock
    - All cancel paths call `bonuscard.api.service.cancel_purchase_for_pos`
+   - Pre-payment cancel paths clear the full local Bonuscard purchase state, including discount lines (`_clearBonuscardPurchaseState`)
+   - Post-payment cancel paths in `preSyncAllOrders` clear only runtime transaction identifiers and keep paid order lines intact (`preserveOrderLines: true`)
    - `closePos` and `onDeleteOrder` retry cancel once; local transaction state is cleared only after a successful cancel
    - After cancel failure (including after the single retry), cashier-facing sticky warnings are shown:
      - **Partner change** (`setPartnerToCurrentOrder`): blocked; current customer and transaction state are kept
@@ -170,6 +173,8 @@ The POS frontend includes these keys in `PosOrder.serializeForORM()`, and
 `pos.order._process_order` maps them onto the backend record when the order is
 synced. Post-payment Bonuscard finalize/cancel runs in `preSyncAllOrders` so
 `bonuscard_state`, `bonuscard_finalized_at`, and related audit values are
-present before the first paid-order sync. Runtime Bonuscard transaction fields
-on the POS order are still cleared after finalize/cancel, but the persisted
-audit fields remain on `pos.order` for reporting.
+present before the first paid-order sync. Post-payment release keeps paid
+discount lines intact; pre-payment cancel still clears discounts via
+`_clearBonuscardPurchaseState`. Runtime Bonuscard transaction fields on the POS
+order are still cleared after finalize/cancel, but the persisted audit fields
+remain on `pos.order` for reporting.

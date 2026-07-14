@@ -1884,6 +1884,7 @@ test("afterOrderValidation clears Bonuscard transaction state on successful fina
     const order = store.addNewOrder();
     order.bonuscard_partner_id = 42;
     order.bonuscard_transaction_id = "TXN-FINALIZE";
+    order._bonuscardCandidateTxId = "TXN-CANDIDATE-FINALIZE";
     order.bonuscard_checkout_items = [{ ean: "TEST-123", quantity: 1, pricePerItem: 10 }];
 
     let finalizedArgs = null;
@@ -1907,6 +1908,7 @@ test("afterOrderValidation clears Bonuscard transaction state on successful fina
     ]);
     expect(order.bonuscard_transaction_id).toBe(null);
     expect(order.bonuscard_checkout_items).toBe(null);
+    expect(order._bonuscardCandidateTxId).toBe(null);
 });
 
 test("afterOrderValidation retries finalize once before clearing transaction state", async () => {
@@ -2607,6 +2609,7 @@ test("afterOrderValidation finalizes zero-discount transaction when checkout ite
     const order = store.addNewOrder();
     order.bonuscard_partner_id = 42;
     order.bonuscard_transaction_id = "TXN-ZERO";
+    order._bonuscardCandidateTxId = "TXN-CANDIDATE-ZERO";
     order.bonuscard_checkout_items = [{ ean: "TEST-999", quantity: 1, pricePerItem: 10 }];
 
     let cancelledId = null;
@@ -2638,6 +2641,7 @@ test("afterOrderValidation finalizes zero-discount transaction when checkout ite
     expect(order.bonuscard_state).toBe("finalized");
     expect(order.bonuscard_transaction_identifier).toBe("TXN-ZERO");
     expect(order.bonuscard_finalized_at).not.toBe(false);
+    expect(order._bonuscardCandidateTxId).toBe(null);
 });
 
 test("validation recovers from customer lock by cancelling pending tx on finalized orders", async () => {

@@ -59,9 +59,9 @@ flowchart LR
     H -->|transactionIdentifier + checkoutItems| M
     M -->|commit purchase| H
     H -->|finalize success: persist audit on pos.order| C
-    H -->|finalize failed after retry: cancel fallback| I
+    H -->|finalize failed after retry: cancel fallback preserves paid lines| I
     H -->|finalize and cancel fallback failed: sticky warning| C
-    C -->|no checkoutItems: cancel pending transaction| I
+    C -->|no checkoutItems: cancel pending transaction preserves paid lines| I
     I -->|release success: persist audit on pos.order| C
     I -->|release failed after payment: sticky warning| C
 

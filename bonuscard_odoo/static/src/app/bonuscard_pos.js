@@ -1088,8 +1088,7 @@ patch(PosStore.prototype, {
             finalizedAt: serializeDateTime(luxon.DateTime.now()),
             lastErrorMessage: false,
         });
-        order.bonuscard_transaction_id = null;
-        order.bonuscard_checkout_items = null;
+        this._clearBonuscardRuntimeTransactionState(order);
     },
 
     async preSyncAllOrders(orders) {
