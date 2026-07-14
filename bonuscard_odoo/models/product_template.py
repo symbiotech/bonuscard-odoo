@@ -65,12 +65,17 @@ class ProductTemplate(models.Model):
         for template in self:
             variant = template._bonuscard_catalog_variant()
             if not variant:
-                raise UserError(
-                    self.env._(
-                        "Bonuscard catalog status can only be edited on products "
-                        "with exactly one variant."
+                # During template create the default variant may not exist yet;
+                # the variant keeps its own default ("not_set"). Block only when
+                # the user explicitly edits a multi-variant template.
+                if template.product_variant_count > 1:
+                    raise UserError(
+                        self.env._(
+                            "Bonuscard catalog status can only be edited on products "
+                            "with exactly one variant."
+                        )
                     )
-                )
+                continue
             if template.bonuscard_catalog_status == "in_catalog":
                 if not (template.barcode or template.default_code):
                     raise ValidationError(
