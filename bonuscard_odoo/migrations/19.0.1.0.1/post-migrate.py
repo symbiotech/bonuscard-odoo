@@ -9,7 +9,9 @@ def migrate(cr, version):
     batch_size = 1000
     while True:
         templates = ProductTemplate.search(
-            [("id", ">", last_id)], order="id", limit=batch_size
+            [("id", ">", last_id), ("product_variant_count", "=", 1)],
+            order="id",
+            limit=batch_size,
         )
         if not templates:
             break
