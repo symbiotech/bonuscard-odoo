@@ -208,3 +208,61 @@ class TestBonuscardProductCatalog(TransactionCase):
             self.assertNotEqual(field.get("invisible"), "1")
         finally:
             user.write({"group_ids": [(6, 0, original_group_ids)]})
+
+    def test_template_search_filters_match_variant_catalog_status(self):
+        tmpl_in = self._create_template(
+            barcode="8710000002001",
+            name="Template In Catalog",
+        )
+        tmpl_not_in = self._create_template(
+            barcode="8710000002002",
+            name="Template Not In Catalog",
+        )
+        tmpl_not_set = self._create_template(
+            barcode="8710000002003",
+            name="Template Not Set",
+        )
+        tmpl_in.product_variant_id.bonuscard_catalog_status = "in_catalog"
+        tmpl_not_in.product_variant_id.bonuscard_catalog_status = "not_in_catalog"
+
+        in_domain = [
+            ("product_variant_ids.bonuscard_catalog_status", "=", "in_catalog")
+        ]
+        not_in_domain = [
+            ("product_variant_ids.bonuscard_catalog_status", "=", "not_in_catalog")
+        ]
+        not_set_domain = [
+            ("product_variant_ids.bonuscard_catalog_status", "=", "not_set")
+        ]
+
+        self.assertIn(
+            tmpl_in,
+            self.env["product.template"].search(in_domain),
+        )
+        self.assertNotIn(
+            tmpl_not_in,
+            self.env["product.template"].search(in_domain),
+        )
+        self.assertIn(
+            tmpl_not_in,
+            self.env["product.template"].search(not_in_domain),
+        )
+        self.assertIn(
+            tmpl_not_set,
+            self.env["product.template"].search(not_set_domain),
+        )
+        self.assertNotIn(
+            tmpl_in,
+            self.env["product.template"].search(not_set_domain),
+        )
+
+    def test_template_search_filters_find_multi_variant_templates(self):
+        tmpl = self._create_multi_variant_template()
+        variant = tmpl.product_variant_ids[0]
+        variant.barcode = "8710000003001"
+        variant.bonuscard_catalog_status = "in_catalog"
+
+        found = self.env["product.template"].search(
+            [("product_variant_ids.bonuscard_catalog_status", "=", "in_catalog")]
+        )
+        self.assertIn(tmpl, found)
