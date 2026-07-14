@@ -55,7 +55,7 @@ flowchart LR
     G -->|no catalog lines: cancel pending transaction| I
     G -->|transactionIdentifier + discounts (POS applies discounts to order)| B
 
-    C -->|afterOrderValidation| H
+    C -->|preSyncAllOrders before sync| H
     H -->|transactionIdentifier + checkoutItems| M
     M -->|commit purchase| H
     H -->|finalize success: persist audit on pos.order| C
