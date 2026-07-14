@@ -110,6 +110,29 @@ class TestBonuscardProductCatalogProbe(TransactionCase):
         )
         self.assertEqual(status, "not_in_catalog")
 
+    def test_classify_anchor_only_uses_catalog_note_not_loyalty_message(self):
+        status, note = self.service._classify_catalog_probe_response(
+            {
+                "error": False,
+                "transactionIdentifier": "TXANCHOR",
+                "messages": [
+                    "Created a new card of the type 'KRAFFT bonuskort' and added one purchase."
+                ],
+                "checkoutItems": [
+                    {
+                        "ean": "8710000009021",
+                        "identifier": "9",
+                        "description": "Known anchor product",
+                    }
+                ],
+            },
+            probe_ean="8710000009022",
+            anchor_ean="8710000009021",
+        )
+        self.assertEqual(status, "not_in_catalog")
+        self.assertIn("not found", note.lower())
+        self.assertNotIn("bonuskort", note.lower())
+
     def test_classify_ambiguous_response_leaves_unchanged(self):
         status, _note = self.service._classify_catalog_probe_response(
             {
