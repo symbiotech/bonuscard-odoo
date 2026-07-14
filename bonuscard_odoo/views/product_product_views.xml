@@ -1,22 +1,6 @@
 <?xml version="1.0" encoding="UTF-8" ?>
 <odoo>
 
-    <!-- Variant form: reuse the Bonuscard page inherited from product.template
-         (product_normal_form_view extends product_template_form_view). The
-         template extension hides that page when product_variant_count != 1;
-         on variant forms it must stay visible, so clear invisible here instead
-         of inserting a second page. -->
-    <record id="view_product_product_form_bonuscard" model="ir.ui.view">
-        <field name="name">product.product.form.bonuscard</field>
-        <field name="model">product.product</field>
-        <field name="inherit_id" ref="product.product_normal_form_view"/>
-        <field name="arch" type="xml">
-            <xpath expr="//page[@name='bonuscard']" position="attributes">
-                <attribute name="invisible"/>
-            </xpath>
-        </field>
-    </record>
-
     <record id="view_product_product_tree_bonuscard" model="ir.ui.view">
         <field name="name">product.product.tree.bonuscard</field>
         <field name="model">product.product</field>
