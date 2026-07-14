@@ -710,11 +710,14 @@ class BonuscardApiService(models.AbstractModel):
         """True when Bonuscard enriched a checkout line with catalog product data."""
         if not isinstance(item, dict):
             return False
-        if item.get("identifier") is not None:
+        identifier = item.get("identifier")
+        if identifier is not None and str(identifier).strip():
             return True
+        article_number = item.get("articleNumber")
+        description = item.get("description")
         return bool(
-            (item.get("articleNumber") or "").strip()
-            or (item.get("description") or "").strip()
+            (str(article_number).strip() if article_number is not None else "")
+            or (str(description).strip() if description is not None else "")
         )
 
     def _extract_confirmed_catalog_eans(self, payload):
