@@ -213,7 +213,9 @@ the Bonuscard API). Optionally set ``BONUSCARD_TEST_NON_BONUSCARD_EAN`` to also
 exercise a barcoded product that the Bonuscard API rejects. Catalog probe tests
 use the same ``BONUSCARD_TEST_CONSUMER`` as the POS lock test; tests run in a
 fixed order and release the customer lock in ``tearDown`` so they do not
-interfere with each other.
+interfere with each other. ``test_92_catalog_probe_classifies_known_and_unknown_eans``
+asserts that a known Bonuscard EAN is marked **in_catalog** and an unknown EAN
+is marked **not_in_catalog** against the live API.
 
 Run only the manual integration suite with::
 

@@ -524,3 +524,46 @@ class TestBonuscardIntegration(TransactionCase):
             instance, legacy_second.get("transactionIdentifier")
         )
         self._assert_probe_customer_unlocked(instance, bonuscard_ean)
+
+    def test_92_catalog_probe_classifies_known_and_unknown_eans(self):
+        """Live API: known Bonuscard EAN → in_catalog; unknown EAN → not_in_catalog."""
+        bonuscard_ean = os.getenv("BONUSCARD_TEST_BONUSCARD_EAN", "").strip()
+        non_bonuscard_ean = os.getenv("BONUSCARD_TEST_NON_BONUSCARD_EAN", "").strip()
+        if not bonuscard_ean:
+            self.skipTest(
+                "Catalog probe classification test skipped. Missing "
+                "BONUSCARD_TEST_BONUSCARD_EAN"
+            )
+        if not non_bonuscard_ean:
+            self.skipTest(
+                "Catalog probe classification test skipped. Missing "
+                "BONUSCARD_TEST_NON_BONUSCARD_EAN"
+            )
+
+        instance = self._create_probe_instance()
+        self._ensure_probe_customer_unlocked(instance, bonuscard_ean)
+
+        known = self._create_probe_product(
+            bonuscard_ean, "Classification Known Product"
+        )
+        unknown = self._create_probe_product(
+            non_bonuscard_ean, "Classification Unknown Product"
+        )
+
+        known_result = known._bonuscard_probe_catalog_status_single(instance)
+        self.assertEqual(
+            known_result["status"],
+            "in_catalog",
+            known_result.get("note"),
+        )
+        self.assertEqual(known.bonuscard_catalog_status, "in_catalog")
+
+        unknown_result = unknown._bonuscard_probe_catalog_status_single(instance)
+        self.assertEqual(
+            unknown_result["status"],
+            "not_in_catalog",
+            unknown_result.get("note"),
+        )
+        self.assertEqual(unknown.bonuscard_catalog_status, "not_in_catalog")
+
+        self._assert_probe_customer_unlocked(instance, bonuscard_ean)
