@@ -17,6 +17,13 @@ patch(ProductInfoPopup.prototype, {
         return this.bonuscardCatalogVariant?.bonuscard_catalog_status || "not_set";
     },
     get showBonuscardCatalogStatus() {
+        const templateStatus = this.props.productTemplate.bonuscard_catalog_status;
+        if (templateStatus) {
+            return true;
+        }
+        if (templateStatus === false) {
+            return false;
+        }
         return Boolean(this.bonuscardCatalogVariant);
     },
     get bonuscardCatalogLabel() {

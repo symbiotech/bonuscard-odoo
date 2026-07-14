@@ -2890,6 +2890,22 @@ test("ProductInfoPopup falls back to the variant catalog status for single-varia
     );
 });
 
+test("ProductInfoPopup shows Bonuscard catalog status from template when variants are unavailable", async () => {
+    const store = await setupPosEnv();
+    const productTemplate = store.models["product.template"].get(5);
+    productTemplate.bonuscard_catalog_status = "in_catalog";
+    productTemplate.product_variant_ids = [];
+
+    await mountWithCleanup(ProductInfoPopup, {
+        props: buildProductInfoPopupProps(store, productTemplate),
+    });
+
+    expect(document.querySelector(".section-bonuscard")).not.toBe(null);
+    expect(document.querySelector(".section-bonuscard .badge")?.textContent).toBe(
+        "In Bonuscard Catalog"
+    );
+});
+
 test("ProductInfoPopup hides Bonuscard catalog status for multi-variant products", async () => {
     const store = await setupPosEnv();
     const productTemplate = store.models["product.template"].get(5);
@@ -2897,7 +2913,7 @@ test("ProductInfoPopup hides Bonuscard catalog status for multi-variant products
         store.models["product.product"].get(5),
         store.models["product.product"].get(6),
     ];
-    productTemplate.bonuscard_catalog_status = "in_catalog";
+    productTemplate.bonuscard_catalog_status = false;
 
     await mountWithCleanup(ProductInfoPopup, {
         props: buildProductInfoPopupProps(store, productTemplate),
