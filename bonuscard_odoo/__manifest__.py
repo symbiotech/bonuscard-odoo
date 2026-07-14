@@ -1,6 +1,6 @@
 {
     "name": "Bonuscard Connector",
-    "version": "19.0.1.0.1",
+    "version": "19.0.1.0.0",
     "category": "Point of Sale",
     "summary": "Bonuscard integration foundation for Odoo POS",
     "author": "symbiotech",
