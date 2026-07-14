@@ -5,11 +5,19 @@ import { _t } from "@web/core/l10n/translation";
 import { ProductInfoPopup } from "@point_of_sale/app/components/popups/product_info_popup/product_info_popup";
 
 patch(ProductInfoPopup.prototype, {
+    get bonuscardCatalogVariant() {
+        const variants = this.props.productTemplate.product_variant_ids || [];
+        return variants.length === 1 ? variants[0] : null;
+    },
     get bonuscardCatalogStatus() {
-        return this.props.productTemplate.bonuscard_catalog_status;
+        const templateStatus = this.props.productTemplate.bonuscard_catalog_status;
+        if (templateStatus) {
+            return templateStatus;
+        }
+        return this.bonuscardCatalogVariant?.bonuscard_catalog_status || "not_set";
     },
     get showBonuscardCatalogStatus() {
-        return Boolean(this.bonuscardCatalogStatus);
+        return Boolean(this.bonuscardCatalogVariant);
     },
     get bonuscardCatalogLabel() {
         const labels = {
