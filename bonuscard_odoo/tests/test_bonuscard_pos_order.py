@@ -5,6 +5,10 @@ from odoo.tests import TransactionCase, tagged
 
 @tagged("post_install", "-at_install")
 class TestBonuscardPosOrder(TransactionCase):
+    def test_bonuscard_state_defaults_to_not_applicable(self):
+        order = self.env["pos.order"].new({})
+        self.assertEqual(order.bonuscard_state, "not_applicable")
+
     def test_bonuscard_audit_fields_from_ui_maps_values(self):
         validated_at = "2026-07-13 10:00:00"
         vals = self.env["pos.order"]._bonuscard_audit_fields_from_ui(
@@ -37,6 +41,16 @@ class TestBonuscardPosOrder(TransactionCase):
         )
         self.assertFalse(vals["bonuscard_last_error_message"])
         self.assertFalse(vals["bonuscard_validated_at"])
+
+    def test_bonuscard_audit_fields_from_ui_maps_false_state_to_not_applicable(self):
+        vals = self.env["pos.order"]._bonuscard_audit_fields_from_ui(
+            {
+                "bonuscard_state": False,
+                "bonuscard_transaction_identifier": False,
+            }
+        )
+        self.assertEqual(vals["bonuscard_state"], "not_applicable")
+        self.assertFalse(vals["bonuscard_transaction_identifier"])
 
     def test_bonuscard_audit_fields_from_ui_ignores_empty_values(self):
         vals = self.env["pos.order"]._bonuscard_audit_fields_from_ui(
