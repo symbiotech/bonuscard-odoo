@@ -195,12 +195,15 @@ class TestBonuscardProductCatalog(TransactionCase):
         variant_group = self.env.ref("product.group_product_variant")
         user = self.env.user
         user.write({"group_ids": [(4, variant_group.id)]})
-        tmpl = self._create_template(barcode="8710000002100")
-        tmpl.product_variant_id.bonuscard_catalog_status = "in_catalog"
+        try:
+            tmpl = self._create_template(barcode="8710000002100")
+            tmpl.product_variant_id.bonuscard_catalog_status = "in_catalog"
 
-        data = (
-            self.env["product.template"]
-            .with_user(user)
-            .search_read([("id", "=", tmpl.id)], ["bonuscard_catalog_status"])[0]
-        )
-        self.assertEqual(data["bonuscard_catalog_status"], "in_catalog")
+            data = (
+                self.env["product.template"]
+                .with_user(user)
+                .search_read([("id", "=", tmpl.id)], ["bonuscard_catalog_status"])[0]
+            )
+            self.assertEqual(data["bonuscard_catalog_status"], "in_catalog")
+        finally:
+            user.write({"group_ids": [(3, variant_group.id)]})
