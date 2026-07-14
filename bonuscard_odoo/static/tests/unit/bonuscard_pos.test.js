@@ -8,7 +8,6 @@ import { patchTranslations, patchWithCleanup } from "@web/../tests/web_test_help
 import { OrderSummary } from "@point_of_sale/app/screens/product_screen/order_summary/order_summary";
 import * as makeAwaitableDialog from "@point_of_sale/app/utils/make_awaitable_dialog";
 import { BonuscardRegistrationService } from "../../src/app/bonuscard_registration_service";
-import OrderPaymentValidation from "@point_of_sale/app/utils/order_payment_validation";
 import { runAllTimers } from "@odoo/hoot-mock";
 import { mountWithCleanup } from "@web/../tests/web_test_helpers";
 import { ProductInfoPopup } from "@point_of_sale/app/components/popups/product_info_popup/product_info_popup";
@@ -100,18 +99,9 @@ function patchBonuscardCancelCall(store, handler) {
     });
 }
 
-function stubAfterOrderValidationSideEffects(store) {
-    patchWithCleanup(store, {
-        checkPreparationStateAndSentOrderInPreparation: () => {},
-        printReceipt: async () => {},
-    });
-}
-
-function createPaymentValidation(store, order) {
-    return new OrderPaymentValidation({
-        pos: store,
-        orderUuid: order.uuid,
-    });
+async function applyBonuscardAuditAfterPayment(store, order) {
+    order.state = "paid";
+    await store._applyBonuscardAuditAfterPayment(order);
 }
 
 test("BonuscardRegistrationService.registerPartnerToBonuscard calls the backend, executes the returned action, and refreshes partner status", async () => {
@@ -1902,9 +1892,7 @@ test("afterOrderValidation clears Bonuscard transaction state on successful fina
         },
     });
 
-    stubAfterOrderValidationSideEffects(store);
-    const validation = createPaymentValidation(store, order);
-    await validation.afterOrderValidation();
+    await applyBonuscardAuditAfterPayment(store, order);
 
     expect(finalizedArgs).toEqual([
         42,
@@ -1937,9 +1925,7 @@ test("afterOrderValidation retries finalize once before clearing transaction sta
         },
     });
 
-    stubAfterOrderValidationSideEffects(store);
-    const validation = createPaymentValidation(store, order);
-    const finalizePromise = validation.afterOrderValidation();
+    const finalizePromise = applyBonuscardAuditAfterPayment(store, order);
     await runAllTimers();
     await finalizePromise;
 
@@ -1978,9 +1964,7 @@ test("afterOrderValidation keeps transaction state when finalize fails after ret
         },
     });
 
-    stubAfterOrderValidationSideEffects(store);
-    const validation = createPaymentValidation(store, order);
-    const finalizePromise = validation.afterOrderValidation();
+    const finalizePromise = applyBonuscardAuditAfterPayment(store, order);
     await runAllTimers();
     await finalizePromise;
 
@@ -2031,9 +2015,7 @@ test("afterOrderValidation records failed audit state when finalize fails but ca
         },
     });
 
-    stubAfterOrderValidationSideEffects(store);
-    const validation = createPaymentValidation(store, order);
-    const finalizePromise = validation.afterOrderValidation();
+    const finalizePromise = applyBonuscardAuditAfterPayment(store, order);
     await runAllTimers();
     await finalizePromise;
 
@@ -2075,9 +2057,7 @@ test("afterOrderValidation shows payment-succeeded warning without API detail wh
         },
     });
 
-    stubAfterOrderValidationSideEffects(store);
-    const validation = createPaymentValidation(store, order);
-    const finalizePromise = validation.afterOrderValidation();
+    const finalizePromise = applyBonuscardAuditAfterPayment(store, order);
     await runAllTimers();
     await finalizePromise;
 
@@ -2110,9 +2090,7 @@ test("afterOrderValidation retries finalize once when the RPC throws", async () 
         },
     });
 
-    stubAfterOrderValidationSideEffects(store);
-    const validation = createPaymentValidation(store, order);
-    const finalizePromise = validation.afterOrderValidation();
+    const finalizePromise = applyBonuscardAuditAfterPayment(store, order);
     await runAllTimers();
     await finalizePromise;
 
@@ -2478,9 +2456,7 @@ test("afterOrderValidation releases pending transaction when checkout items are 
         },
     });
 
-    stubAfterOrderValidationSideEffects(store);
-    const validation = createPaymentValidation(store, order);
-    await validation.afterOrderValidation();
+    await applyBonuscardAuditAfterPayment(store, order);
 
     expect(cancelledId).toBe("TXN-NO-FINALIZE");
     expect(finalizeCalled).toBe(false);
@@ -2510,9 +2486,7 @@ test("afterOrderValidation shows sticky warning when release fails after payment
         },
     });
 
-    stubAfterOrderValidationSideEffects(store);
-    const validation = createPaymentValidation(store, order);
-    await validation.afterOrderValidation();
+    await applyBonuscardAuditAfterPayment(store, order);
 
     expect(order.bonuscard_transaction_id).toBe("TXN-RELEASE-FAIL");
     expect(notifications.length).toBe(1);
@@ -2592,9 +2566,7 @@ test("afterOrderValidation finalizes zero-discount transaction when checkout ite
         },
     });
 
-    stubAfterOrderValidationSideEffects(store);
-    const validation = createPaymentValidation(store, order);
-    await validation.afterOrderValidation();
+    await applyBonuscardAuditAfterPayment(store, order);
 
     expect(finalizeArgs).toEqual([
         42,
@@ -2773,6 +2745,34 @@ test("validation cancels pending transaction when last catalog line is removed",
     expect(validateCalled).toBe(false);
     expect(cancelledId).toBe("TXN-LAST-CATALOG-LINE");
     expect(order.bonuscard_transaction_id).toBe(null);
+});
+
+test("preSyncAllOrders persists finalized audit fields before order sync", async () => {
+    const store = await setupPosEnv();
+    const order = store.addNewOrder();
+    order.state = "paid";
+    order.bonuscard_partner_id = 42;
+    order.bonuscard_transaction_id = "TXN-SYNC";
+    order.bonuscard_checkout_items = [{ ean: "TEST-SYNC", quantity: 1, pricePerItem: 10 }];
+    order.bonuscard_state = "validated";
+    order.bonuscard_transaction_identifier = "TXN-SYNC";
+    order.bonuscard_validated_at = serializeDateTime(luxon.DateTime.now());
+
+    patchWithCleanup(store.data, {
+        call: async (model, method) => {
+            if (model === "bonuscard.api.service" && method === "finalize_purchase_for_pos") {
+                return { error: false };
+            }
+            return {};
+        },
+    });
+
+    await store.preSyncAllOrders([order]);
+
+    const data = order.serializeForORM();
+    expect(data.bonuscard_state).toBe("finalized");
+    expect(data.bonuscard_finalized_at).not.toBe(false);
+    expect(data.bonuscard_transaction_identifier).toBe("TXN-SYNC");
 });
 
 test("serializeForORM exports Bonuscard audit fields for backend sync", async () => {

@@ -42,7 +42,7 @@ This document explains how the Bonuscard POS integration works in the `bonuscard
    - When the cart has no Bonuscard catalog lines, no `ValidatePurchase` call is made; if a pending transaction already exists from earlier catalog lines, it is cancelled
 
 4. Payment confirmation
-   - `OrderPaymentValidation.afterOrderValidation()` finalizes or cancels the pending Bonuscard transaction
+   - `PosStore.preSyncAllOrders()` finalizes or cancels the pending Bonuscard transaction **before** the paid order is synced to the backend, so audit fields such as `bonuscard_finalized_at` are included in the first `sync_from_ui` payload
    - When checkout items exist (including zero-discount validations for accumulation programs), it calls `bonuscard.api.service.finalize_purchase_for_pos` to register the purchase with Bonuscard
    - This sends the stored `transactionIdentifier` and `checkoutItems` to Bonuscard
    - Finalization is retried once on failure; on success the POS clears `order.bonuscard_transaction_id` and `order.bonuscard_checkout_items`
@@ -168,6 +168,8 @@ status on the resulting `pos.order`:
 
 The POS frontend includes these keys in `PosOrder.serializeForORM()`, and
 `pos.order._process_order` maps them onto the backend record when the order is
-synced. Runtime Bonuscard transaction fields on the POS order are still cleared
-after finalize/cancel, but the persisted audit fields remain on `pos.order` for
-reporting.
+synced. Post-payment Bonuscard finalize/cancel runs in `preSyncAllOrders` so
+`bonuscard_state`, `bonuscard_finalized_at`, and related audit values are
+present before the first paid-order sync. Runtime Bonuscard transaction fields
+on the POS order are still cleared after finalize/cancel, but the persisted
+audit fields remain on `pos.order` for reporting.
