@@ -706,17 +706,29 @@ class BonuscardApiService(models.AbstractModel):
                 message = self.env._("Bonuscard cancel failed.")
             return {"error": True, "messages": [message]}
 
-    def _extract_recognized_catalog_eans(self, payload):
-        """Return product EANs from checkoutItems in a ValidatePurchase response."""
+    def _checkout_item_has_catalog_metadata(self, item):
+        """True when Bonuscard enriched a checkout line with catalog product data."""
+        if not isinstance(item, dict):
+            return False
+        if item.get("identifier") is not None:
+            return True
+        return bool(
+            (item.get("articleNumber") or "").strip()
+            or (item.get("description") or "").strip()
+        )
+
+    def _extract_confirmed_catalog_eans(self, payload):
+        """Return EANs Bonuscard actually recognized in checkoutItems."""
         if not isinstance(payload, dict):
             return set()
-        recognized = set()
+        confirmed = set()
         for item in payload.get("checkoutItems") or []:
-            if isinstance(item, dict):
-                ean = (item.get("ean") or "").strip()
-                if ean:
-                    recognized.add(ean)
-        return recognized
+            if not isinstance(item, dict):
+                continue
+            ean = (item.get("ean") or "").strip()
+            if ean and self._checkout_item_has_catalog_metadata(item):
+                confirmed.add(ean)
+        return confirmed
 
     def _build_catalog_probe_checkout_items(self, instance, probe_ean):
         """Build ValidatePurchase checkout lines for a catalog probe."""
@@ -758,62 +770,41 @@ class BonuscardApiService(models.AbstractModel):
         probe_ean = (probe_ean or "").strip()
         anchor_ean = (anchor_ean or "").strip()
         uses_anchor = bool(anchor_ean and probe_ean and probe_ean != anchor_ean)
+        confirmed = self._extract_confirmed_catalog_eans(payload)
 
-        if uses_anchor:
-            if not transaction_id:
-                if _NO_VALID_PRODUCTS_MESSAGE_FRAGMENT in message_text:
-                    note = (
-                        messages[0]
-                        if messages
-                        else self.env._("Product not found in Bonuscard catalog.")
-                    )
-                    return "not_in_catalog", note
-                note = (
-                    messages[0]
-                    if messages
-                    else self.env._("Ambiguous Bonuscard response; status unchanged.")
-                )
-                return "unchanged", note
-
-            if _NO_VALID_PRODUCTS_MESSAGE_FRAGMENT in message_text:
-                note = (
-                    messages[0]
-                    if messages
-                    else self.env._("Product not found in Bonuscard catalog.")
-                )
-                return "not_in_catalog", note
-
-            recognized = self._extract_recognized_catalog_eans(payload)
-            if probe_ean in recognized:
-                note = (
-                    messages[0]
-                    if messages
-                    else self.env._("Product found in Bonuscard catalog.")
-                )
-                return "in_catalog", note
-            if anchor_ean in recognized:
-                note = (
-                    messages[0]
-                    if messages
-                    else self.env._("Product not found in Bonuscard catalog.")
-                )
-                return "not_in_catalog", note
-
+        if probe_ean and probe_ean in confirmed:
             note = (
                 messages[0]
                 if messages
-                else self.env._("Ambiguous Bonuscard response; status unchanged.")
+                else self.env._("Product found in Bonuscard catalog.")
             )
-            return "unchanged", note
+            return "in_catalog", note
+
+        if _NO_VALID_PRODUCTS_MESSAGE_FRAGMENT in message_text:
+            note = (
+                messages[0]
+                if messages
+                else self.env._("Product not found in Bonuscard catalog.")
+            )
+            return "not_in_catalog", note
+
+        if uses_anchor and anchor_ean in confirmed:
+            note = (
+                messages[0]
+                if messages
+                else self.env._("Product not found in Bonuscard catalog.")
+            )
+            return "not_in_catalog", note
+
+        if probe_ean and transaction_id:
+            note = (
+                messages[0]
+                if messages
+                else self.env._("Product not found in Bonuscard catalog.")
+            )
+            return "not_in_catalog", note
 
         if not transaction_id:
-            if _NO_VALID_PRODUCTS_MESSAGE_FRAGMENT in message_text:
-                note = (
-                    messages[0]
-                    if messages
-                    else self.env._("Product not found in Bonuscard catalog.")
-                )
-                return "not_in_catalog", note
             note = (
                 messages[0]
                 if messages

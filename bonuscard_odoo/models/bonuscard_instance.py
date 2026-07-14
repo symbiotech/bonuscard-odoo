@@ -103,9 +103,9 @@ class BonuscardConnectorInstance(models.Model):
         help="Barcode or article number of a product known to exist in the Bonuscard "
         "catalog. When configured, unknown products are probed in the same "
         "ValidatePurchase call as this anchor EAN. Bonuscard may still return a "
-        "transactionIdentifier while only recognizing the anchor; membership is then "
-        "determined from checkoutItems. CancelPurchase on that transaction releases "
-        "the dedicated probe customer.",
+        "transactionIdentifier while only recognizing the anchor; membership is "
+        "determined from enriched checkoutItems for the probed EAN. CancelPurchase "
+        "on that transaction releases the dedicated probe customer.",
     )
 
     connection_status = fields.Selection(

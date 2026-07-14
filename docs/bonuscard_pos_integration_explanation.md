@@ -100,10 +100,11 @@ This document explains how the Bonuscard POS integration works in the `bonuscard
     and a "No valid products found…" message (transaction auto-cancelled). When
     `catalog_probe_unlock_ean` is configured, the probed product and anchor EAN are
     sent together: Bonuscard may still return a `transactionIdentifier`, but
-    membership is determined from `checkoutItems`—only the probed EAN being
-    recognized means `in_catalog`; anchor-only recognition means `not_in_catalog`.
-    Other responses without a transaction identifier leave the status `unchanged`.
-    Without an anchor EAN, a returned `transactionIdentifier` means `in_catalog`.
+    membership is determined from `checkoutItems`—the probed EAN must appear on a
+    line enriched with Bonuscard catalog metadata (`identifier`, `articleNumber`, or
+    `description`). Anchor-only recognition or a bare `transactionIdentifier` without
+    that enrichment means `not_in_catalog`. Other responses without a transaction
+    identifier leave the status `unchanged`.
     Bulk probes cancel each open transaction before probing the next product so
     the probe customer is not locked (Bonuscard API error code 2). Configure
     `catalog_probe_unlock_ean` with a barcode known to exist in Bonuscard: unknown
