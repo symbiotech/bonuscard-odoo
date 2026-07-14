@@ -69,6 +69,24 @@ class TestBonuscardProductCatalog(TransactionCase):
         product = self._create_product(barcode="8710000000001")
         self.assertEqual(product.bonuscard_catalog_status, "not_set")
 
+    def test_template_create_with_catalog_status_in_vals(self):
+        """Form saves can include the stored computed field before the variant exists."""
+        tmpl = (
+            self.env["product.template"]
+            .with_context(bonuscard_skip_catalog_probe=True)
+            .create(
+                {
+                    "name": "New Product With Catalog Field",
+                    "list_price": 10.0,
+                    "barcode": "8710000005000",
+                    "bonuscard_catalog_status": "not_set",
+                }
+            )
+        )
+        self.assertEqual(len(tmpl.product_variant_ids), 1)
+        self.assertEqual(tmpl.bonuscard_catalog_status, "not_set")
+        self.assertEqual(tmpl.product_variant_id.bonuscard_catalog_status, "not_set")
+
     def test_in_catalog_requires_barcode_or_default_code(self):
         with self.assertRaises(ValidationError):
             self._create_product(bonuscard_catalog_status="in_catalog")
