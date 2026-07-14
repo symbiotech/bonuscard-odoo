@@ -721,7 +721,7 @@ class BonuscardApiService(models.AbstractModel):
         )
 
     def _extract_confirmed_catalog_eans(self, payload):
-        """Return EANs Bonuscard actually recognized in checkoutItems."""
+        """Return EANs from checkoutItems lines enriched with Bonuscard catalog metadata."""
         if not isinstance(payload, dict):
             return set()
         confirmed = set()
