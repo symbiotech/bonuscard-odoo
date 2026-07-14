@@ -136,15 +136,25 @@ class TestBonuscardIntegration(TransactionCase):
         }
         if in_catalog:
             values["bonuscard_catalog_status"] = "in_catalog"
-        return self.env["product.product"].create(values)
+        product = (
+            self.env["product.product"]
+            .with_context(bonuscard_skip_catalog_probe=True)
+            .create(values)
+        )
+        return self.env["product.product"].browse(product.ids)
 
     def _create_product_without_barcode(self):
-        return self.env["product.product"].create(
-            {
-                "name": "Non-Bonuscard Product (no barcode)",
-                "list_price": 10.0,
-            }
+        product = (
+            self.env["product.product"]
+            .with_context(bonuscard_skip_catalog_probe=True)
+            .create(
+                {
+                    "name": "Non-Bonuscard Product (no barcode)",
+                    "list_price": 10.0,
+                }
+            )
         )
+        return self.env["product.product"].browse(product.ids)
 
     def _validate_pos_order_line(self, partner, product, transaction_identifier=None):
         service = self.env["bonuscard.api.service"]
@@ -301,14 +311,19 @@ class TestBonuscardIntegration(TransactionCase):
                 }
             )
             return existing
-        return self.env["product.product"].create(
-            {
-                "name": name,
-                "barcode": barcode,
-                "list_price": 10.0,
-                "bonuscard_catalog_status": "not_set",
-            }
+        product = (
+            self.env["product.product"]
+            .with_context(bonuscard_skip_catalog_probe=True)
+            .create(
+                {
+                    "name": name,
+                    "barcode": barcode,
+                    "list_price": 10.0,
+                    "bonuscard_catalog_status": "not_set",
+                }
+            )
         )
+        return self.env["product.product"].browse(product.ids)
 
     def _cancel_open_probe_transaction(self, instance, transaction_identifier):
         if not transaction_identifier:

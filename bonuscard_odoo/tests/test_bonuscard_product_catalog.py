@@ -11,7 +11,12 @@ class TestBonuscardProductCatalog(TransactionCase):
             "available_in_pos": True,
         }
         defaults.update(values)
-        return self.env["product.product"].create(defaults)
+        product = (
+            self.env["product.product"]
+            .with_context(bonuscard_skip_catalog_probe=True)
+            .create(defaults)
+        )
+        return self.env["product.product"].browse(product.ids)
 
     def _create_template(self, **values):
         defaults = {
@@ -20,7 +25,12 @@ class TestBonuscardProductCatalog(TransactionCase):
             "available_in_pos": True,
         }
         defaults.update(values)
-        return self.env["product.template"].create(defaults)
+        tmpl = (
+            self.env["product.template"]
+            .with_context(bonuscard_skip_catalog_probe=True)
+            .create(defaults)
+        )
+        return self.env["product.template"].browse(tmpl.ids)
 
     def _create_multi_variant_template(self, **values):
         attribute = self.env["product.attribute"].create(
@@ -48,7 +58,12 @@ class TestBonuscardProductCatalog(TransactionCase):
             ],
         }
         defaults.update(values)
-        return self.env["product.template"].create(defaults)
+        tmpl = (
+            self.env["product.template"]
+            .with_context(bonuscard_skip_catalog_probe=True)
+            .create(defaults)
+        )
+        return self.env["product.template"].browse(tmpl.ids)
 
     def test_default_catalog_status_is_not_set(self):
         product = self._create_product(barcode="8710000000001")

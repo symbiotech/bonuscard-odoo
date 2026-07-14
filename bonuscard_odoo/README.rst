@@ -101,7 +101,10 @@ Configuration
    - Or use **Check Bonuscard Catalog** on a product form
 
    The scheduled job probes products with catalog status **Not Set** that have a
-   barcode or article number. Each product is checked individually via
+   barcode or article number. New products created manually in Odoo are probed
+   automatically after save when catalog probe is enabled (imports are excluded).
+   The same applies when a barcode or article number is added or changed later on
+   a product that is still **Not Set**. Each product is checked individually via
     ``ValidatePurchase``. A product is **in catalog** only when Bonuscard returns
     the probed EAN on an enriched ``checkoutItems`` line (catalog metadata such as
     ``identifier`` or ``description``). Unknown products are detected when that

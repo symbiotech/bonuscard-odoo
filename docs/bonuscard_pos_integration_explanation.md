@@ -96,6 +96,11 @@ This document explains how the Bonuscard POS integration works in the `bonuscard
     (`default_code` / internal reference)
   - Only `in_catalog` products are sent to Bonuscard from POS
   - Bulk list actions and CSV import can maintain catalog membership manually
+  - **Automatic probe on create**: when catalog probe is enabled on the
+    connection, manually created products with a barcode or article number and
+    status **Not Set** are probed in the background after save (CSV import and
+    module install are skipped). The same probe runs when a barcode or article
+    number is added or changed later on a **Not Set** product
   - **Check Bonuscard Catalog** (managers only) probes catalog membership via
     `ValidatePurchase` using the dedicated test customer on the connection.
     `not_in_catalog` is set when Bonuscard rejects the probed product. Without an
@@ -127,6 +132,9 @@ This document explains how the Bonuscard POS integration works in the `bonuscard
     `catalog_probe_batch_size`, `catalog_probe_unlock_ean`, and `catalog_probe_active`
   - Daily cron probes never-scanned products (`not_set` with barcode/article)
   - Manual **Run Catalog Probe** on the connection form uses the same scope as cron
+  - New manual product creates trigger the same probe after save when catalog probe
+    is enabled (background, same connection settings). Adding or changing a barcode
+    or article number on a **Not Set** product triggers it as well
 
 - `product.template` extension
   - Mirrors catalog status from the single underlying variant for list visibility
