@@ -1,25 +1,6 @@
 <?xml version="1.0" encoding="UTF-8" ?>
 <odoo>
 
-    <!-- Variant form/list UI: Bonuscard tab on product variant form. -->
-    <record id="view_product_product_form_bonuscard" model="ir.ui.view">
-        <field name="name">product.product.form.bonuscard</field>
-        <field name="model">product.product</field>
-        <field name="inherit_id" ref="product.product_normal_form_view"/>
-        <field name="arch" type="xml">
-            <xpath expr="//page[@name='invoicing']" position="after">
-                <page string="Bonuscard" name="bonuscard" groups="bonuscard_odoo.bonuscard_odoo_group_user">
-                    <group>
-                        <field name="bonuscard_catalog_status"/>
-                        <field name="bonuscard_catalog_updated_at"/>
-                        <field name="bonuscard_catalog_probe_note" groups="bonuscard_odoo.bonuscard_odoo_group_manager"/>
-                        <button name="action_bonuscard_probe_catalog_status" string="Check Bonuscard Catalog" type="object" class="btn-secondary" groups="bonuscard_odoo.bonuscard_odoo_group_manager"/>
-                    </group>
-                </page>
-            </xpath>
-        </field>
-    </record>
-
     <record id="view_product_product_tree_bonuscard" model="ir.ui.view">
         <field name="name">product.product.tree.bonuscard</field>
         <field name="model">product.product</field>
