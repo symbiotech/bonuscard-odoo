@@ -8,7 +8,6 @@ import { patchTranslations, patchWithCleanup } from "@web/../tests/web_test_help
 import { OrderSummary } from "@point_of_sale/app/screens/product_screen/order_summary/order_summary";
 import * as makeAwaitableDialog from "@point_of_sale/app/utils/make_awaitable_dialog";
 import { BonuscardRegistrationService } from "../../src/app/bonuscard_registration_service";
-import OrderPaymentValidation from "@point_of_sale/app/utils/order_payment_validation";
 import { runAllTimers } from "@odoo/hoot-mock";
 import { mountWithCleanup } from "@web/../tests/web_test_helpers";
 import { ProductInfoPopup } from "@point_of_sale/app/components/popups/product_info_popup/product_info_popup";
@@ -100,18 +99,15 @@ function patchBonuscardCancelCall(store, handler) {
     });
 }
 
-function stubAfterOrderValidationSideEffects(store) {
-    patchWithCleanup(store, {
-        checkPreparationStateAndSentOrderInPreparation: () => {},
-        printReceipt: async () => {},
-    });
+async function applyBonuscardAuditAfterPayment(store, order) {
+    order.state = "paid";
+    await store.preSyncAllOrders([order]);
 }
 
-function createPaymentValidation(store, order) {
-    return new OrderPaymentValidation({
-        pos: store,
-        orderUuid: order.uuid,
-    });
+function markLineBonuscardDiscount(line, discountPercent = 10) {
+    line.setDiscount(discountPercent);
+    line.uiState = line.uiState || {};
+    line.uiState._bonuscardDiscount = true;
 }
 
 test("BonuscardRegistrationService.registerPartnerToBonuscard calls the backend, executes the returned action, and refreshes partner status", async () => {
@@ -1883,11 +1879,12 @@ test("onClickBackButton does not cancel when not on PaymentScreen", async () => 
     expect(order.bonuscard_transaction_id).toBe("TXN-NO-CANCEL");
 });
 
-test("afterOrderValidation clears Bonuscard transaction state on successful finalize", async () => {
+test("preSyncAllOrders clears Bonuscard transaction state on successful finalize", async () => {
     const store = await setupPosEnv();
     const order = store.addNewOrder();
     order.bonuscard_partner_id = 42;
     order.bonuscard_transaction_id = "TXN-FINALIZE";
+    order._bonuscardCandidateTxId = "TXN-CANDIDATE-FINALIZE";
     order.bonuscard_checkout_items = [{ ean: "TEST-123", quantity: 1, pricePerItem: 10 }];
 
     let finalizedArgs = null;
@@ -1902,9 +1899,7 @@ test("afterOrderValidation clears Bonuscard transaction state on successful fina
         },
     });
 
-    stubAfterOrderValidationSideEffects(store);
-    const validation = createPaymentValidation(store, order);
-    await validation.afterOrderValidation();
+    await applyBonuscardAuditAfterPayment(store, order);
 
     expect(finalizedArgs).toEqual([
         42,
@@ -1913,9 +1908,10 @@ test("afterOrderValidation clears Bonuscard transaction state on successful fina
     ]);
     expect(order.bonuscard_transaction_id).toBe(null);
     expect(order.bonuscard_checkout_items).toBe(null);
+    expect(order._bonuscardCandidateTxId).toBe(null);
 });
 
-test("afterOrderValidation retries finalize once before clearing transaction state", async () => {
+test("preSyncAllOrders retries finalize once before clearing transaction state", async () => {
     const store = await setupPosEnv();
     const order = store.addNewOrder();
     order.bonuscard_partner_id = 42;
@@ -1937,9 +1933,7 @@ test("afterOrderValidation retries finalize once before clearing transaction sta
         },
     });
 
-    stubAfterOrderValidationSideEffects(store);
-    const validation = createPaymentValidation(store, order);
-    const finalizePromise = validation.afterOrderValidation();
+    const finalizePromise = applyBonuscardAuditAfterPayment(store, order);
     await runAllTimers();
     await finalizePromise;
 
@@ -1948,7 +1942,7 @@ test("afterOrderValidation retries finalize once before clearing transaction sta
     expect(order.bonuscard_checkout_items).toBe(null);
 });
 
-test("afterOrderValidation keeps transaction state when finalize fails after retry", async () => {
+test("preSyncAllOrders keeps transaction state when finalize fails after retry", async () => {
     const store = await setupPosEnv();
     const order = store.addNewOrder();
     order.bonuscard_partner_id = 42;
@@ -1978,9 +1972,7 @@ test("afterOrderValidation keeps transaction state when finalize fails after ret
         },
     });
 
-    stubAfterOrderValidationSideEffects(store);
-    const validation = createPaymentValidation(store, order);
-    const finalizePromise = validation.afterOrderValidation();
+    const finalizePromise = applyBonuscardAuditAfterPayment(store, order);
     await runAllTimers();
     await finalizePromise;
 
@@ -1995,7 +1987,7 @@ test("afterOrderValidation keeps transaction state when finalize fails after ret
     expect(notifications[0].options.sticky).toBe(true);
 });
 
-test("afterOrderValidation records failed audit state when finalize fails but cancel fallback succeeds", async () => {
+test("preSyncAllOrders records failed audit state when finalize fails but cancel fallback succeeds", async () => {
     const store = await setupPosEnv();
     const order = store.addNewOrder();
     order.bonuscard_partner_id = 42;
@@ -2007,6 +1999,18 @@ test("afterOrderValidation records failed audit state when finalize fails but ca
         luxon.DateTime.fromObject({ year: 2026, month: 7, day: 13, hour: 12 })
     );
     const validatedAtSnapshot = order.bonuscard_validated_at;
+
+    const product = store.models["product.product"].get(5);
+    const line = await store.addLineToOrder(
+        {
+            product_id: product,
+            product_tmpl_id: product.product_tmpl_id,
+            qty: 1,
+            price_unit: 10,
+        },
+        order
+    );
+    markLineBonuscardDiscount(line, 20);
 
     const notifications = [];
     patchWithCleanup(store.notification, {
@@ -2031,9 +2035,7 @@ test("afterOrderValidation records failed audit state when finalize fails but ca
         },
     });
 
-    stubAfterOrderValidationSideEffects(store);
-    const validation = createPaymentValidation(store, order);
-    const finalizePromise = validation.afterOrderValidation();
+    const finalizePromise = applyBonuscardAuditAfterPayment(store, order);
     await runAllTimers();
     await finalizePromise;
 
@@ -2047,10 +2049,13 @@ test("afterOrderValidation records failed audit state when finalize fails but ca
     expect(order.bonuscard_last_error_message).toBe(
         "Bonuscard service is temporarily unavailable."
     );
+    expect(order.lines.length).toBe(1);
+    expect(order.lines[0].discount).toBe(20);
+    expect(order.lines[0].uiState?._bonuscardDiscount).toBe(true);
     expect(notifications.length).toBe(0);
 });
 
-test("afterOrderValidation shows payment-succeeded warning without API detail when finalize returns no message", async () => {
+test("preSyncAllOrders shows payment-succeeded warning without API detail when finalize returns no message", async () => {
     const store = await setupPosEnv();
     const order = store.addNewOrder();
     order.bonuscard_partner_id = 42;
@@ -2075,9 +2080,7 @@ test("afterOrderValidation shows payment-succeeded warning without API detail wh
         },
     });
 
-    stubAfterOrderValidationSideEffects(store);
-    const validation = createPaymentValidation(store, order);
-    const finalizePromise = validation.afterOrderValidation();
+    const finalizePromise = applyBonuscardAuditAfterPayment(store, order);
     await runAllTimers();
     await finalizePromise;
 
@@ -2088,7 +2091,7 @@ test("afterOrderValidation shows payment-succeeded warning without API detail wh
     );
 });
 
-test("afterOrderValidation retries finalize once when the RPC throws", async () => {
+test("preSyncAllOrders retries finalize once when the RPC throws", async () => {
     const store = await setupPosEnv();
     const order = store.addNewOrder();
     order.bonuscard_partner_id = 42;
@@ -2110,9 +2113,7 @@ test("afterOrderValidation retries finalize once when the RPC throws", async () 
         },
     });
 
-    stubAfterOrderValidationSideEffects(store);
-    const validation = createPaymentValidation(store, order);
-    const finalizePromise = validation.afterOrderValidation();
+    const finalizePromise = applyBonuscardAuditAfterPayment(store, order);
     await runAllTimers();
     await finalizePromise;
 
@@ -2454,7 +2455,7 @@ test("validation releases pending transaction when cart has no Bonuscard-eligibl
     expect(order.bonuscard_checkout_items).toBe(null);
 });
 
-test("afterOrderValidation releases pending transaction when checkout items are missing", async () => {
+test("preSyncAllOrders releases pending transaction when checkout items are missing", async () => {
     const store = await setupPosEnv();
     const order = store.addNewOrder();
     const partner = store.models["res.partner"].create({ name: "Bonuscard Customer" });
@@ -2478,9 +2479,7 @@ test("afterOrderValidation releases pending transaction when checkout items are 
         },
     });
 
-    stubAfterOrderValidationSideEffects(store);
-    const validation = createPaymentValidation(store, order);
-    await validation.afterOrderValidation();
+    await applyBonuscardAuditAfterPayment(store, order);
 
     expect(cancelledId).toBe("TXN-NO-FINALIZE");
     expect(finalizeCalled).toBe(false);
@@ -2488,7 +2487,45 @@ test("afterOrderValidation releases pending transaction when checkout items are 
     expect(order.bonuscard_checkout_items).toBe(null);
 });
 
-test("afterOrderValidation shows sticky warning when release fails after payment", async () => {
+test("post-payment release keeps Bonuscard discount lines before order sync", async () => {
+    const store = await setupPosEnv();
+    const order = store.addNewOrder();
+    const partner = store.models["res.partner"].create({ name: "Bonuscard Customer" });
+    partner.bonuscard_recruitment_code = "ABC123";
+    order.bonuscard_transaction_id = "TXN-KEEP-DISCOUNT";
+    order.bonuscard_partner_id = partner.id;
+    order.bonuscard_checkout_items = null;
+
+    const product = store.models["product.product"].get(5);
+    const line = await store.addLineToOrder(
+        {
+            product_id: product,
+            product_tmpl_id: product.product_tmpl_id,
+            qty: 1,
+            price_unit: 10,
+        },
+        order
+    );
+    markLineBonuscardDiscount(line, 15);
+
+    patchWithCleanup(store.data, {
+        call: async (model, method) => {
+            if (model === "bonuscard.api.service" && method === "cancel_purchase_for_pos") {
+                return { error: false };
+            }
+            return {};
+        },
+    });
+
+    await applyBonuscardAuditAfterPayment(store, order);
+
+    expect(order.lines.length).toBe(1);
+    expect(order.lines[0].discount).toBe(15);
+    expect(order.lines[0].uiState?._bonuscardDiscount).toBe(true);
+    expect(order.bonuscard_state).toBe("skipped");
+});
+
+test("preSyncAllOrders shows sticky warning when release fails after payment", async () => {
     const store = await setupPosEnv();
     const order = store.addNewOrder();
     const partner = store.models["res.partner"].create({ name: "Bonuscard Customer" });
@@ -2510,9 +2547,7 @@ test("afterOrderValidation shows sticky warning when release fails after payment
         },
     });
 
-    stubAfterOrderValidationSideEffects(store);
-    const validation = createPaymentValidation(store, order);
-    await validation.afterOrderValidation();
+    await applyBonuscardAuditAfterPayment(store, order);
 
     expect(order.bonuscard_transaction_id).toBe("TXN-RELEASE-FAIL");
     expect(notifications.length).toBe(1);
@@ -2569,11 +2604,12 @@ test("validation keeps transaction state when release fails for ineligible cart 
     expect(notifications[0].options.sticky).toBe(false);
 });
 
-test("afterOrderValidation finalizes zero-discount transaction when checkout items exist", async () => {
+test("preSyncAllOrders finalizes zero-discount transaction when checkout items exist", async () => {
     const store = await setupPosEnv();
     const order = store.addNewOrder();
     order.bonuscard_partner_id = 42;
     order.bonuscard_transaction_id = "TXN-ZERO";
+    order._bonuscardCandidateTxId = "TXN-CANDIDATE-ZERO";
     order.bonuscard_checkout_items = [{ ean: "TEST-999", quantity: 1, pricePerItem: 10 }];
 
     let cancelledId = null;
@@ -2592,9 +2628,7 @@ test("afterOrderValidation finalizes zero-discount transaction when checkout ite
         },
     });
 
-    stubAfterOrderValidationSideEffects(store);
-    const validation = createPaymentValidation(store, order);
-    await validation.afterOrderValidation();
+    await applyBonuscardAuditAfterPayment(store, order);
 
     expect(finalizeArgs).toEqual([
         42,
@@ -2607,6 +2641,7 @@ test("afterOrderValidation finalizes zero-discount transaction when checkout ite
     expect(order.bonuscard_state).toBe("finalized");
     expect(order.bonuscard_transaction_identifier).toBe("TXN-ZERO");
     expect(order.bonuscard_finalized_at).not.toBe(false);
+    expect(order._bonuscardCandidateTxId).toBe(null);
 });
 
 test("validation recovers from customer lock by cancelling pending tx on finalized orders", async () => {
@@ -2773,6 +2808,34 @@ test("validation cancels pending transaction when last catalog line is removed",
     expect(validateCalled).toBe(false);
     expect(cancelledId).toBe("TXN-LAST-CATALOG-LINE");
     expect(order.bonuscard_transaction_id).toBe(null);
+});
+
+test("preSyncAllOrders persists finalized audit fields before order sync", async () => {
+    const store = await setupPosEnv();
+    const order = store.addNewOrder();
+    order.state = "paid";
+    order.bonuscard_partner_id = 42;
+    order.bonuscard_transaction_id = "TXN-SYNC";
+    order.bonuscard_checkout_items = [{ ean: "TEST-SYNC", quantity: 1, pricePerItem: 10 }];
+    order.bonuscard_state = "validated";
+    order.bonuscard_transaction_identifier = "TXN-SYNC";
+    order.bonuscard_validated_at = serializeDateTime(luxon.DateTime.now());
+
+    patchWithCleanup(store.data, {
+        call: async (model, method) => {
+            if (model === "bonuscard.api.service" && method === "finalize_purchase_for_pos") {
+                return { error: false };
+            }
+            return {};
+        },
+    });
+
+    await store.preSyncAllOrders([order]);
+
+    const data = order.serializeForORM();
+    expect(data.bonuscard_state).toBe("finalized");
+    expect(data.bonuscard_finalized_at).not.toBe(false);
+    expect(data.bonuscard_transaction_identifier).toBe("TXN-SYNC");
 });
 
 test("serializeForORM exports Bonuscard audit fields for backend sync", async () => {

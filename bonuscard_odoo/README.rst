@@ -174,14 +174,22 @@ Purchase Lifecycle
 The POS integration supports:
 
 * ``ValidatePurchase`` before payment and after order changes
-* ``FinalizePurchase`` after successful payment (retried once on failure)
+* ``FinalizePurchase`` during ``preSyncAllOrders``, immediately before the
+  paid order is synced to the backend (retried once on failure)
 * ``CancelPurchase`` when the order is aborted, the customer is changed, the
   order is deleted, or the POS session is closed
 
-``FinalizePurchase`` is retried once after payment. Local transaction fields are
-cleared only after Bonuscard confirms finalization. If finalization still fails,
-payment remains complete but a sticky warning is shown and the transaction
-fields are kept so the loyalty lock can be recovered manually.
+``FinalizePurchase`` runs in ``preSyncAllOrders`` so Bonuscard audit fields
+(``bonuscard_state``, ``bonuscard_finalized_at``, and related values) are
+included in the first ``sync_from_ui`` payload. Local runtime transaction
+fields are cleared only after Bonuscard confirms finalization. If finalization
+still fails, payment remains complete but a sticky warning is shown; a cancel
+fallback may run while keeping already-paid discount lines intact.
+
+Pre-payment cancel paths clear the full local Bonuscard purchase state,
+including discount lines. Post-payment cancel paths (skip or finalize-failure
+fallback) clear only runtime transaction identifiers so synced order totals stay
+correct.
 
 Cancel requests are retried once on ``onDeleteOrder`` and ``closePos``. Local
 transaction fields are cleared only after Bonuscard confirms cancellation.
