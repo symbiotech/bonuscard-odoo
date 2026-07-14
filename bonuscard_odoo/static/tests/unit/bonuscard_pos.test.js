@@ -104,6 +104,12 @@ async function applyBonuscardAuditAfterPayment(store, order) {
     await store._applyBonuscardAuditAfterPayment(order);
 }
 
+function markLineBonuscardDiscount(line, discountPercent = 10) {
+    line.setDiscount(discountPercent);
+    line.uiState = line.uiState || {};
+    line.uiState._bonuscardDiscount = true;
+}
+
 test("BonuscardRegistrationService.registerPartnerToBonuscard calls the backend, executes the returned action, and refreshes partner status", async () => {
     const partner = { id: 42, name: "New Customer", phone: "+1234567890" };
     const calls = [];
@@ -1992,6 +1998,18 @@ test("afterOrderValidation records failed audit state when finalize fails but ca
     );
     const validatedAtSnapshot = order.bonuscard_validated_at;
 
+    const product = store.models["product.product"].get(5);
+    const line = await store.addLineToOrder(
+        {
+            product_id: product,
+            product_tmpl_id: product.product_tmpl_id,
+            qty: 1,
+            price_unit: 10,
+        },
+        order
+    );
+    markLineBonuscardDiscount(line, 20);
+
     const notifications = [];
     patchWithCleanup(store.notification, {
         add: (message, options) => notifications.push({ message, options }),
@@ -2029,6 +2047,9 @@ test("afterOrderValidation records failed audit state when finalize fails but ca
     expect(order.bonuscard_last_error_message).toBe(
         "Bonuscard service is temporarily unavailable."
     );
+    expect(order.lines.length).toBe(1);
+    expect(order.lines[0].discount).toBe(20);
+    expect(order.lines[0].uiState?._bonuscardDiscount).toBe(true);
     expect(notifications.length).toBe(0);
 });
 
@@ -2462,6 +2483,44 @@ test("afterOrderValidation releases pending transaction when checkout items are 
     expect(finalizeCalled).toBe(false);
     expect(order.bonuscard_transaction_id).toBe(null);
     expect(order.bonuscard_checkout_items).toBe(null);
+});
+
+test("post-payment release keeps Bonuscard discount lines before order sync", async () => {
+    const store = await setupPosEnv();
+    const order = store.addNewOrder();
+    const partner = store.models["res.partner"].create({ name: "Bonuscard Customer" });
+    partner.bonuscard_recruitment_code = "ABC123";
+    order.bonuscard_transaction_id = "TXN-KEEP-DISCOUNT";
+    order.bonuscard_partner_id = partner.id;
+    order.bonuscard_checkout_items = null;
+
+    const product = store.models["product.product"].get(5);
+    const line = await store.addLineToOrder(
+        {
+            product_id: product,
+            product_tmpl_id: product.product_tmpl_id,
+            qty: 1,
+            price_unit: 10,
+        },
+        order
+    );
+    markLineBonuscardDiscount(line, 15);
+
+    patchWithCleanup(store.data, {
+        call: async (model, method) => {
+            if (model === "bonuscard.api.service" && method === "cancel_purchase_for_pos") {
+                return { error: false };
+            }
+            return {};
+        },
+    });
+
+    await applyBonuscardAuditAfterPayment(store, order);
+
+    expect(order.lines.length).toBe(1);
+    expect(order.lines[0].discount).toBe(15);
+    expect(order.lines[0].uiState?._bonuscardDiscount).toBe(true);
+    expect(order.bonuscard_state).toBe("skipped");
 });
 
 test("afterOrderValidation shows sticky warning when release fails after payment", async () => {

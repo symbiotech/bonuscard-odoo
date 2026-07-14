@@ -118,7 +118,13 @@ patch(PosStore.prototype, {
 
     async _releaseBonuscardTransactionIfPending(
         order,
-        { logMethod = "releasePending", notifyOnFailure = true, failureMessage = null, sticky = false } = {}
+        {
+            logMethod = "releasePending",
+            notifyOnFailure = true,
+            failureMessage = null,
+            sticky = false,
+            preserveOrderLines = false,
+        } = {}
     ) {
         if (!this._bonuscardPendingTransactionId(order)) {
             return { success: true };
@@ -128,7 +134,11 @@ patch(PosStore.prototype, {
             logMethod,
         });
         if (cancelResult.success) {
-            this._clearBonuscardPurchaseState(order);
+            if (preserveOrderLines) {
+                this._clearBonuscardRuntimeTransactionState(order);
+            } else {
+                this._clearBonuscardPurchaseState(order);
+            }
             return cancelResult;
         }
         logPosMessage(
@@ -159,14 +169,21 @@ patch(PosStore.prototype, {
         if (!order) {
             return;
         }
-        order.bonuscard_transaction_id = null;
-        order._bonuscardCandidateTxId = null;
-        order.bonuscard_checkout_items = null;
+        this._clearBonuscardRuntimeTransactionState(order);
         order.bonuscard_partner_id = false;
         order.bonuscard_needs_validation = true;
         order.clearBonuscardDiscounts?.();
 
         this._clearBonuscardAuditFields(order);
+    },
+
+    _clearBonuscardRuntimeTransactionState(order) {
+        if (!order) {
+            return;
+        }
+        order.bonuscard_transaction_id = null;
+        order._bonuscardCandidateTxId = null;
+        order.bonuscard_checkout_items = null;
     },
 
     _isBonuscardCustomerLockError(result) {
@@ -996,6 +1013,7 @@ patch(PosStore.prototype, {
             const releaseResult = await this._releaseBonuscardTransactionIfPending(order, {
                 logMethod: "_applyBonuscardAuditAfterPayment",
                 notifyOnFailure: false,
+                preserveOrderLines: true,
             });
             if (!releaseResult.success) {
                 this.notification.add(
@@ -1035,6 +1053,7 @@ patch(PosStore.prototype, {
             const releaseResult = await this._releaseBonuscardTransactionIfPending(order, {
                 logMethod: "_applyBonuscardAuditAfterPayment_finalizeFallback",
                 notifyOnFailure: false,
+                preserveOrderLines: true,
             });
             if (releaseResult.success) {
                 this._setBonuscardAuditFields(order, {
