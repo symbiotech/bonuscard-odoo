@@ -5,6 +5,10 @@ from odoo.tests import TransactionCase, tagged
 
 @tagged("post_install", "-at_install")
 class TestBonuscardPosOrder(TransactionCase):
+    def test_bonuscard_state_defaults_to_not_applicable(self):
+        order = self.env["pos.order"].new({})
+        self.assertEqual(order.bonuscard_state, "not_applicable")
+
     def test_bonuscard_audit_fields_from_ui_maps_values(self):
         validated_at = "2026-07-13 10:00:00"
         vals = self.env["pos.order"]._bonuscard_audit_fields_from_ui(

@@ -23,6 +23,7 @@ class PosOrder(models.Model):
             ("failed", "Failed"),
         ],
         string="Bonuscard",
+        default="not_applicable",
         tracking=True,
         copy=False,
         index=True,
