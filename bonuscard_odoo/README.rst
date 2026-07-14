@@ -98,12 +98,13 @@ Configuration
 
    The scheduled job probes products with catalog status **Not Set** that have a
    barcode or article number. Each product is checked individually via
-   ``ValidatePurchase``. A product is **in catalog** only when Bonuscard returns
-   the probed EAN on an enriched ``checkoutItems`` line (catalog metadata such as
-   ``identifier`` or ``description``). Unknown products are detected when that
-   enrichment is missing, when only an unlock/anchor EAN is recognized, or when
-   Bonuscard returns no ``transactionIdentifier``. Recognized products trigger
-   ``CancelPurchase`` so the probe customer is not left locked.
+    ``ValidatePurchase``. A product is **in catalog** only when Bonuscard returns
+    the probed EAN on an enriched ``checkoutItems`` line (catalog metadata such as
+    ``identifier`` or ``description``). Unknown products are detected when that
+    enrichment is missing, when only an unlock/anchor EAN is recognized, or when
+    Bonuscard returns the ``No valid products found...`` message (transaction auto-cancelled).
+    Other responses without a ``transactionIdentifier`` leave the status unchanged. Recognized products trigger
+    ``CancelPurchase`` so the probe customer is not left locked.
 
 Usage
 =====
