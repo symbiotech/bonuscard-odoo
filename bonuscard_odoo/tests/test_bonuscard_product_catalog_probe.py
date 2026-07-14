@@ -39,6 +39,20 @@ class TestBonuscardProductCatalogProbe(TransactionCase):
         )
         return self.env["product.product"].browse(product.ids)
 
+    def _recognized_checkout_response(self, ean, transaction_id="TX001", messages=None):
+        return {
+            "error": False,
+            "transactionIdentifier": transaction_id,
+            "messages": messages or ["Product recognized."],
+            "checkoutItems": [
+                {
+                    "ean": ean,
+                    "identifier": "1",
+                    "description": "Catalog product",
+                }
+            ],
+        }
+
     def test_classify_not_in_catalog_without_transaction(self):
         status, note = self.service._classify_catalog_probe_response(
             {
@@ -51,15 +65,78 @@ class TestBonuscardProductCatalogProbe(TransactionCase):
         self.assertEqual(status, "not_in_catalog")
         self.assertIn("No valid products", note)
 
-    def test_classify_in_catalog_with_transaction(self):
+    def test_classify_transaction_only_is_not_in_catalog(self):
         status, _note = self.service._classify_catalog_probe_response(
             {
                 "error": False,
                 "transactionIdentifier": "TX001",
                 "messages": ["Discount available."],
-            }
+            },
+            probe_ean="8710000009001",
+        )
+        self.assertEqual(status, "not_in_catalog")
+
+    def test_classify_in_catalog_requires_confirmed_probe_checkout_item(self):
+        status, _note = self.service._classify_catalog_probe_response(
+            self._recognized_checkout_response("8710000009001", "TXCONF1"),
+            probe_ean="8710000009001",
         )
         self.assertEqual(status, "in_catalog")
+
+    def test_classify_transaction_without_confirmed_probe_is_not_in_catalog(self):
+        status, _note = self.service._classify_catalog_probe_response(
+            {
+                "error": False,
+                "transactionIdentifier": "TXECHO1",
+                "messages": ["Transaction opened."],
+                "checkoutItems": [{"ean": "8710000009002", "quantity": 1}],
+            },
+            probe_ean="8710000009002",
+        )
+        self.assertEqual(status, "not_in_catalog")
+
+    def test_classify_anchor_echoed_probe_without_metadata_is_not_in_catalog(self):
+        status, _note = self.service._classify_catalog_probe_response(
+            {
+                "error": False,
+                "transactionIdentifier": "TXECHO2",
+                "messages": ["Discount applied."],
+                "checkoutItems": [
+                    {
+                        "ean": "8710000009021",
+                        "identifier": "9",
+                        "description": "Known anchor product",
+                    },
+                    {"ean": "8710000009022", "quantity": 1, "pricePerItem": 100.0},
+                ],
+            },
+            probe_ean="8710000009022",
+            anchor_ean="8710000009021",
+        )
+        self.assertEqual(status, "not_in_catalog")
+
+    def test_classify_anchor_only_uses_catalog_note_not_loyalty_message(self):
+        status, note = self.service._classify_catalog_probe_response(
+            {
+                "error": False,
+                "transactionIdentifier": "TXANCHOR",
+                "messages": [
+                    "Created a new card of the type 'KRAFFT bonuskort' and added one purchase."
+                ],
+                "checkoutItems": [
+                    {
+                        "ean": "8710000009021",
+                        "identifier": "9",
+                        "description": "Known anchor product",
+                    }
+                ],
+            },
+            probe_ean="8710000009022",
+            anchor_ean="8710000009021",
+        )
+        self.assertEqual(status, "not_in_catalog")
+        self.assertIn("not found", note.lower())
+        self.assertNotIn("bonuskort", note.lower())
 
     def test_classify_ambiguous_response_leaves_unchanged(self):
         status, _note = self.service._classify_catalog_probe_response(
@@ -87,7 +164,13 @@ class TestBonuscardProductCatalogProbe(TransactionCase):
                 "error": False,
                 "transactionIdentifier": "TXANCHOR",
                 "messages": ["Discount applied."],
-                "checkoutItems": [{"ean": "8710000009021"}],
+                "checkoutItems": [
+                    {
+                        "ean": "8710000009021",
+                        "identifier": "9",
+                        "description": "Known anchor product",
+                    }
+                ],
                 "resultItems": [{"ean": "8710000009022"}],
             },
             probe_ean="8710000009022",
@@ -97,11 +180,9 @@ class TestBonuscardProductCatalogProbe(TransactionCase):
 
     def test_probe_known_product_cancels_transaction(self):
         product = self._create_product(barcode="8710000009001")
-        validate_payload = {
-            "error": False,
-            "transactionIdentifier": "TXPROBE1",
-            "messages": ["Product recognized."],
-        }
+        validate_payload = self._recognized_checkout_response(
+            "8710000009001", "TXPROBE1"
+        )
 
         with (
             patch(
@@ -132,16 +213,8 @@ class TestBonuscardProductCatalogProbe(TransactionCase):
             self._create_product(barcode="8710000009015"),
         ]
         validate_payloads = [
-            {
-                "error": False,
-                "transactionIdentifier": "TXBATCH1",
-                "messages": ["Product recognized."],
-            },
-            {
-                "error": False,
-                "transactionIdentifier": "TXBATCH2",
-                "messages": ["Product recognized."],
-            },
+            self._recognized_checkout_response("8710000009014", "TXBATCH1"),
+            self._recognized_checkout_response("8710000009015", "TXBATCH2"),
         ]
 
         with (
@@ -182,11 +255,7 @@ class TestBonuscardProductCatalogProbe(TransactionCase):
             self._create_product(barcode="8710000009017"),
         ]
         validate_payloads = [
-            {
-                "error": False,
-                "transactionIdentifier": "TXBATCH2",
-                "messages": ["Product recognized."],
-            },
+            self._recognized_checkout_response("8710000009016", "TXBATCH2"),
             {
                 "error": False,
                 "messages": [
@@ -232,11 +301,7 @@ class TestBonuscardProductCatalogProbe(TransactionCase):
             self._create_product(barcode="8710000009017"),
         ]
         validate_payloads = [
-            {
-                "error": False,
-                "transactionIdentifier": "TXBATCH2",
-                "messages": ["Product recognized."],
-            },
+            self._recognized_checkout_response("8710000009016", "TXBATCH2"),
             {
                 "error": False,
                 "messages": [
@@ -278,11 +343,7 @@ class TestBonuscardProductCatalogProbe(TransactionCase):
             self._create_product(barcode="8710000009031"),
         ]
         validate_payloads = [
-            {
-                "error": False,
-                "transactionIdentifier": "TXUNLOCK3",
-                "messages": ["Product recognized."],
-            },
+            self._recognized_checkout_response("8710000009030", "TXUNLOCK3"),
             {
                 "error": False,
                 "messages": [
@@ -317,11 +378,9 @@ class TestBonuscardProductCatalogProbe(TransactionCase):
 
     def test_bulk_probe_skips_unlock_release_on_error_status(self):
         product = self._create_product(barcode="8710000009050")
-        validate_payload = {
-            "error": False,
-            "transactionIdentifier": "TXERROR1",
-            "messages": ["Product recognized."],
-        }
+        validate_payload = self._recognized_checkout_response(
+            "8710000009050", "TXERROR1"
+        )
 
         with (
             patch(
@@ -385,22 +444,14 @@ class TestBonuscardProductCatalogProbe(TransactionCase):
             self._create_product(barcode="8710000009043"),
         ]
         validate_payloads = [
-            {
-                "error": False,
-                "transactionIdentifier": "TXLAST1",
-                "messages": ["Product recognized."],
-            },
+            self._recognized_checkout_response("8710000009040", "TXLAST1"),
             {
                 "error": False,
                 "messages": [
                     "No valid products found. The transaction has been cancelled."
                 ],
             },
-            {
-                "error": False,
-                "transactionIdentifier": "TXLAST2",
-                "messages": ["Product recognized."],
-            },
+            self._recognized_checkout_response("8710000009042", "TXLAST2"),
             {
                 "error": False,
                 "messages": [
@@ -462,11 +513,7 @@ class TestBonuscardProductCatalogProbe(TransactionCase):
         unknown = self._create_product(barcode="8710000009022")
         self.instance.catalog_probe_unlock_ean = "8710000009021"
         validate_payloads = [
-            {
-                "error": False,
-                "transactionIdentifier": "TXUNLOCK1",
-                "messages": ["Product recognized."],
-            },
+            self._recognized_checkout_response("8710000009021", "TXUNLOCK1"),
             {
                 "error": False,
                 "transactionIdentifier": "TXUNLOCK2",
@@ -536,11 +583,9 @@ class TestBonuscardProductCatalogProbe(TransactionCase):
 
     def test_probe_cancel_failure_returns_error(self):
         product = self._create_product(barcode="8710000009003")
-        validate_payload = {
-            "error": False,
-            "transactionIdentifier": "TXPROBE2",
-            "messages": ["Product recognized."],
-        }
+        validate_payload = self._recognized_checkout_response(
+            "8710000009003", "TXPROBE2"
+        )
 
         with (
             patch(
@@ -560,11 +605,9 @@ class TestBonuscardProductCatalogProbe(TransactionCase):
 
     def test_bulk_probe_reports_cancel_failure_in_summary(self):
         product = self._create_product(barcode="8710000009019")
-        validate_payload = {
-            "error": False,
-            "transactionIdentifier": "TXBATCH3",
-            "messages": ["Product recognized."],
-        }
+        validate_payload = self._recognized_checkout_response(
+            "8710000009019", "TXBATCH3"
+        )
 
         with (
             patch(
@@ -598,16 +641,8 @@ class TestBonuscardProductCatalogProbe(TransactionCase):
             self._create_product(barcode="8710000009024"),
         ]
         validate_payloads = [
-            {
-                "error": False,
-                "transactionIdentifier": "TXRETRY1",
-                "messages": ["Product recognized."],
-            },
-            {
-                "error": False,
-                "transactionIdentifier": "TXRETRY2",
-                "messages": ["Product recognized."],
-            },
+            self._recognized_checkout_response("8710000009023", "TXRETRY1"),
+            self._recognized_checkout_response("8710000009024", "TXRETRY2"),
         ]
 
         with (
@@ -648,11 +683,9 @@ class TestBonuscardProductCatalogProbe(TransactionCase):
 
     def test_bulk_probe_updates_note_when_open_transaction_cancelled(self):
         product = self._create_product(barcode="8710000009032")
-        validate_payload = {
-            "error": False,
-            "transactionIdentifier": "TXNOTE1",
-            "messages": ["Product recognized."],
-        }
+        validate_payload = self._recognized_checkout_response(
+            "8710000009032", "TXNOTE1"
+        )
 
         with (
             patch(
@@ -678,11 +711,9 @@ class TestBonuscardProductCatalogProbe(TransactionCase):
 
     def test_bulk_probe_updates_note_when_open_transaction_cancelled_on_retry(self):
         product = self._create_product(barcode="8710000009033")
-        validate_payload = {
-            "error": False,
-            "transactionIdentifier": "TXNOTE2",
-            "messages": ["Product recognized."],
-        }
+        validate_payload = self._recognized_checkout_response(
+            "8710000009033", "TXNOTE2"
+        )
 
         with (
             patch(

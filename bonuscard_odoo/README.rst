@@ -73,6 +73,10 @@ Configuration
    - Open a variant form and set **Bonuscard Catalog** to ``In Bonuscard Catalog``
    - Or use the same list actions on the Product Variants list
 
+   Bonuscard catalog filters are available on both the **Products** list and
+   the **Product Variants** list. On **Products**, a template matches when at
+   least one of its variants has the selected catalog status.
+
    **From product forms** (backend or POS **Edit Product** modal), Bonuscard
    users can set **Bonuscard Catalog** directly on the form when the product has
    exactly one variant (including on the main product form even when Product
@@ -101,10 +105,13 @@ Configuration
    automatically after save when catalog probe is enabled (imports are excluded).
    The same applies when a barcode or article number is added or changed later on
    a product that is still **Not Set**. Each product is checked individually via
-   ``ValidatePurchase``. Unknown products are detected when Bonuscard returns no
-   ``transactionIdentifier``, or when an unlock/anchor EAN is configured and only
-   the anchor appears in ``checkoutItems``. Recognized products trigger
-   ``CancelPurchase`` so the probe customer is not left locked.
+    ``ValidatePurchase``. A product is **in catalog** only when Bonuscard returns
+    the probed EAN on an enriched ``checkoutItems`` line (catalog metadata such as
+    ``identifier`` or ``description``). Unknown products are detected when that
+    enrichment is missing, when only an unlock/anchor EAN is recognized, or when
+    Bonuscard returns the ``No valid products found...`` message (transaction auto-cancelled).
+    Other responses without a ``transactionIdentifier`` leave the status unchanged. Recognized products trigger
+    ``CancelPurchase`` so the probe customer is not left locked.
 
 Usage
 =====
@@ -170,14 +177,22 @@ Purchase Lifecycle
 The POS integration supports:
 
 * ``ValidatePurchase`` before payment and after order changes
-* ``FinalizePurchase`` after successful payment (retried once on failure)
+* ``FinalizePurchase`` during ``preSyncAllOrders``, immediately before the
+  paid order is synced to the backend (retried once on failure)
 * ``CancelPurchase`` when the order is aborted, the customer is changed, the
   order is deleted, or the POS session is closed
 
-``FinalizePurchase`` is retried once after payment. Local transaction fields are
-cleared only after Bonuscard confirms finalization. If finalization still fails,
-payment remains complete but a sticky warning is shown and the transaction
-fields are kept so the loyalty lock can be recovered manually.
+``FinalizePurchase`` runs in ``preSyncAllOrders`` so Bonuscard audit fields
+(``bonuscard_state``, ``bonuscard_finalized_at``, and related values) are
+included in the first ``sync_from_ui`` payload. Local runtime transaction
+fields are cleared only after Bonuscard confirms finalization. If finalization
+still fails, payment remains complete but a sticky warning is shown; a cancel
+fallback may run while keeping already-paid discount lines intact.
+
+Pre-payment cancel paths clear the full local Bonuscard purchase state,
+including discount lines. Post-payment cancel paths (skip or finalize-failure
+fallback) clear only runtime transaction identifiers so synced order totals stay
+correct.
 
 Cancel requests are retried once on ``onDeleteOrder`` and ``closePos``. Local
 transaction fields are cleared only after Bonuscard confirms cancellation.
@@ -214,7 +229,9 @@ the Bonuscard API). Optionally set ``BONUSCARD_TEST_NON_BONUSCARD_EAN`` to also
 exercise a barcoded product that the Bonuscard API rejects. Catalog probe tests
 use the same ``BONUSCARD_TEST_CONSUMER`` as the POS lock test; tests run in a
 fixed order and release the customer lock in ``tearDown`` so they do not
-interfere with each other.
+interfere with each other. ``test_92_catalog_probe_classifies_known_and_unknown_eans``
+asserts that a known Bonuscard EAN is marked **in_catalog** and an unknown EAN
+is marked **not_in_catalog** against the live API.
 
 Run only the manual integration suite with::
 

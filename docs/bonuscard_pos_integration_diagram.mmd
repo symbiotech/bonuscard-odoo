@@ -55,13 +55,13 @@ flowchart LR
     G -->|no catalog lines: cancel pending transaction| I
     G -->|transactionIdentifier + discounts (POS applies discounts to order)| B
 
-    C -->|afterOrderValidation| H
+    C -->|preSyncAllOrders before sync| H
     H -->|transactionIdentifier + checkoutItems| M
     M -->|commit purchase| H
     H -->|finalize success: persist audit on pos.order| C
-    H -->|finalize failed after retry: cancel fallback| I
+    H -->|finalize failed after retry: cancel fallback preserves paid lines| I
     H -->|finalize and cancel fallback failed: sticky warning| C
-    C -->|no checkoutItems: cancel pending transaction| I
+    C -->|no checkoutItems: cancel pending transaction preserves paid lines| I
     I -->|release success: persist audit on pos.order| C
     I -->|release failed after payment: sticky warning| C
 
@@ -81,9 +81,8 @@ flowchart LR
     W -->|selected products| U
     U -->|bulk or single probe| T
     T -->|ValidatePurchase per product;\nanchor + probe EAN when unlock configured| L
-    L -->|anchor: probe EAN in checkoutItems → in catalog| T
-    L -->|no anchor: transactionIdentifier → in catalog| T
-    L -->|"No valid products…" (no tx) or anchor-only checkoutItems → not in catalog| T
+    L -->|probe EAN enriched in checkoutItems → in catalog| T
+    L -->|tx without enriched probe EAN, anchor-only, or "No valid products…" → not in catalog| T
     L -->|no transactionIdentifier, other message → unchanged| T
     T -->|auto-cancel open transaction before next product| I
     I -->|transactionIdentifier| N

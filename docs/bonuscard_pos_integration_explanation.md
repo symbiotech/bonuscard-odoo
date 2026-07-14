@@ -42,11 +42,12 @@ This document explains how the Bonuscard POS integration works in the `bonuscard
    - When the cart has no Bonuscard catalog lines, no `ValidatePurchase` call is made; if a pending transaction already exists from earlier catalog lines, it is cancelled
 
 4. Payment confirmation
-   - `OrderPaymentValidation.afterOrderValidation()` finalizes or cancels the pending Bonuscard transaction
+   - `PosStore.preSyncAllOrders()` finalizes or cancels the pending Bonuscard transaction **before** the paid order is synced to the backend, so audit fields such as `bonuscard_finalized_at` are included in the first `sync_from_ui` payload
    - When checkout items exist (including zero-discount validations for accumulation programs), it calls `bonuscard.api.service.finalize_purchase_for_pos` to register the purchase with Bonuscard
    - This sends the stored `transactionIdentifier` and `checkoutItems` to Bonuscard
-   - Finalization is retried once on failure; on success the POS clears `order.bonuscard_transaction_id` and `order.bonuscard_checkout_items`
+   - Finalization is retried once on failure; on success the POS clears runtime transaction fields (`bonuscard_transaction_id`, `_bonuscardCandidateTxId`, `bonuscard_checkout_items`) via `_clearBonuscardRuntimeTransactionState`
    - If there is a pending transaction but no checkout items to finalize (e.g. the cart ended up with no `in_catalog` products), the POS cancels the pending transaction after payment instead of leaving the customer locked; cancel failure is logged and shown as a sticky warning
+   - Post-payment cancel paths (skip and finalize-failure fallback) use `preserveOrderLines: true` so already-paid Bonuscard discount lines are not removed before sync; only runtime transaction identifiers are cleared
    - If finalization fails after payment, the POS attempts cancel as a fallback before showing a sticky warning
    - If the cancel fallback succeeds, the transaction fields are cleared and the backend audit state is stored as `failed`
    - If finalization and the cancel fallback both fail, the transaction fields are kept and a sticky warning is shown so the loyalty lock can be recovered manually
@@ -55,6 +56,8 @@ This document explains how the Bonuscard POS integration works in the `bonuscard
    - `PosStore.onClickBackButton()` (only when on the Payment Screen), `onDeleteOrder()`, `closePos()`, `addNewOrder()`, and `setOrder()` cancel pending Bonuscard transactions on the order being left behind
    - `setPartnerToCurrentOrder` cancels an open transaction **before** changing the partner; if cancel fails, the partner change is blocked to avoid orphaning the Bonuscard lock
    - All cancel paths call `bonuscard.api.service.cancel_purchase_for_pos`
+   - Pre-payment cancel paths clear the full local Bonuscard purchase state, including discount lines (`_clearBonuscardPurchaseState`)
+   - Post-payment cancel paths in `preSyncAllOrders` clear only runtime transaction identifiers and keep paid order lines intact (`preserveOrderLines: true`)
    - `closePos` and `onDeleteOrder` retry cancel once; local transaction state is cleared only after a successful cancel
    - After cancel failure (including after the single retry), cashier-facing sticky warnings are shown:
      - **Partner change** (`setPartnerToCurrentOrder`): blocked; current customer and transaction state are kept
@@ -105,10 +108,11 @@ This document explains how the Bonuscard POS integration works in the `bonuscard
     and a "No valid products found…" message (transaction auto-cancelled). When
     `catalog_probe_unlock_ean` is configured, the probed product and anchor EAN are
     sent together: Bonuscard may still return a `transactionIdentifier`, but
-    membership is determined from `checkoutItems`—only the probed EAN being
-    recognized means `in_catalog`; anchor-only recognition means `not_in_catalog`.
-    Other responses without a transaction identifier leave the status `unchanged`.
-    Without an anchor EAN, a returned `transactionIdentifier` means `in_catalog`.
+    membership is determined from `checkoutItems`—the probed EAN must appear on a
+    line enriched with Bonuscard catalog metadata (`identifier`, `articleNumber`, or
+    `description`). Anchor-only recognition or a bare `transactionIdentifier` without
+    that enrichment means `not_in_catalog`. Other responses without a transaction
+    identifier leave the status `unchanged`.
     Bulk probes cancel each open transaction before probing the next product so
     the probe customer is not locked (Bonuscard API error code 2). Configure
     `catalog_probe_unlock_ean` with a barcode known to exist in Bonuscard: unknown
@@ -136,11 +140,12 @@ This document explains how the Bonuscard POS integration works in the `bonuscard
   - Mirrors catalog status from the single underlying variant for list visibility
   - Writable on template forms (inverse writes the single variant) for Bonuscard
     users when the product has exactly one variant
-  - List columns, filters, and bulk actions on **Inventory > Products** for
-    Bonuscard users who do not have the Product Variants user group (hidden via
-    a variant-group view override when variants are enabled)
-  - Refuses template-level bulk updates when the user has Product Variants
-    enabled or when a template does not have exactly one variant
+  - List columns on **Inventory > Products** for all Bonuscard users; search
+    filters on that list stay hidden for users with the Product Variants group
+    (use **Product Variants** filters when variants are enabled)
+  - Refuses template-level bulk updates when a template does not have exactly
+    one variant (form actions and field edits work for single-variant products
+    even when Product Variants are enabled)
 
 - `pos.order` extension
   - Adds audit fields: `bonuscard_state`, `bonuscard_transaction_identifier`,
@@ -174,6 +179,10 @@ status on the resulting `pos.order`:
 
 The POS frontend includes these keys in `PosOrder.serializeForORM()`, and
 `pos.order._process_order` maps them onto the backend record when the order is
-synced. Runtime Bonuscard transaction fields on the POS order are still cleared
-after finalize/cancel, but the persisted audit fields remain on `pos.order` for
-reporting.
+synced. Post-payment Bonuscard finalize/cancel runs in `preSyncAllOrders` so
+`bonuscard_state`, `bonuscard_finalized_at`, and related audit values are
+present before the first paid-order sync. Post-payment release keeps paid
+discount lines intact; pre-payment cancel still clears discounts via
+`_clearBonuscardPurchaseState`. Runtime Bonuscard transaction fields on the POS
+order are still cleared after finalize/cancel, but the persisted audit fields
+remain on `pos.order` for reporting.

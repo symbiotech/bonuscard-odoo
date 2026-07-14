@@ -1,3 +1,5 @@
+from datetime import datetime, timezone
+
 from odoo import api, fields, models
 
 _BONUSCARD_AUDIT_FIELDS = (
@@ -21,6 +23,7 @@ class PosOrder(models.Model):
             ("failed", "Failed"),
         ],
         string="Bonuscard",
+        default="not_applicable",
         tracking=True,
         copy=False,
         index=True,
@@ -37,6 +40,19 @@ class PosOrder(models.Model):
     )
 
     @api.model
+    def _bonuscard_parse_ui_datetime(self, value):
+        if isinstance(value, datetime):
+            parsed = value
+        else:
+            try:
+                return fields.Datetime.to_datetime(value)
+            except (ValueError, TypeError):
+                parsed = datetime.fromisoformat(str(value).replace("Z", "+00:00"))
+        if parsed.tzinfo is not None:
+            parsed = parsed.astimezone(timezone.utc).replace(tzinfo=None)
+        return parsed
+
+    @api.model
     def _bonuscard_audit_fields_from_ui(self, ui_order):
         vals = {}
         for field_name in _BONUSCARD_AUDIT_FIELDS:
@@ -44,19 +60,24 @@ class PosOrder(models.Model):
                 continue
             value = ui_order[field_name]
             if value is False:
-                vals[field_name] = False
+                if field_name == "bonuscard_state":
+                    vals[field_name] = "not_applicable"
+                else:
+                    vals[field_name] = False
                 continue
             if value in (None, ""):
                 continue
             if field_name in ("bonuscard_validated_at", "bonuscard_finalized_at"):
-                value = fields.Datetime.to_datetime(value)
+                value = self._bonuscard_parse_ui_datetime(value)
             vals[field_name] = value
         return vals
 
     @api.model
     def _process_order(self, order, existing_order):
-        order_id = super()._process_order(order, existing_order)
         bonuscard_vals = self._bonuscard_audit_fields_from_ui(order)
+        for field_name in _BONUSCARD_AUDIT_FIELDS:
+            order.pop(field_name, None)
+        order_id = super()._process_order(order, existing_order)
         if bonuscard_vals:
             self.browse(order_id).write(bonuscard_vals)
         return order_id

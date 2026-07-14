@@ -143,12 +143,12 @@ class TestBonuscardProductCatalog(TransactionCase):
         with self.assertRaises(UserError):
             tmpl.action_bonuscard_mark_in_catalog()
 
-    def test_template_actions_reject_when_variants_enabled_for_user(self):
+    def test_template_actions_allowed_for_variant_group_user(self):
         tmpl = self._create_template(barcode="8710000000400")
         variant_group = self.env.ref("product.group_product_variant")
         self.env.user.write({"group_ids": [(4, variant_group.id)]})
-        with self.assertRaises(UserError):
-            tmpl.action_bonuscard_mark_in_catalog()
+        tmpl.action_bonuscard_mark_in_catalog()
+        self.assertEqual(tmpl.product_variant_id.bonuscard_catalog_status, "in_catalog")
         self.env.user.write({"group_ids": [(3, variant_group.id)]})
 
     def test_template_write_catalog_status_updates_variant(self):
@@ -193,3 +193,91 @@ class TestBonuscardProductCatalog(TransactionCase):
             self.env["pos.config"]
         )
         self.assertIn("bonuscard_catalog_status", fields_list)
+
+    def test_template_search_read_exposes_catalog_status(self):
+        tmpl = self._create_template(barcode="8710000002000")
+        variant = tmpl.product_variant_id
+        variant.bonuscard_catalog_status = "in_catalog"
+
+        data = self.env["product.template"].search_read(
+            [("id", "=", tmpl.id)],
+            ["bonuscard_catalog_status", "bonuscard_catalog_updated_at"],
+        )[0]
+        self.assertEqual(data["bonuscard_catalog_status"], "in_catalog")
+        self.assertTrue(data["bonuscard_catalog_updated_at"])
+
+    def test_template_tree_view_exposes_catalog_fields_for_variant_group_user(self):
+        from lxml import etree
+
+        variant_group = self.env.ref("product.group_product_variant")
+        bonuscard_group = self.env.ref("bonuscard_odoo.bonuscard_odoo_group_user")
+        user = self.env.user
+        original_group_ids = user.group_ids.ids
+        user.write({"group_ids": [(4, variant_group.id), (4, bonuscard_group.id)]})
+        try:
+            view = (
+                self.env["product.template"].with_user(user).get_view(view_type="list")
+            )
+            arch = etree.fromstring(view["arch"].encode())
+            field = arch.xpath(".//field[@name='bonuscard_catalog_status']")[0]
+            self.assertNotEqual(field.get("invisible"), "1")
+        finally:
+            user.write({"group_ids": [(6, 0, original_group_ids)]})
+
+    def test_template_search_filters_match_variant_catalog_status(self):
+        tmpl_in = self._create_template(
+            barcode="8710000002001",
+            name="Template In Catalog",
+        )
+        tmpl_not_in = self._create_template(
+            barcode="8710000002002",
+            name="Template Not In Catalog",
+        )
+        tmpl_not_set = self._create_template(
+            barcode="8710000002003",
+            name="Template Not Set",
+        )
+        tmpl_in.product_variant_id.bonuscard_catalog_status = "in_catalog"
+        tmpl_not_in.product_variant_id.bonuscard_catalog_status = "not_in_catalog"
+
+        in_domain = [
+            ("product_variant_ids.bonuscard_catalog_status", "=", "in_catalog")
+        ]
+        not_in_domain = [
+            ("product_variant_ids.bonuscard_catalog_status", "=", "not_in_catalog")
+        ]
+        not_set_domain = [
+            ("product_variant_ids.bonuscard_catalog_status", "=", "not_set")
+        ]
+
+        self.assertIn(
+            tmpl_in,
+            self.env["product.template"].search(in_domain),
+        )
+        self.assertNotIn(
+            tmpl_not_in,
+            self.env["product.template"].search(in_domain),
+        )
+        self.assertIn(
+            tmpl_not_in,
+            self.env["product.template"].search(not_in_domain),
+        )
+        self.assertIn(
+            tmpl_not_set,
+            self.env["product.template"].search(not_set_domain),
+        )
+        self.assertNotIn(
+            tmpl_in,
+            self.env["product.template"].search(not_set_domain),
+        )
+
+    def test_template_search_filters_find_multi_variant_templates(self):
+        tmpl = self._create_multi_variant_template()
+        variant = tmpl.product_variant_ids[0]
+        variant.barcode = "8710000003001"
+        variant.bonuscard_catalog_status = "in_catalog"
+
+        found = self.env["product.template"].search(
+            [("product_variant_ids.bonuscard_catalog_status", "=", "in_catalog")]
+        )
+        self.assertIn(tmpl, found)
