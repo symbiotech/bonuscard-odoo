@@ -2781,12 +2781,23 @@ test("serializeForORM exports Bonuscard audit fields for backend sync", async ()
     order.bonuscard_state = "validated";
     order.bonuscard_transaction_identifier = "TXN-SERIALIZE";
     order.bonuscard_last_error_message = "ignored";
+    order.bonuscard_validated_at = luxon.DateTime.fromObject({
+        year: 2026,
+        month: 7,
+        day: 14,
+        hour: 14,
+        minute: 12,
+        second: 47,
+    });
+    order.bonuscard_finalized_at = false;
 
     const data = order.serializeForORM();
 
     expect(data.bonuscard_state).toBe("validated");
     expect(data.bonuscard_transaction_identifier).toBe("TXN-SERIALIZE");
     expect(data.bonuscard_last_error_message).toBe("ignored");
+    expect(data.bonuscard_validated_at).toMatch(/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/);
+    expect(data.bonuscard_finalized_at).toBe(false);
 });
 
 test("validation sets failed audit state when Bonuscard returns an error response", async () => {
