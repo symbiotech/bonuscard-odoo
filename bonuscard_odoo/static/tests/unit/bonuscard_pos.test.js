@@ -10,9 +10,12 @@ import * as makeAwaitableDialog from "@point_of_sale/app/utils/make_awaitable_di
 import { BonuscardRegistrationService } from "../../src/app/bonuscard_registration_service";
 import OrderPaymentValidation from "@point_of_sale/app/utils/order_payment_validation";
 import { runAllTimers } from "@odoo/hoot-mock";
+import { mountWithCleanup } from "@web/../tests/web_test_helpers";
+import { ProductInfoPopup } from "@point_of_sale/app/components/popups/product_info_popup/product_info_popup";
 
 // Ensure the Bonuscard POS patches are loaded for this test suite.
 import "../../src/app/bonuscard_pos";
+import "../../src/app/bonuscard_product_info_popup";
 definePosModels();
 
 // Mock translations for tests
@@ -2824,4 +2827,97 @@ test("validation sets failed audit state when Bonuscard returns an error respons
     expect(order.bonuscard_state).toBe("failed");
     expect(order.bonuscard_last_error_message).toBe("Bonuscard rejected the cart.");
     expect(order.bonuscard_transaction_identifier).not.toBe(false);
+});
+
+function buildProductInfoPopupProps(store, productTemplate, overrides = {}) {
+    return {
+        productTemplate,
+        close: () => {},
+        info: {
+            costCurrency: "$ 0.00",
+            marginCurrency: "$ 0.00",
+            marginPercent: 0,
+            taxAmount: "$ 0.00",
+            taxName: "",
+            orderPriceWithoutTaxCurrency: "$ 0.00",
+            orderCostCurrency: "$ 0.00",
+            orderMarginCurrency: "$ 0.00",
+            orderMarginPercent: 0,
+            orderTaxTotalCurrency: "$ 0.00",
+            orderPriceWithTaxCurrency: "$ 0.00",
+            productInfo: {
+                all_prices: {
+                    price_without_tax: 0,
+                    price_with_tax: 0,
+                },
+                pricelists: [],
+                warehouses: [],
+                suppliers: [],
+                optional_products: [],
+            },
+            ...overrides,
+        },
+    };
+}
+
+test("ProductInfoPopup shows Bonuscard catalog status from the product template", async () => {
+    const store = await setupPosEnv();
+    const productTemplate = store.models["product.template"].get(5);
+    productTemplate.bonuscard_catalog_status = "in_catalog";
+
+    await mountWithCleanup(ProductInfoPopup, {
+        props: buildProductInfoPopupProps(store, productTemplate),
+    });
+
+    expect(document.querySelector(".section-bonuscard")).not.toBe(null);
+    expect(document.querySelector(".section-bonuscard .badge")?.textContent).toBe(
+        "In Bonuscard Catalog"
+    );
+});
+
+test("ProductInfoPopup falls back to the variant catalog status for single-variant products", async () => {
+    const store = await setupPosEnv();
+    const productTemplate = store.models["product.template"].get(5);
+    const variant = store.models["product.product"].get(5);
+    variant.bonuscard_catalog_status = "not_in_catalog";
+
+    await mountWithCleanup(ProductInfoPopup, {
+        props: buildProductInfoPopupProps(store, productTemplate),
+    });
+
+    expect(document.querySelector(".section-bonuscard .badge")?.textContent).toBe(
+        "Not in Bonuscard Catalog"
+    );
+});
+
+test("ProductInfoPopup shows Bonuscard catalog status from template when variants are unavailable", async () => {
+    const store = await setupPosEnv();
+    const productTemplate = store.models["product.template"].get(5);
+    productTemplate.bonuscard_catalog_status = "in_catalog";
+    productTemplate.product_variant_ids = [];
+
+    await mountWithCleanup(ProductInfoPopup, {
+        props: buildProductInfoPopupProps(store, productTemplate),
+    });
+
+    expect(document.querySelector(".section-bonuscard")).not.toBe(null);
+    expect(document.querySelector(".section-bonuscard .badge")?.textContent).toBe(
+        "In Bonuscard Catalog"
+    );
+});
+
+test("ProductInfoPopup hides Bonuscard catalog status for multi-variant products", async () => {
+    const store = await setupPosEnv();
+    const productTemplate = store.models["product.template"].get(5);
+    productTemplate.product_variant_ids = [
+        store.models["product.product"].get(5),
+        store.models["product.product"].get(6),
+    ];
+    productTemplate.bonuscard_catalog_status = false;
+
+    await mountWithCleanup(ProductInfoPopup, {
+        props: buildProductInfoPopupProps(store, productTemplate),
+    });
+
+    expect(document.querySelector(".section-bonuscard")).toBe(null);
 });
