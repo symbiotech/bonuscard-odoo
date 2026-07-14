@@ -259,6 +259,7 @@ class TestBonuscardProductCatalog(TransactionCase):
     def test_template_search_filters_find_multi_variant_templates(self):
         tmpl = self._create_multi_variant_template()
         variant = tmpl.product_variant_ids[0]
+        variant.barcode = "8710000003001"
         variant.bonuscard_catalog_status = "in_catalog"
 
         found = self.env["product.template"].search(

@@ -73,9 +73,9 @@ Configuration
    - Open a variant form and set **Bonuscard Catalog** to ``In Bonuscard Catalog``
    - Or use the same list actions on the Product Variants list
 
-   Bonuscard catalog filters are available on both **Products** and **Product
-   Variants** lists. On **Products**, a template matches when at least one of
-   its variants has the selected catalog status.
+   Bonuscard catalog filters are available on both the **Products** list and
+   the **Product Variants** list. On **Products**, a template matches when at
+   least one of its variants has the selected catalog status.
 
    **From product forms** (backend or POS **Edit Product** modal), Bonuscard
    users can set **Bonuscard Catalog** directly on the form when the product has
