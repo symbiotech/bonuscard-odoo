@@ -905,12 +905,26 @@ patch(PosStore.prototype, {
 });
 
 patch(PosOrder.prototype, {
+    _serializeBonuscardDatetimeForORM(value) {
+        if (!value) {
+            return false;
+        }
+        if (typeof value === "string") {
+            return value;
+        }
+        return serializeDateTime(value);
+    },
+
     serializeForORM(opts = {}) {
         const data = super.serializeForORM(opts);
         data.bonuscard_state = this.bonuscard_state || false;
         data.bonuscard_transaction_identifier = this.bonuscard_transaction_identifier || false;
-        data.bonuscard_validated_at = this.bonuscard_validated_at || false;
-        data.bonuscard_finalized_at = this.bonuscard_finalized_at || false;
+        data.bonuscard_validated_at = this._serializeBonuscardDatetimeForORM(
+            this.bonuscard_validated_at
+        );
+        data.bonuscard_finalized_at = this._serializeBonuscardDatetimeForORM(
+            this.bonuscard_finalized_at
+        );
         data.bonuscard_last_error_message = this.bonuscard_last_error_message || false;
         return data;
     },

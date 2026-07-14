@@ -44,3 +44,20 @@ class TestBonuscardPosOrder(TransactionCase):
             }
         )
         self.assertEqual(vals, {})
+
+    def test_bonuscard_audit_fields_from_ui_accepts_iso_datetime(self):
+        iso_validated_at = "2026-07-14T14:12:47.000+02:00"
+        vals = self.env["pos.order"]._bonuscard_audit_fields_from_ui(
+            {
+                "bonuscard_validated_at": iso_validated_at,
+                "bonuscard_finalized_at": iso_validated_at,
+            }
+        )
+        self.assertEqual(
+            vals["bonuscard_validated_at"].strftime("%Y-%m-%d %H:%M:%S"),
+            "2026-07-14 12:12:47",
+        )
+        self.assertEqual(
+            vals["bonuscard_finalized_at"].strftime("%Y-%m-%d %H:%M:%S"),
+            "2026-07-14 12:12:47",
+        )
