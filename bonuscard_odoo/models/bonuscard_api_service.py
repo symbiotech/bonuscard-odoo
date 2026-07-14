@@ -783,29 +783,17 @@ class BonuscardApiService(models.AbstractModel):
             )
             return "in_catalog", note
 
+        not_in_catalog_note = self.env._("Product not found in Bonuscard catalog.")
+
         if _NO_VALID_PRODUCTS_MESSAGE_FRAGMENT in message_text:
-            note = (
-                messages[0]
-                if messages
-                else self.env._("Product not found in Bonuscard catalog.")
-            )
+            note = messages[0] if messages else not_in_catalog_note
             return "not_in_catalog", note
 
         if uses_anchor and anchor_ean in confirmed:
-            note = (
-                messages[0]
-                if messages
-                else self.env._("Product not found in Bonuscard catalog.")
-            )
-            return "not_in_catalog", note
+            return "not_in_catalog", not_in_catalog_note
 
         if probe_ean and transaction_id:
-            note = (
-                messages[0]
-                if messages
-                else self.env._("Product not found in Bonuscard catalog.")
-            )
-            return "not_in_catalog", note
+            return "not_in_catalog", not_in_catalog_note
 
         if not transaction_id:
             note = (
