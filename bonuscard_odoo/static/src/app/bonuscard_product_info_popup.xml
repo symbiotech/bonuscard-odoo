@@ -2,7 +2,7 @@
 <templates id="template" xml:space="preserve">
 
     <t t-name="bonuscard_odoo.ProductInfoPopupExtension" t-inherit="point_of_sale.ProductInfoPopup" t-inherit-mode="extension">
-        <xpath expr="//div[hasclass('financials-order')]" position="before">
+        <xpath expr="//div[hasclass('financials-order')]" position="after">
             <div class="section-bonuscard mt-3 mb-4 pb-4 border-bottom text-start" t-if="showBonuscardCatalogStatus">
                 <h3 class="section-title">Bonuscard Catalog</h3>
                 <span t-attf-class="badge {{bonuscardCatalogBadgeClass}}" t-esc="bonuscardCatalogLabel"/>
