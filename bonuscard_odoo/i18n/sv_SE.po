@@ -1,10 +1,10 @@
 #
 msgid ""
 msgstr ""
-"Project-Id-Version: bonuscard_odoo 19.0.1.0.0\n"
+"Project-Id-Version: bonuscard_odoo 19.0.1.0.1\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-06-19 00:00+0000\n"
-"PO-Revision-Date: 2026-06-19 00:00+0000\n"
+"POT-Creation-Date: 2026-07-15 06:42+0000\n"
+"PO-Revision-Date: 2026-07-15 06:42+0000\n"
 "Last-Translator: \n"
 "Language-Team: Swedish <sv@li.org>\n"
 "Language: sv_SE\n"
@@ -16,15 +16,49 @@ msgstr ""
 
 #. module: bonuscard_odoo
 #. odoo-python
+#: code:bonuscard_odoo/models/product_product.py:0
+msgid "%(stats)s %(cancel_message)s"
+msgstr ""
+
+#. module: bonuscard_odoo
+#. odoo-python
 #: code:bonuscard_odoo/models/bonuscard_instance.py:0
 msgid "%s of %s connection tests failed. First error: %s"
 msgstr "%s av %s anslutningstester misslyckades. Första felet: %s"
+
+#. module: bonuscard_odoo
+#: model_terms:ir.ui.view,arch_db:bonuscard_odoo.view_partner_form_bonuscard
+msgid ""
+"<span class=\"o_stat_text\">Bonuscard</span>\n"
+"                        <span class=\"o_stat_text\" invisible=\"bonuscard_status != 'linked'\">Linked</span>\n"
+"                        <span class=\"o_stat_text\" invisible=\"bonuscard_status != 'not_found'\">Not Found</span>\n"
+"                        <span class=\"o_stat_text\" invisible=\"bonuscard_status != 'ambiguous'\">Multiple</span>\n"
+"                        <span class=\"o_stat_text\" invisible=\"bonuscard_status != 'error'\">Error</span>\n"
+"                        <span class=\"o_stat_text\" invisible=\"bonuscard_status != 'not_checked'\">Check</span>"
+msgstr ""
+"<span class=\"o_stat_text\">Bonuscard</span>\n"
+"                        <span class=\"o_stat_text\" invisible=\"bonuscard_status != 'linked'\">Länkad</span>\n"
+"                        <span class=\"o_stat_text\" invisible=\"bonuscard_status != 'not_found'\">Ej hittad</span>\n"
+"                        <span class=\"o_stat_text\" invisible=\"bonuscard_status != 'ambiguous'\">Flera</span>\n"
+"                        <span class=\"o_stat_text\" invisible=\"bonuscard_status != 'error'\">Fel</span>\n"
+"                        <span class=\"o_stat_text\" invisible=\"bonuscard_status != 'not_checked'\">Kontrollera</span>"
 
 #. module: bonuscard_odoo
 #. odoo-javascript
 #: code:bonuscard_odoo/static/src/app/bonuscard_registration_service.js:0
 msgid "A phone number is required to register a customer with Bonuscard."
 msgstr "Ett telefonnummer krävs för att registrera en kund med Bonuscard."
+
+#. module: bonuscard_odoo
+#. odoo-python
+#: code:bonuscard_odoo/models/product_product.py:0
+#: code:bonuscard_odoo/models/product_template.py:0
+msgid ""
+"A product must have a barcode or article number before it can be marked as "
+"in the Bonuscard catalog."
+msgstr ""
+"En produkt måste ha en streckkod eller ett artikelnummer innan den kan "
+"markeras som i Bonuscard-katalogen."
 
 #. module: bonuscard_odoo
 #: model:ir.model.fields,field_description:bonuscard_odoo.field_bonuscard_connector_instance__api_base_url
@@ -53,6 +87,47 @@ msgid "API Username"
 msgstr "API-användarnamn"
 
 #. module: bonuscard_odoo
+#: model:ir.model.fields,field_description:bonuscard_odoo.field_bonuscard_connector_instance__active
+msgid "Active"
+msgstr "Aktiv"
+
+#. module: bonuscard_odoo
+#: model:ir.model.fields,field_description:bonuscard_odoo.field_bonuscard_connector_instance__bulk_partner_prefetch_enable_name_fallback
+msgid "Allow name fallback"
+msgstr "Tillåt namnreserv"
+
+#. module: bonuscard_odoo
+#. odoo-python
+#: code:bonuscard_odoo/models/bonuscard_api_service.py:0
+msgid "Ambiguous Bonuscard response; status unchanged."
+msgstr "Tvetydigt Bonuscard-svar; status oförändrad."
+
+#. module: bonuscard_odoo
+#. odoo-python
+#: code:bonuscard_odoo/models/bonuscard_instance.py:0
+msgid "Archived Bonuscard connections cannot be selected for API use."
+msgstr "Arkiverade Bonuscard-anslutningar kan inte väljas för API-användning."
+
+#. module: bonuscard_odoo
+#: model:ir.model.fields,help:bonuscard_odoo.field_bonuscard_connector_instance__catalog_probe_unlock_ean
+msgid ""
+"Barcode or article number of a product known to exist in the Bonuscard "
+"catalog. After probing unknown products, a short ValidatePurchase + "
+"CancelPurchase cycle with this EAN releases the dedicated probe customer."
+msgstr ""
+"Streckkod eller artikelnummer för en produkt som är känd att finnas i "
+"Bonuscard-katalogen. Efter kontroll av okända produkter frigör en kort "
+"ValidatePurchase + CancelPurchase-cykel med denna EAN den dedikerade "
+"testkunden för katalogkontroll."
+
+#. module: bonuscard_odoo
+#. odoo-javascript
+#: code:bonuscard_odoo/static/src/app/bonuscard_partner_line.xml:0
+#: model:ir.model.fields,field_description:bonuscard_odoo.field_pos_order__bonuscard_state
+#: model:ir.ui.menu,name:bonuscard_odoo.menu_bonuscard_odoo_root
+#: model_terms:ir.ui.view,arch_db:bonuscard_odoo.view_partner_form_bonuscard
+#: model_terms:ir.ui.view,arch_db:bonuscard_odoo.view_product_product_form_bonuscard
+#: model_terms:ir.ui.view,arch_db:bonuscard_odoo.view_product_template_form_bonuscard
 msgid "Bonuscard"
 msgstr ""
 
@@ -61,6 +136,11 @@ msgstr ""
 #: code:bonuscard_odoo/models/bonuscard_api_service.py:0
 msgid "Bonuscard API HTTP error: %s"
 msgstr "Bonuscard API HTTP-fel: %s"
+
+#. module: bonuscard_odoo
+#: model:ir.model,name:bonuscard_odoo.model_bonuscard_api_service
+msgid "Bonuscard API Service"
+msgstr "Bonuscard API-tjänst"
 
 #. module: bonuscard_odoo
 #. odoo-python
@@ -87,6 +167,46 @@ msgid "Bonuscard API error (%s): %s"
 msgstr "Bonuscard API-fel (%s): %s"
 
 #. module: bonuscard_odoo
+#. odoo-python
+#: code:bonuscard_odoo/models/bonuscard_instance.py:0
+msgid "Bonuscard Bulk Prefetch"
+msgstr "Bonuscard massförladdning"
+
+#. module: bonuscard_odoo
+#. odoo-python
+#: code:bonuscard_odoo/models/bonuscard_instance.py:0
+msgid "Bonuscard Bulk Prefetch (Refresh)"
+msgstr "Bonuscard massförladdning (uppdatera)"
+
+#. module: bonuscard_odoo
+#. odoo-javascript
+#: code:bonuscard_odoo/static/src/app/bonuscard_product_info_popup.xml:0
+#: model:ir.model.fields,field_description:bonuscard_odoo.field_product_product__bonuscard_catalog_status
+#: model:ir.model.fields,field_description:bonuscard_odoo.field_product_template__bonuscard_catalog_status
+#: model_terms:ir.ui.view,arch_db:bonuscard_odoo.view_product_template_form_normalized_pos_bonuscard
+msgid "Bonuscard Catalog"
+msgstr "Bonuscard-katalog"
+
+#. module: bonuscard_odoo
+#. odoo-python
+#: code:bonuscard_odoo/models/bonuscard_instance.py:0
+#: code:bonuscard_odoo/models/product_product.py:0
+msgid "Bonuscard Catalog Probe"
+msgstr "Bonuscard-katalogkontroll"
+
+#. module: bonuscard_odoo
+#: model:ir.model.fields,field_description:bonuscard_odoo.field_product_product__bonuscard_catalog_probe_note
+#: model:ir.model.fields,field_description:bonuscard_odoo.field_product_template__bonuscard_catalog_probe_note
+msgid "Bonuscard Catalog Probe Note"
+msgstr "Anteckning för Bonuscard-katalogkontroll"
+
+#. module: bonuscard_odoo
+#: model:ir.model.fields,field_description:bonuscard_odoo.field_product_product__bonuscard_catalog_updated_at
+#: model:ir.model.fields,field_description:bonuscard_odoo.field_product_template__bonuscard_catalog_updated_at
+msgid "Bonuscard Catalog Updated"
+msgstr "Bonuscard-katalog uppdaterad"
+
+#. module: bonuscard_odoo
 #: model:ir.model,name:bonuscard_odoo.model_bonuscard_connector_instance
 #: model_terms:ir.ui.view,arch_db:bonuscard_odoo.bonuscard_odoo_instance_view_form
 msgid "Bonuscard Connection"
@@ -98,6 +218,66 @@ msgid "Bonuscard Connections"
 msgstr "Bonuscard-anslutningar"
 
 #. module: bonuscard_odoo
+#: model:ir.model.fields,field_description:bonuscard_odoo.field_pos_order__bonuscard_finalized_at
+msgid "Bonuscard Finalized At"
+msgstr "Bonuscard slutförd"
+
+#. module: bonuscard_odoo
+#: model:ir.model.fields,field_description:bonuscard_odoo.field_res_partner__bonuscard_internal_id
+#: model:ir.model.fields,field_description:bonuscard_odoo.field_res_users__bonuscard_internal_id
+msgid "Bonuscard Internal"
+msgstr "Bonuscard internt ID"
+
+#. module: bonuscard_odoo
+#: model:ir.model.fields,field_description:bonuscard_odoo.field_pos_order__bonuscard_last_error_message
+msgid "Bonuscard Last Error Message"
+msgstr "Senaste Bonuscard-felmeddelande"
+
+#. module: bonuscard_odoo
+#: model:ir.model.fields,field_description:bonuscard_odoo.field_res_partner__bonuscard_last_lookup_note
+#: model:ir.model.fields,field_description:bonuscard_odoo.field_res_users__bonuscard_last_lookup_note
+msgid "Bonuscard Last Lookup Note"
+msgstr "Senaste Bonuscard-uppslagsanteckning"
+
+#. module: bonuscard_odoo
+#: model:ir.model.fields,field_description:bonuscard_odoo.field_res_partner__bonuscard_last_synced_at
+#: model:ir.model.fields,field_description:bonuscard_odoo.field_res_users__bonuscard_last_synced_at
+msgid "Bonuscard Last Synced At"
+msgstr "Bonuscard senast synkad"
+
+#. module: bonuscard_odoo
+#: model:res.groups,name:bonuscard_odoo.bonuscard_odoo_group_manager
+msgid "Bonuscard Manager"
+msgstr "Bonuscard-administratör"
+
+#. module: bonuscard_odoo
+#: model:ir.model.fields,field_description:bonuscard_odoo.field_res_partner__bonuscard_recruitment_code
+#: model:ir.model.fields,field_description:bonuscard_odoo.field_res_users__bonuscard_recruitment_code
+msgid "Bonuscard Recruitment Code"
+msgstr "Bonuscard-rekryteringskod"
+
+#. module: bonuscard_odoo
+#: model:ir.model.fields,field_description:bonuscard_odoo.field_res_partner__bonuscard_status
+#: model:ir.model.fields,field_description:bonuscard_odoo.field_res_users__bonuscard_status
+msgid "Bonuscard Status"
+msgstr "Bonuscard-status"
+
+#. module: bonuscard_odoo
+#: model:ir.model.fields,field_description:bonuscard_odoo.field_pos_order__bonuscard_transaction_identifier
+msgid "Bonuscard Transaction Identifier"
+msgstr "Bonuscard-transaktionsidentifierare"
+
+#. module: bonuscard_odoo
+#: model:res.groups,name:bonuscard_odoo.bonuscard_odoo_group_user
+msgid "Bonuscard User"
+msgstr "Bonuscard-användare"
+
+#. module: bonuscard_odoo
+#: model:ir.model.fields,field_description:bonuscard_odoo.field_pos_order__bonuscard_validated_at
+msgid "Bonuscard Validated At"
+msgstr "Bonuscard validerad"
+
+#. module: bonuscard_odoo
 #. odoo-python
 #: code:bonuscard_odoo/models/bonuscard_api_service.py:0
 msgid "Bonuscard authentication failed. Check the API username and password."
@@ -107,6 +287,8 @@ msgstr ""
 
 #. module: bonuscard_odoo
 #. odoo-javascript
+#. odoo-python
+#: code:bonuscard_odoo/models/bonuscard_api_service.py:0
 #: code:bonuscard_odoo/static/src/app/bonuscard_pos.js:0
 msgid "Bonuscard cancel failed."
 msgstr "Bonuscard-avbokningen misslyckades."
@@ -122,6 +304,28 @@ msgstr ""
 "Bonuscard-transaktion väntar."
 
 #. module: bonuscard_odoo
+#. odoo-python
+#: code:bonuscard_odoo/models/product_product.py:0
+msgid "Bonuscard catalog probe could not be started."
+msgstr "Bonuscard-katalogkontrollen kunde inte startas."
+
+#. module: bonuscard_odoo
+#. odoo-python
+#: code:bonuscard_odoo/models/bonuscard_api_service.py:0
+msgid "Bonuscard catalog probe failed."
+msgstr "Bonuscard-katalogkontrollen misslyckades."
+
+#. module: bonuscard_odoo
+#. odoo-python
+#: code:bonuscard_odoo/models/product_template.py:0
+msgid ""
+"Bonuscard catalog status can only be edited on products with exactly one "
+"variant."
+msgstr ""
+"Bonuscard-katalogstatus kan bara redigeras på produkter med exakt en "
+"variant."
+
+#. module: bonuscard_odoo
 #. odoo-javascript
 #: code:bonuscard_odoo/static/src/app/bonuscard_pos.js:0
 msgid "Bonuscard discount has been applied to the order."
@@ -129,6 +333,8 @@ msgstr "Bonuscard-rabatten har lagts till i ordern."
 
 #. module: bonuscard_odoo
 #. odoo-javascript
+#. odoo-python
+#: code:bonuscard_odoo/models/bonuscard_api_service.py:0
 #: code:bonuscard_odoo/static/src/app/bonuscard_pos.js:0
 msgid "Bonuscard finalization failed."
 msgstr "Bonuscard-avslutningen misslyckades."
@@ -146,6 +352,16 @@ msgid "Bonuscard member detected: %s"
 msgstr "Bonuscard-medlem upptäckt: %s"
 
 #. module: bonuscard_odoo
+#. odoo-python
+#: code:bonuscard_odoo/models/product_product.py:0
+msgid ""
+"Bonuscard probe customer unlock raised an error after probing %(product)s. "
+"The customer may remain locked for the next catalog probe."
+msgstr ""
+"Bonuscard-testkundens upplåsning gav ett fel efter kontroll av %(product)s. "
+"Kunden kan förbli låst för nästa katalogkontroll."
+
+#. module: bonuscard_odoo
 #. odoo-javascript
 #: code:bonuscard_odoo/static/src/app/bonuscard_registration_service.js:0
 msgid "Bonuscard registration completed."
@@ -153,6 +369,8 @@ msgstr "Bonuscard-registreringen slutfördes."
 
 #. module: bonuscard_odoo
 #. odoo-javascript
+#. odoo-python
+#: code:bonuscard_odoo/models/res_partner.py:0
 #: code:bonuscard_odoo/static/src/app/bonuscard_registration_service.js:0
 msgid "Bonuscard registration failed."
 msgstr "Bonuscard-registreringen misslyckades."
@@ -179,6 +397,12 @@ msgid ""
 msgstr ""
 "Bonuscard returnerade en rabatt, men den kunde inte tillämpas på ordern. "
 "Konfigurera en rabattprodukt i POS-inställningarna."
+
+#. module: bonuscard_odoo
+#. odoo-python
+#: code:bonuscard_odoo/models/bonuscard_api_service.py:0
+msgid "Bonuscard returned an error."
+msgstr "Bonuscard returnerade ett fel."
 
 #. module: bonuscard_odoo
 #. odoo-python
@@ -216,19 +440,183 @@ msgstr "Bonuscard-status återställd manuellt."
 
 #. module: bonuscard_odoo
 #. odoo-javascript
+#. odoo-python
+#: code:bonuscard_odoo/models/bonuscard_api_service.py:0
 #: code:bonuscard_odoo/static/src/app/bonuscard_pos.js:0
 msgid "Bonuscard validation failed."
 msgstr "Bonuscard-valideringen misslyckades."
 
 #. module: bonuscard_odoo
-#: model_terms:ir.ui.view,arch_db:bonuscard_odoo.view_partner_form_bonuscard
-msgid "Check"
-msgstr "Kontrollera"
+#: model:ir.actions.server,name:bonuscard_odoo.ir_cron_bonuscard_bulk_partner_prefetch_ir_actions_server
+msgid "Bonuscard: Bulk partner prefetch"
+msgstr "Bonuscard: Massförladdning av partners"
+
+#. module: bonuscard_odoo
+#: model:ir.actions.server,name:bonuscard_odoo.ir_cron_bonuscard_catalog_probe_ir_actions_server
+msgid "Bonuscard: Catalog probe"
+msgstr "Bonuscard: Katalogkontroll"
+
+#. module: bonuscard_odoo
+#: model_terms:ir.ui.view,arch_db:bonuscard_odoo.view_pos_order_search_bonuscard
+msgid "Bonuscard: Failed"
+msgstr "Bonuscard: Misslyckades"
+
+#. module: bonuscard_odoo
+#: model_terms:ir.ui.view,arch_db:bonuscard_odoo.view_pos_order_search_bonuscard
+msgid "Bonuscard: Finalized"
+msgstr "Bonuscard: Slutförd"
+
+#. module: bonuscard_odoo
+#: model_terms:ir.ui.view,arch_db:bonuscard_odoo.view_product_product_search_bonuscard
+#: model_terms:ir.ui.view,arch_db:bonuscard_odoo.view_product_template_search_bonuscard
+msgid "Bonuscard: In Catalog"
+msgstr "Bonuscard: I katalog"
+
+#. module: bonuscard_odoo
+#: model_terms:ir.ui.view,arch_db:bonuscard_odoo.view_product_product_search_bonuscard
+#: model_terms:ir.ui.view,arch_db:bonuscard_odoo.view_product_template_search_bonuscard
+msgid "Bonuscard: Not Set"
+msgstr "Bonuscard: Ej angiven"
+
+#. module: bonuscard_odoo
+#: model_terms:ir.ui.view,arch_db:bonuscard_odoo.view_pos_order_search_bonuscard
+msgid "Bonuscard: Not applicable"
+msgstr "Bonuscard: Ej tillämplig"
+
+#. module: bonuscard_odoo
+#: model_terms:ir.ui.view,arch_db:bonuscard_odoo.view_product_product_search_bonuscard
+#: model_terms:ir.ui.view,arch_db:bonuscard_odoo.view_product_template_search_bonuscard
+msgid "Bonuscard: Not in Catalog"
+msgstr "Bonuscard: Ej i katalog"
+
+#. module: bonuscard_odoo
+#: model_terms:ir.ui.view,arch_db:bonuscard_odoo.view_pos_order_search_bonuscard
+msgid "Bonuscard: Skipped"
+msgstr "Bonuscard: Överhoppad"
+
+#. module: bonuscard_odoo
+#: model_terms:ir.ui.view,arch_db:bonuscard_odoo.view_pos_order_search_bonuscard
+msgid "Bonuscard: Validated"
+msgstr "Bonuscard: Validerad"
+
+#. module: bonuscard_odoo
+#: model_terms:ir.ui.view,arch_db:bonuscard_odoo.bonuscard_odoo_instance_view_form
+msgid "Bulk Prefetch"
+msgstr "Massförladdning"
+
+#. module: bonuscard_odoo
+#. odoo-python
+#: code:bonuscard_odoo/models/bonuscard_instance.py:0
+#: code:bonuscard_odoo/models/res_partner.py:0
+msgid "Bulk partner prefetch is disabled for this connection."
+msgstr "Massförladdning av partners är inaktiverad för denna anslutning."
+
+#. module: bonuscard_odoo
+#: model:ir.model.fields,field_description:bonuscard_odoo.field_bonuscard_connector_instance__bulk_partner_prefetch_ttl_hours
+msgid "Bulk prefetch TTL (hours)"
+msgstr "TTL för massförladdning (timmar)"
+
+#. module: bonuscard_odoo
+#. odoo-python
+#: code:bonuscard_odoo/models/bonuscard_instance.py:0
+msgid "Bulk prefetch TTL must be at least 1 hour."
+msgstr "TTL för massförladdning måste vara minst 1 timme."
+
+#. module: bonuscard_odoo
+#: model:ir.model.fields,field_description:bonuscard_odoo.field_bonuscard_connector_instance__bulk_partner_prefetch_batch_size
+msgid "Bulk prefetch batch size"
+msgstr "Batchstorlek för massförladdning"
+
+#. module: bonuscard_odoo
+#. odoo-python
+#: code:bonuscard_odoo/models/bonuscard_instance.py:0
+msgid "Bulk prefetch batch size must be at least 1."
+msgstr "Batchstorlek för massförladdning måste vara minst 1."
+
+#. module: bonuscard_odoo
+#. odoo-python
+#: code:bonuscard_odoo/models/bonuscard_instance.py:0
+msgid ""
+"Cannot unset the current Bonuscard connection for %s — no other active "
+"connection is available to take over. Archive this connection instead."
+msgstr ""
+"Kan inte avmarkera den aktuella Bonuscard-anslutningen för %s — ingen annan "
+"aktiv anslutning finns tillgänglig att ta över. Arkivera denna anslutning i "
+"stället."
+
+#. module: bonuscard_odoo
+#: model_terms:ir.ui.view,arch_db:bonuscard_odoo.bonuscard_odoo_instance_view_form
+msgid "Catalog Probe"
+msgstr "Katalogkontroll"
+
+#. module: bonuscard_odoo
+#: model:ir.model.fields,field_description:bonuscard_odoo.field_bonuscard_connector_instance__catalog_probe_batch_size
+msgid "Catalog Probe Batch Size"
+msgstr "Batchstorlek för katalogkontroll"
+
+#. module: bonuscard_odoo
+#: model:ir.model.fields,field_description:bonuscard_odoo.field_bonuscard_connector_instance__catalog_probe_customer_identifier
+msgid "Catalog Probe Customer"
+msgstr "Testkund för katalogkontroll"
+
+#. module: bonuscard_odoo
+#: model:ir.model.fields,field_description:bonuscard_odoo.field_bonuscard_connector_instance__catalog_probe_price
+msgid "Catalog Probe Price"
+msgstr "Pris för katalogkontroll"
+
+#. module: bonuscard_odoo
+#: model:ir.model.fields,field_description:bonuscard_odoo.field_bonuscard_connector_instance__catalog_probe_unlock_ean
+msgid "Catalog Probe Unlock EAN"
+msgstr "Upplåsnings-EAN för katalogkontroll"
+
+#. module: bonuscard_odoo
+#. odoo-python
+#: code:bonuscard_odoo/models/bonuscard_instance.py:0
+msgid "Catalog probe batch size must be greater than zero."
+msgstr "Batchstorlek för katalogkontroll måste vara större än noll."
+
+#. module: bonuscard_odoo
+#. odoo-python
+#: code:bonuscard_odoo/models/bonuscard_instance.py:0
+msgid "Catalog probe could not be started."
+msgstr "Katalogkontrollen kunde inte startas."
+
+#. module: bonuscard_odoo
+#. odoo-python
+#: code:bonuscard_odoo/models/bonuscard_api_service.py:0
+#: code:bonuscard_odoo/models/product_product.py:0
+msgid ""
+"Catalog probe customer identifier is not configured on the Bonuscard "
+"connection."
+msgstr ""
+"Katalogkontrollens kundidentifierare är inte konfigurerad på Bonuscard-"
+"anslutningen."
+
+#. module: bonuscard_odoo
+#. odoo-python
+#: code:bonuscard_odoo/models/bonuscard_instance.py:0
+#: code:bonuscard_odoo/models/product_product.py:0
+msgid "Catalog probe is disabled for this connection."
+msgstr "Katalogkontroll är inaktiverad för denna anslutning."
+
+#. module: bonuscard_odoo
+#. odoo-python
+#: code:bonuscard_odoo/models/bonuscard_instance.py:0
+msgid "Catalog probe price must be greater than zero."
+msgstr "Pris för katalogkontroll måste vara större än noll."
 
 #. module: bonuscard_odoo
 #: model_terms:ir.ui.view,arch_db:bonuscard_odoo.view_partner_form_bonuscard
 msgid "Check Bonuscard"
 msgstr "Kontrollera Bonuscard"
+
+#. module: bonuscard_odoo
+#: model:ir.actions.server,name:bonuscard_odoo.action_bonuscard_probe_products_catalog_status
+#: model:ir.actions.server,name:bonuscard_odoo.action_bonuscard_probe_templates_catalog_status
+#: model_terms:ir.ui.view,arch_db:bonuscard_odoo.view_product_product_form_bonuscard
+#: model_terms:ir.ui.view,arch_db:bonuscard_odoo.view_product_template_form_bonuscard
+msgid "Check Bonuscard Catalog"
+msgstr "Kontrollera Bonuscard-katalog"
 
 #. module: bonuscard_odoo
 #: model:ir.model.fields,field_description:bonuscard_odoo.field_bonuscard_connector_instance__company_id
@@ -248,9 +636,27 @@ msgid "Connection Name"
 msgstr "Anslutningsnamn"
 
 #. module: bonuscard_odoo
+#: model:ir.model.fields,field_description:bonuscard_odoo.field_bonuscard_connector_instance__connection_status
+msgid "Connection Status"
+msgstr "Anslutningsstatus"
+
+#. module: bonuscard_odoo
 #: model:ir.actions.act_window,name:bonuscard_odoo.action_bonuscard_odoo_instance
+#: model:ir.ui.menu,name:bonuscard_odoo.menu_bonuscard_odoo_connections
 msgid "Connections"
 msgstr "Anslutningar"
+
+#. module: bonuscard_odoo
+#: model:ir.model,name:bonuscard_odoo.model_res_partner
+msgid "Contact"
+msgstr "Kontakt"
+
+#. module: bonuscard_odoo
+#. odoo-python
+#: code:bonuscard_odoo/models/product_product.py:0
+msgid "Could not cancel the open Bonuscard catalog probe transaction: %s"
+msgstr ""
+"Kunde inte avbryta den öppna transaktionen för Bonuscard-katalogkontroll: %s"
 
 #. module: bonuscard_odoo
 #. odoo-javascript
@@ -266,6 +672,16 @@ msgstr ""
 #. odoo-javascript
 #: code:bonuscard_odoo/static/src/app/bonuscard_pos.js:0
 msgid ""
+"Could not cancel the pending Bonuscard transaction before switching orders. "
+"The customer may remain locked until it expires."
+msgstr ""
+"Kunde inte avbryta den väntande Bonuscard-transaktionen innan orderbyte. "
+"Kunden kan förbli låst tills den löper ut."
+
+#. module: bonuscard_odoo
+#. odoo-javascript
+#: code:bonuscard_odoo/static/src/app/bonuscard_pos.js:0
+msgid ""
 "Could not cancel the pending Bonuscard transaction. The order has been kept "
 "so you can retry cancellation."
 msgstr ""
@@ -274,9 +690,44 @@ msgstr ""
 
 #. module: bonuscard_odoo
 #. odoo-python
+#: code:bonuscard_odoo/models/product_product.py:0
+msgid ""
+"Could not confirm the Bonuscard probe customer was unlocked after probing "
+"%(product)s. The customer may remain locked for the next catalog probe."
+msgstr ""
+"Kunde inte bekräfta att Bonuscard-testkunden låstes upp efter kontroll av "
+"%(product)s. Kunden kan förbli låst för nästa katalogkontroll."
+
+#. module: bonuscard_odoo
+#. odoo-javascript
+#: code:bonuscard_odoo/static/src/app/bonuscard_pos.js:0
+msgid ""
+"Could not release the pending Bonuscard transaction. The customer may remain"
+" locked until it expires."
+msgstr ""
+"Kunde inte frigöra den väntande Bonuscard-transaktionen. Kunden kan förbli "
+"låst tills den löper ut."
+
+#. module: bonuscard_odoo
+#. odoo-python
 #: code:bonuscard_odoo/models/res_partner.py:0
 msgid "Could not verify the Bonuscard status before registration: %s"
 msgstr "Kunde inte verifiera Bonuscard-statusen före registrering: %s"
+
+#. module: bonuscard_odoo
+#: model:ir.model.fields,field_description:bonuscard_odoo.field_bonuscard_connector_instance__create_uid
+msgid "Created by"
+msgstr "Skapad av"
+
+#. module: bonuscard_odoo
+#: model:ir.model.fields,field_description:bonuscard_odoo.field_bonuscard_connector_instance__create_date
+msgid "Created on"
+msgstr "Skapad"
+
+#. module: bonuscard_odoo
+#: model_terms:ir.ui.view,arch_db:bonuscard_odoo.bonuscard_odoo_instance_view_search
+msgid "Current"
+msgstr "Aktuell"
 
 #. module: bonuscard_odoo
 #. odoo-python
@@ -312,15 +763,9 @@ msgstr "Kunden måste verifiera sitt Bonuscard-konto innan köp."
 
 #. module: bonuscard_odoo
 #. odoo-python
-#: code:bonuscard_odoo/models/bonuscard_api_service.py:0
+#: code:bonuscard_odoo/models/res_partner.py:0
 msgid "Customer not found."
 msgstr "Kunden hittades inte."
-
-#. module: bonuscard_odoo
-#. odoo-python
-#: code:bonuscard_odoo/models/res_partner.py:0
-msgid "Customer registered successfully."
-msgstr "Kunden registrerades framgångsrikt."
 
 #. module: bonuscard_odoo
 #. odoo-python
@@ -340,9 +785,47 @@ msgid "Danish"
 msgstr "Danska"
 
 #. module: bonuscard_odoo
+#: model:ir.model.fields,help:bonuscard_odoo.field_bonuscard_connector_instance__catalog_probe_customer_identifier
+msgid ""
+"Dedicated Bonuscard test customer identifier (recruitment code, phone, "
+"email, etc.) used when probing product catalog status via ValidatePurchase."
+msgstr ""
+"Dedikerad Bonuscard-testkundidentifierare (rekryteringskod, telefon, e-post "
+"osv.) som används vid kontroll av produktkatalogstatus via ValidatePurchase."
+
+#. module: bonuscard_odoo
 #: model_terms:ir.ui.view,arch_db:bonuscard_odoo.bonuscard_odoo_instance_view_form
 msgid "Diagnostics"
 msgstr "Diagnostik"
+
+#. module: bonuscard_odoo
+#: model:ir.model.fields,field_description:bonuscard_odoo.field_bonuscard_api_service__display_name
+#: model:ir.model.fields,field_description:bonuscard_odoo.field_bonuscard_connector_instance__display_name
+#: model:ir.model.fields,field_description:bonuscard_odoo.field_pos_order__display_name
+#: model:ir.model.fields,field_description:bonuscard_odoo.field_product_product__display_name
+#: model:ir.model.fields,field_description:bonuscard_odoo.field_product_template__display_name
+#: model:ir.model.fields,field_description:bonuscard_odoo.field_res_partner__display_name
+msgid "Display Name"
+msgstr "Visningsnamn"
+
+#. module: bonuscard_odoo
+#: model:ir.model.fields,field_description:bonuscard_odoo.field_bonuscard_connector_instance__bulk_partner_prefetch_active
+msgid "Enable bulk partner prefetch"
+msgstr "Aktivera massförladdning av partners"
+
+#. module: bonuscard_odoo
+#: model:ir.model.fields,field_description:bonuscard_odoo.field_bonuscard_connector_instance__catalog_probe_active
+msgid "Enable catalog probe"
+msgstr "Aktivera katalogkontroll"
+
+#. module: bonuscard_odoo
+#: model:ir.model.fields,help:bonuscard_odoo.field_bonuscard_connector_instance__is_current
+msgid ""
+"Enable this on exactly one connection per company to control which Bonuscard"
+" environment (production/sandbox) is used by POS and other API calls."
+msgstr ""
+"Aktivera detta på exakt en anslutning per företag för att styra vilken "
+"Bonuscard-miljö (produktion/sandbox) som används av POS och andra API-anrop."
 
 #. module: bonuscard_odoo
 #: model:ir.model.fields.selection,name:bonuscard_odoo.selection__bonuscard_connector_instance__api_culture__en-gb
@@ -353,14 +836,79 @@ msgstr "Engelska"
 #: model:ir.model.fields.selection,name:bonuscard_odoo.selection__bonuscard_connector_instance__connection_status__error
 #: model:ir.model.fields.selection,name:bonuscard_odoo.selection__res_partner__bonuscard_status__error
 #: model_terms:ir.ui.view,arch_db:bonuscard_odoo.bonuscard_odoo_instance_view_search
-#: model_terms:ir.ui.view,arch_db:bonuscard_odoo.view_partner_form_bonuscard
 msgid "Error"
 msgstr "Fel"
+
+#. module: bonuscard_odoo
+#. odoo-python
+#: code:bonuscard_odoo/models/bonuscard_instance.py:0
+msgid ""
+"Exactly one active Bonuscard connection must be selected for API use per "
+"company."
+msgstr ""
+"Exakt en aktiv Bonuscard-anslutning måste väljas för API-användning per "
+"företag."
+
+#. module: bonuscard_odoo
+#: model:ir.model.fields.selection,name:bonuscard_odoo.selection__pos_order__bonuscard_state__failed
+msgid "Failed"
+msgstr "Misslyckades"
+
+#. module: bonuscard_odoo
+#: model:ir.model.fields.selection,name:bonuscard_odoo.selection__pos_order__bonuscard_state__finalized
+msgid "Finalized"
+msgstr "Slutförd"
 
 #. module: bonuscard_odoo
 #: model:ir.model.fields.selection,name:bonuscard_odoo.selection__bonuscard_connector_instance__api_culture__fi-fi
 msgid "Finnish"
 msgstr "Finska"
+
+#. module: bonuscard_odoo
+#: model_terms:ir.ui.view,arch_db:bonuscard_odoo.bonuscard_odoo_instance_view_form
+msgid ""
+"Header buttons look up Bonuscard customer links (phone → email → optional name).\n"
+"                            <strong>Run</strong> processes only never-scanned partners (same as the daily cron).\n"
+"                            <strong>Refresh</strong> re-checks partners older than the TTL.\n"
+"                            Processing runs immediately and may take a moment for large batches."
+msgstr ""
+"Rubrikknapparna slår upp Bonuscard-kundlänkar (telefon → e-post → valfritt namn).\n"
+"                            <strong>Kör</strong> bearbetar endast aldrig skannade partners (samma som daglig cron).\n"
+"                            <strong>Uppdatera</strong> kontrollerar partners som är äldre än TTL.\n"
+"                            Bearbetningen körs omedelbart och kan ta en stund vid stora batcher."
+
+#. module: bonuscard_odoo
+#: model:ir.model.fields,field_description:bonuscard_odoo.field_bonuscard_api_service__id
+#: model:ir.model.fields,field_description:bonuscard_odoo.field_bonuscard_connector_instance__id
+#: model:ir.model.fields,field_description:bonuscard_odoo.field_pos_order__id
+#: model:ir.model.fields,field_description:bonuscard_odoo.field_product_product__id
+#: model:ir.model.fields,field_description:bonuscard_odoo.field_product_template__id
+#: model:ir.model.fields,field_description:bonuscard_odoo.field_res_partner__id
+msgid "ID"
+msgstr ""
+
+#. module: bonuscard_odoo
+#: model:ir.model.fields,help:bonuscard_odoo.field_bonuscard_connector_instance__bulk_partner_prefetch_enable_name_fallback
+msgid ""
+"If enabled, the prefetch can use partner name as a last resort when phone "
+"and email are missing."
+msgstr ""
+"Om aktiverat kan förladdningen använda partnernamn som sista utväg när "
+"telefon och e-post saknas."
+
+#. module: bonuscard_odoo
+#. odoo-javascript
+#: code:bonuscard_odoo/static/src/app/bonuscard_product_info_popup.js:0
+#: model:ir.model.fields.selection,name:bonuscard_odoo.selection__product_product__bonuscard_catalog_status__in_catalog
+#: model:ir.model.fields.selection,name:bonuscard_odoo.selection__product_template__bonuscard_catalog_status__in_catalog
+msgid "In Bonuscard Catalog"
+msgstr "I Bonuscard-katalog"
+
+#. module: bonuscard_odoo
+#. odoo-python
+#: code:bonuscard_odoo/models/bonuscard_api_service.py:0
+msgid "Invalid checkout payload from POS."
+msgstr "Ogiltig checkout-data från POS."
 
 #. module: bonuscard_odoo
 #. odoo-python
@@ -369,10 +917,51 @@ msgid "Invalid order payload from POS."
 msgstr "Ogiltig orderdata från POS."
 
 #. module: bonuscard_odoo
+#: model:ir.model.fields,field_description:bonuscard_odoo.field_bonuscard_connector_instance__last_error
+msgid "Last Error"
+msgstr "Senaste fel"
+
+#. module: bonuscard_odoo
+#: model:ir.model.fields,field_description:bonuscard_odoo.field_bonuscard_connector_instance__last_test_at
+msgid "Last Test At"
+msgstr "Senaste test"
+
+#. module: bonuscard_odoo
+#: model:ir.model.fields,field_description:bonuscard_odoo.field_bonuscard_connector_instance__write_uid
+msgid "Last Updated by"
+msgstr "Senast uppdaterad av"
+
+#. module: bonuscard_odoo
+#: model:ir.model.fields,field_description:bonuscard_odoo.field_bonuscard_connector_instance__write_date
+msgid "Last Updated on"
+msgstr "Senast uppdaterad"
+
+#. module: bonuscard_odoo
 #: model:ir.model.fields.selection,name:bonuscard_odoo.selection__res_partner__bonuscard_status__linked
-#: model_terms:ir.ui.view,arch_db:bonuscard_odoo.view_partner_form_bonuscard
 msgid "Linked"
 msgstr "Länkad"
+
+#. module: bonuscard_odoo
+#: model_terms:ir.ui.view,arch_db:bonuscard_odoo.bonuscard_odoo_instance_view_form
+msgid ""
+"Look up Bonuscard status for partners that have never been scanned (same "
+"scope as the daily scheduled job). Processes up to the batch size below."
+msgstr ""
+"Slå upp Bonuscard-status för partners som aldrig skannats (samma omfattning "
+"som det dagliga schemalagda jobbet). Bearbetar upp till batchstorleken "
+"nedan."
+
+#. module: bonuscard_odoo
+#: model:ir.actions.server,name:bonuscard_odoo.action_bonuscard_mark_products_in_catalog
+#: model:ir.actions.server,name:bonuscard_odoo.action_bonuscard_mark_templates_in_catalog
+msgid "Mark as Bonuscard Catalog"
+msgstr "Markera som Bonuscard-katalog"
+
+#. module: bonuscard_odoo
+#: model:ir.actions.server,name:bonuscard_odoo.action_bonuscard_mark_products_not_in_catalog
+#: model:ir.actions.server,name:bonuscard_odoo.action_bonuscard_mark_templates_not_in_catalog
+msgid "Mark as Not in Bonuscard Catalog"
+msgstr "Markera som ej i Bonuscard-katalog"
 
 #. module: bonuscard_odoo
 #. odoo-python
@@ -381,19 +970,26 @@ msgid "Matched Bonuscard customer using %s."
 msgstr "Hittade Bonuscard-kund med hjälp av %s."
 
 #. module: bonuscard_odoo
+#: model:ir.model.fields,help:bonuscard_odoo.field_bonuscard_connector_instance__catalog_probe_batch_size
+msgid "Maximum number of never-scanned products processed per cron run."
+msgstr ""
+"Maximalt antal aldrig skannade produkter som bearbetas per cron-körning."
+
+#. module: bonuscard_odoo
+#: model:ir.model.fields,help:bonuscard_odoo.field_bonuscard_connector_instance__bulk_partner_prefetch_batch_size
+msgid "Maximum number of partners processed per run."
+msgstr "Maximalt antal partners som bearbetas per körning."
+
+#. module: bonuscard_odoo
 #. odoo-python
 #: code:bonuscard_odoo/models/bonuscard_api_service.py:0
 msgid "Missing Bonuscard transaction identifier."
 msgstr "Saknar Bonuscard-transaktionsidentifierare."
 
 #. module: bonuscard_odoo
-#: model_terms:ir.ui.view,arch_db:bonuscard_odoo.view_partner_form_bonuscard
-msgid "Multiple"
-msgstr "Flera"
-
-#. module: bonuscard_odoo
 #. odoo-javascript
 #: code:bonuscard_odoo/static/src/app/bonuscard_partner_line.xml:0
+#: model:ir.model.fields.selection,name:bonuscard_odoo.selection__res_partner__bonuscard_status__ambiguous
 msgid "Multiple Matches"
 msgstr "Flera träffar"
 
@@ -405,12 +1001,19 @@ msgstr "Ingen Bonuscard"
 
 #. module: bonuscard_odoo
 #. odoo-python
+#: code:bonuscard_odoo/models/bonuscard_api_service.py:0
+msgid "No Bonuscard catalog products found in the order."
+msgstr "Inga Bonuscard-katalogprodukter hittades i ordern."
+
+#. module: bonuscard_odoo
+#. odoo-python
 #: code:bonuscard_odoo/models/res_partner.py:0
 msgid "No Bonuscard customer matched the available partner details."
 msgstr "Ingen Bonuscard-kund matchade tillgängliga partneruppgifter."
 
 #. module: bonuscard_odoo
 #. odoo-python
+#: code:bonuscard_odoo/models/product_product.py:0
 #: code:bonuscard_odoo/models/res_partner.py:0
 msgid "No active Bonuscard connection is configured for this company."
 msgstr "Ingen aktiv Bonuscard-anslutning är konfigurerad för detta företag."
@@ -418,14 +1021,27 @@ msgstr "Ingen aktiv Bonuscard-anslutning är konfigurerad för detta företag."
 #. module: bonuscard_odoo
 #. odoo-python
 #: code:bonuscard_odoo/models/bonuscard_api_service.py:0
+#: code:bonuscard_odoo/models/res_partner.py:0
 msgid "No active Bonuscard connection is configured."
 msgstr "Ingen aktiv Bonuscard-anslutning är konfigurerad."
 
 #. module: bonuscard_odoo
 #. odoo-python
-#: code:bonuscard_odoo/models/bonuscard_api_service.py:0
-msgid "No products with a barcode or article number found in the order."
-msgstr "Inga produkter med streckkod eller artikelnummer hittades i ordern."
+#: code:bonuscard_odoo/models/product_product.py:0
+msgid ""
+"No in-catalog EAN is available yet to release the probe customer after "
+"probing %(product)s. Configure catalog probe unlock EAN or probe a known "
+"product first."
+msgstr ""
+"Ingen katalog-EAN är tillgänglig ännu för att frigöra testkunden för "
+"katalogkontroll efter kontroll av %(product)s. Konfigurera upplåsnings-EAN "
+"för katalogkontroll eller kontrollera en känd produkt först."
+
+#. module: bonuscard_odoo
+#: model:ir.model.fields,help:bonuscard_odoo.field_bonuscard_connector_instance__catalog_probe_price
+msgid "Nominal unit price sent to ValidatePurchase when probing products."
+msgstr ""
+"Nominellt enhetspris som skickas till ValidatePurchase vid produktkontroll."
 
 #. module: bonuscard_odoo
 #: model:ir.model.fields.selection,name:bonuscard_odoo.selection__bonuscard_connector_instance__api_culture__nb-no
@@ -433,14 +1049,60 @@ msgid "Norwegian"
 msgstr "Norska"
 
 #. module: bonuscard_odoo
+#: model:ir.model.fields.selection,name:bonuscard_odoo.selection__res_partner__bonuscard_status__not_checked
+msgid "Not Checked"
+msgstr "Ej kontrollerad"
+
+#. module: bonuscard_odoo
 #: model:ir.model.fields.selection,name:bonuscard_odoo.selection__res_partner__bonuscard_status__not_found
-#: model_terms:ir.ui.view,arch_db:bonuscard_odoo.view_partner_form_bonuscard
 msgid "Not Found"
 msgstr "Ej hittad"
 
 #. module: bonuscard_odoo
+#. odoo-javascript
+#: code:bonuscard_odoo/static/src/app/bonuscard_product_info_popup.js:0
+#: model:ir.model.fields.selection,name:bonuscard_odoo.selection__product_product__bonuscard_catalog_status__not_set
+#: model:ir.model.fields.selection,name:bonuscard_odoo.selection__product_template__bonuscard_catalog_status__not_set
+msgid "Not Set"
+msgstr "Ej angiven"
+
+#. module: bonuscard_odoo
+#: model:ir.model.fields.selection,name:bonuscard_odoo.selection__pos_order__bonuscard_state__not_applicable
+msgid "Not applicable"
+msgstr "Ej tillämplig"
+
+#. module: bonuscard_odoo
+#. odoo-javascript
+#: code:bonuscard_odoo/static/src/app/bonuscard_product_info_popup.js:0
+#: model:ir.model.fields.selection,name:bonuscard_odoo.selection__product_product__bonuscard_catalog_status__not_in_catalog
+#: model:ir.model.fields.selection,name:bonuscard_odoo.selection__product_template__bonuscard_catalog_status__not_in_catalog
+msgid "Not in Bonuscard Catalog"
+msgstr "Ej i Bonuscard-katalog"
+
+#. module: bonuscard_odoo
+#: model:ir.model.fields.selection,name:bonuscard_odoo.selection__bonuscard_connector_instance__connection_status__ok
+#: model_terms:ir.ui.view,arch_db:bonuscard_odoo.bonuscard_odoo_instance_view_search
 msgid "OK"
 msgstr ""
+
+#. module: bonuscard_odoo
+#. odoo-python
+#: code:bonuscard_odoo/models/bonuscard_instance.py:0
+msgid "Only one Bonuscard connection can be selected for API use per company."
+msgstr ""
+"Endast en Bonuscard-anslutning kan väljas för API-användning per företag."
+
+#. module: bonuscard_odoo
+#. odoo-python
+#: code:bonuscard_odoo/models/product_product.py:0
+msgid "Open catalog probe transaction cancelled on retry."
+msgstr "Öppen transaktion för katalogkontroll avbröts vid nytt försök."
+
+#. module: bonuscard_odoo
+#. odoo-python
+#: code:bonuscard_odoo/models/product_product.py:0
+msgid "Open catalog probe transaction cancelled."
+msgstr "Öppen transaktion för katalogkontroll avbruten."
 
 #. module: bonuscard_odoo
 #. odoo-python
@@ -455,6 +1117,12 @@ msgid "Partner not found."
 msgstr "Partnern hittades inte."
 
 #. module: bonuscard_odoo
+#: model:ir.model.fields,help:bonuscard_odoo.field_bonuscard_connector_instance__bulk_partner_prefetch_ttl_hours
+msgid "Partners synced within this window are skipped to reduce API calls."
+msgstr ""
+"Partners synkade inom detta fönster hoppas över för att minska API-anrop."
+
+#. module: bonuscard_odoo
 #. odoo-javascript
 #: code:bonuscard_odoo/static/src/app/bonuscard_pos.js:0
 msgid ""
@@ -465,9 +1133,112 @@ msgstr ""
 "Lojalitetstransaktionen väntar fortfarande."
 
 #. module: bonuscard_odoo
+#. odoo-javascript
+#: code:bonuscard_odoo/static/src/app/bonuscard_pos.js:0
+msgid ""
+"Payment succeeded but Bonuscard could not release the pending transaction. "
+"The customer may remain locked."
+msgstr ""
+"Betalningen lyckades men Bonuscard kunde inte frigöra den väntande "
+"transaktionen. Kunden kan förbli låst."
+
+#. module: bonuscard_odoo
+#: model:ir.model,name:bonuscard_odoo.model_pos_order
+msgid "Point of Sale Orders"
+msgstr "Kassorordrar"
+
+#. module: bonuscard_odoo
+#: model_terms:ir.ui.view,arch_db:bonuscard_odoo.bonuscard_odoo_instance_view_form
+msgid ""
+"Probe Bonuscard catalog status for products that have never been scanned "
+"(same scope as the daily catalog probe cron)."
+msgstr ""
+"Kontrollera Bonuscard-katalogstatus för produkter som aldrig skannats (samma"
+" omfattning som daglig katalogkontroll-cron)."
+
+#. module: bonuscard_odoo
+#: model_terms:ir.ui.view,arch_db:bonuscard_odoo.bonuscard_odoo_instance_view_form
+msgid ""
+"Probes product catalog status by calling\n"
+"                            <strong>ValidatePurchase</strong> with the dedicated test\n"
+"                            customer below. Unknown products are detected when Bonuscard\n"
+"                            returns no transaction identifier. Products are processed one\n"
+"                            by one. The daily cron only scans products with catalog\n"
+"                            status <strong>Not Set</strong>."
+msgstr ""
+"Kontrollerar produktkatalogstatus genom att anropa\n"
+"                            <strong>ValidatePurchase</strong> med testkunden nedan.\n"
+"                            Okända produkter upptäcks när Bonuscard returnerar ingen transaktionsidentifierare. Produkter bearbetas en i taget. Daglig cron skannar endast produkter med katalogstatus <strong>Ej angiven</strong>."
+
+#. module: bonuscard_odoo
+#. odoo-python
+#: code:bonuscard_odoo/models/product_product.py:0
+msgid ""
+"Processed: %(processed)s (in_catalog=%(in_catalog)s, "
+"not_in_catalog=%(not_in_catalog)s, unchanged=%(unchanged)s, "
+"skipped=%(skipped)s, error=%(error)s)."
+msgstr ""
+"Bearbetade: %(processed)s (i_katalog=%(in_catalog)s, "
+"ej_i_katalog=%(not_in_catalog)s, oförändrade=%(unchanged)s, "
+"överhoppade=%(skipped)s, fel=%(error)s)."
+
+#. module: bonuscard_odoo
+#. odoo-python
+#: code:bonuscard_odoo/models/bonuscard_instance.py:0
+msgid ""
+"Processed: %(processed)s (linked=%(linked)s, not_found=%(not_found)s, "
+"ambiguous=%(ambiguous)s, error=%(error)s)."
+msgstr ""
+"Bearbetade: %(processed)s (länkade=%(linked)s, ej_hittade=%(not_found)s, "
+"tvetydiga=%(ambiguous)s, fel=%(error)s)."
+
+#. module: bonuscard_odoo
+#: model:ir.model,name:bonuscard_odoo.model_product_template
+msgid "Product"
+msgstr "Produkt"
+
+#. module: bonuscard_odoo
+#: model:ir.model,name:bonuscard_odoo.model_product_product
+msgid "Product Variant"
+msgstr "Produktvariant"
+
+#. module: bonuscard_odoo
+#. odoo-python
+#: code:bonuscard_odoo/models/bonuscard_api_service.py:0
+msgid "Product found in Bonuscard catalog."
+msgstr "Produkten finns i Bonuscard-katalogen."
+
+#. module: bonuscard_odoo
+#. odoo-python
+#: code:bonuscard_odoo/models/bonuscard_api_service.py:0
+msgid "Product has no barcode or article number."
+msgstr "Produkten har ingen streckkod eller artikelnummer."
+
+#. module: bonuscard_odoo
+#. odoo-python
+#: code:bonuscard_odoo/models/bonuscard_api_service.py:0
+msgid "Product not found in Bonuscard catalog."
+msgstr "Produkten hittades inte i Bonuscard-katalogen."
+
+#. module: bonuscard_odoo
 #: model_terms:ir.ui.view,arch_db:bonuscard_odoo.bonuscard_odoo_instance_view_form
 msgid "Production Bonuscard"
 msgstr "Produktions-Bonuscard"
+
+#. module: bonuscard_odoo
+#: model_terms:ir.ui.view,arch_db:bonuscard_odoo.bonuscard_odoo_instance_view_form
+msgid ""
+"Re-check partners already scanned whose last lookup is older than the TTL "
+"below. Skips partners checked recently to limit API calls."
+msgstr ""
+"Kontrollera om partners som redan skannats och vars senaste uppslag är äldre"
+" än TTL nedan. Hoppar över nyligen kontrollerade partners för att begränsa "
+"API-anrop."
+
+#. module: bonuscard_odoo
+#: model_terms:ir.ui.view,arch_db:bonuscard_odoo.bonuscard_odoo_instance_view_form
+msgid "Refresh Bulk Prefetch"
+msgstr "Uppdatera massförladdning"
 
 #. module: bonuscard_odoo
 #: model_terms:ir.ui.view,arch_db:bonuscard_odoo.view_partner_form_bonuscard
@@ -492,9 +1263,25 @@ msgid "Request timeout must be at least 1 second."
 msgstr "Timeout för förfrågan måste vara minst 1 sekund."
 
 #. module: bonuscard_odoo
+#: model:ir.actions.server,name:bonuscard_odoo.action_bonuscard_reset_products_catalog_status
+#: model:ir.actions.server,name:bonuscard_odoo.action_bonuscard_reset_templates_catalog_status
+msgid "Reset Bonuscard Catalog Status"
+msgstr "Återställ Bonuscard-katalogstatus"
+
+#. module: bonuscard_odoo
 #: model_terms:ir.ui.view,arch_db:bonuscard_odoo.view_partner_form_bonuscard
 msgid "Reset Bonuscard Status"
 msgstr "Återställ Bonuscard-status"
+
+#. module: bonuscard_odoo
+#: model_terms:ir.ui.view,arch_db:bonuscard_odoo.bonuscard_odoo_instance_view_form
+msgid "Run Bulk Prefetch"
+msgstr "Kör massförladdning"
+
+#. module: bonuscard_odoo
+#: model_terms:ir.ui.view,arch_db:bonuscard_odoo.bonuscard_odoo_instance_view_form
+msgid "Run Catalog Probe"
+msgstr "Kör katalogkontroll"
 
 #. module: bonuscard_odoo
 #: model_terms:ir.ui.view,arch_db:bonuscard_odoo.bonuscard_odoo_instance_view_search
@@ -502,11 +1289,26 @@ msgid "Search Bonuscard Connections"
 msgstr "Sök Bonuscard-anslutningar"
 
 #. module: bonuscard_odoo
+#. odoo-python
+#: code:bonuscard_odoo/models/product_product.py:0
+#: code:bonuscard_odoo/models/res_partner.py:0
+msgid ""
+"Selected Bonuscard connection does not belong to the requested company."
+msgstr "Vald Bonuscard-anslutning tillhör inte det begärda företaget."
+
+#. module: bonuscard_odoo
+#: model:ir.model.fields.selection,name:bonuscard_odoo.selection__pos_order__bonuscard_state__skipped
+msgid "Skipped"
+msgstr "Överhoppad"
+
+#. module: bonuscard_odoo
+#: model_terms:ir.ui.view,arch_db:bonuscard_odoo.bonuscard_odoo_instance_view_search
 msgid "Status"
 msgstr ""
 
 #. module: bonuscard_odoo
 #. odoo-python
+#: code:bonuscard_odoo/models/bonuscard_instance.py:0
 #: code:bonuscard_odoo/models/res_partner.py:0
 msgid "Success"
 msgstr "Succé"
@@ -528,9 +1330,75 @@ msgid "Test Connection"
 msgstr "Testa anslutning"
 
 #. module: bonuscard_odoo
+#. odoo-python
+#: code:bonuscard_odoo/models/product_product.py:0
+msgid ""
+"These products cannot be marked as in the Bonuscard catalog because they "
+"have no barcode or article number: %s"
+msgstr ""
+"Dessa produkter kan inte markeras som i Bonuscard-katalogen eftersom de "
+"saknar streckkod eller artikelnummer: %s"
+
+#. module: bonuscard_odoo
+#. odoo-python
+#: code:bonuscard_odoo/models/product_template.py:0
+msgid ""
+"These products cannot be updated from the Products list because they do not "
+"have exactly one variant: %s"
+msgstr ""
+"Dessa produkter kan inte uppdateras från produktlistan eftersom de inte har "
+"exakt en variant: %s"
+
+#. module: bonuscard_odoo
+#. odoo-python
+#: code:bonuscard_odoo/models/bonuscard_api_service.py:0
+msgid "Unexpected Bonuscard response format."
+msgstr "Oväntat Bonuscard-svarsformat."
+
+#. module: bonuscard_odoo
 #: model:ir.model.fields.selection,name:bonuscard_odoo.selection__bonuscard_connector_instance__connection_status__unknown
 msgid "Unknown"
 msgstr "Okänd"
+
+#. module: bonuscard_odoo
+#: model:ir.model.fields,field_description:bonuscard_odoo.field_bonuscard_connector_instance__is_current
+msgid "Use for Bonuscard API"
+msgstr "Använd för Bonuscard API"
+
+#. module: bonuscard_odoo
+#: model:ir.model.fields.selection,name:bonuscard_odoo.selection__pos_order__bonuscard_state__validated
+msgid "Validated"
+msgstr "Validerad"
+
+#. module: bonuscard_odoo
+#: model:ir.model.fields,help:bonuscard_odoo.field_bonuscard_connector_instance__bulk_partner_prefetch_active
+msgid ""
+"When enabled, the cron job and manual button will prefetch Bonuscard "
+"customer links in the background."
+msgstr ""
+"När aktiverat förladdar cron-jobbet och manuell knapp Bonuscard-kundlänkar i"
+" bakgrunden."
+
+#. module: bonuscard_odoo
+#: model:ir.model.fields,help:bonuscard_odoo.field_bonuscard_connector_instance__catalog_probe_active
+msgid ""
+"When enabled, the daily cron and manual button probe Bonuscard catalog "
+"status for products that have not been scanned yet."
+msgstr ""
+"När aktiverat kontrollerar daglig cron och manuell knapp Bonuscard-"
+"katalogstatus för produkter som ännu inte skannats."
+
+#. module: bonuscard_odoo
+#. odoo-python
+#: code:bonuscard_odoo/models/product_product.py:0
+msgid "You do not have permission to probe Bonuscard catalog status."
+msgstr "Du har inte behörighet att kontrollera Bonuscard-katalogstatus."
+
+#. module: bonuscard_odoo
+#. odoo-python
+#: code:bonuscard_odoo/models/res_partner.py:0
+msgid "You do not have permission to run bulk Bonuscard prefetch."
+msgstr "Du har inte behörighet att köra Bonuscard-massförladdning."
 
 #. module: bonuscard_odoo
 #. odoo-python
