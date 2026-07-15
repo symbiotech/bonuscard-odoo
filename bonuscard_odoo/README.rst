@@ -65,7 +65,8 @@ Configuration
    - Select products in the list and run **Mark as Bonuscard Catalog** /
      **Mark as Not in Bonuscard Catalog**
    - Optional columns: enable **Bonuscard Catalog** and **Bonuscard Catalog
-     Updated** from the list column picker
+     Updated** from the list column picker; catalog status appears as a
+     color-coded badge (green = in catalog, red = not in catalog, grey = not set)
 
    **When Product Variants are enabled**, use **Inventory > Products > Product
    Variants**:
@@ -212,9 +213,10 @@ POS Order Reporting
 
 After payment, Bonuscard audit fields are stored on the synced ``pos.order``
 record (state, transaction identifier, validated/finalized timestamps, and last
-error message). Open **Point of Sale > Orders** to review them; use the Bonuscard
-search filters to list finalized, validated, skipped, failed, or not-applicable
-orders.
+error message). Open **Point of Sale > Orders** to review them; enable the
+optional **Bonuscard** column for a status badge in the list, or open an
+order's **Bonuscard** tab for the full audit details. Use the Bonuscard search
+filters to list finalized, validated, skipped, failed, or not-applicable orders.
 
 Manual Integration Tests
 ========================
