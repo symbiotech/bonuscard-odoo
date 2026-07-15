@@ -626,6 +626,7 @@ class TestResPartnerBonuscard(TransactionCase):
         )
         self.assertEqual(len(partners), 1)
         self.assertEqual(result["res.partner"][0]["id"], partners.id)
+
     def test_bonuscard_pos_search_by_recruitment_code(self):
         partner = self.partner_model.create(
             {
