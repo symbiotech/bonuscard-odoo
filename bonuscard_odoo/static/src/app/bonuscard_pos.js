@@ -15,6 +15,7 @@ import { OrderSummary } from "@point_of_sale/app/screens/product_screen/order_su
 import { BonuscardRegistrationService } from "./bonuscard_registration_service";
 import "./bonuscard_partner_line_patch";
 import "./bonuscard_partner_import_patch";
+import "./bonuscard_partner_search_patch";
 
 // Register the Bonuscard Registration Service
 registry.category("services").add("bonuscard_registration", {

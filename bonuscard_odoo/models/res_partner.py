@@ -90,6 +90,13 @@ class ResPartner(models.Model):
 
     bonuscard_recruitment_code = fields.Char(copy=False, readonly=True)
     bonuscard_internal_id = fields.Integer(copy=False, readonly=True)
+    bonuscard_pos_search = fields.Char(
+        related="bonuscard_recruitment_code",
+        string="Bonuscard POS Search",
+        store=False,
+        search="_search_bonuscard_pos_search",
+        readonly=True,
+    )
     bonuscard_status = fields.Selection(
         selection=[
             ("not_checked", "Not Checked"),
@@ -112,6 +119,16 @@ class ResPartner(models.Model):
             "bonuscard_status",
             "bonuscard_last_lookup_note",
         ]
+
+    @api.model
+    def _search_bonuscard_pos_search(self, operator, value):
+        """Search partners by Bonuscard recruitment code."""
+        value = value.strip() if isinstance(value, str) else value
+        if not value:
+            return [("id", "=", 0)]
+        if operator not in ("ilike", "like", "=", "!=", "not ilike"):
+            operator = "ilike"
+        return [("bonuscard_recruitment_code", operator, value)]
 
     def _get_bonuscard_search_terms(self):
         self.ensure_one()

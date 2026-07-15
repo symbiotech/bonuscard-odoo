@@ -1,5 +1,6 @@
 flowchart LR
     subgraph POS Frontend
+        PL[PartnerList search\nrecruitment code]
         A[Select Customer in POS]
         PL[Customer list Enter search]
         R[Register with Bonuscard\npartner list menu]
@@ -10,6 +11,7 @@ flowchart LR
     end
 
     subgraph Odoo Backend
+        BS[res.partner.bonuscard_pos_search]
         F[res.partner.get_bonuscard_status_for_pos]
         I[res.partner.import_partner_from_bonuscard_for_pos]
         Q[res.partner.action_bulk_prefetch_bonuscard_status]
@@ -36,6 +38,9 @@ flowchart LR
         W[Check Bonuscard Catalog\nproduct list/form action]
     end
 
+    PL -->|client filter + Enter/load more| BS
+    BS -->|matching partners| PL
+    PL -->|select partner| A
     A -->|setPartnerToCurrentOrder| F
     PL -->|local Odoo search empty| I
     I -->|SearchCustomers query| K
