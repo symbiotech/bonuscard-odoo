@@ -486,3 +486,20 @@ class TestResPartnerBonuscard(TransactionCase):
             call.args[0].id for call in mock_sync.call_args_list if call.args
         }
         self.assertNotIn(partner.id, synced_partner_ids)
+
+    def test_bonuscard_pos_search_by_recruitment_code(self):
+        partner = self.partner_model.create(
+            {
+                "name": "Bonuscard Search Customer",
+                "phone": "+46701234567",
+            }
+        )
+        partner._write_bonuscard_status(
+            "linked",
+            customer={"recruitmentCode": "WLKT6", "id": 42},
+        )
+        other = self.partner_model.create({"name": "Other Customer"})
+
+        results = self.partner_model.search([("bonuscard_pos_search", "ilike", "WLKT")])
+        self.assertIn(partner, results)
+        self.assertNotIn(other, results)
