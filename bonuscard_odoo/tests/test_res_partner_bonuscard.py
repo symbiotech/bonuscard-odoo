@@ -21,6 +21,55 @@ class TestResPartnerBonuscard(TransactionCase):
                 "is_current": True,
             }
         )
+        cls.pos_config = cls._create_test_pos_config()
+
+    @classmethod
+    def _create_test_pos_config(cls):
+        company = cls.env.company
+        journal = cls.env["account.journal"].search(
+            [("type", "=", "sale"), ("company_id", "=", company.id)],
+            limit=1,
+        )
+        if not journal:
+            journal = cls.env["account.journal"].create(
+                {
+                    "name": "Bonuscard Test POS Sales",
+                    "type": "sale",
+                    "code": "BCPOS",
+                    "company_id": company.id,
+                }
+            )
+        payment_method = cls.env["pos.payment.method"].search(
+            [("company_id", "in", [company.id, False])],
+            limit=1,
+        )
+        if not payment_method:
+            cash_journal = cls.env["account.journal"].search(
+                [("type", "in", ["cash", "bank"]), ("company_id", "=", company.id)],
+                limit=1,
+            )
+            if not cash_journal:
+                cash_journal = cls.env["account.journal"].create(
+                    {
+                        "name": "Bonuscard Test POS Cash",
+                        "type": "cash",
+                        "code": "BPCSH",
+                        "company_id": company.id,
+                    }
+                )
+            payment_method = cls.env["pos.payment.method"].create(
+                {
+                    "name": "Bonuscard Test Cash",
+                    "journal_id": cash_journal.id,
+                }
+            )
+        return cls.env["pos.config"].create(
+            {
+                "name": "Bonuscard Test POS",
+                "journal_id": journal.id,
+                "payment_method_ids": [(6, 0, payment_method.ids)],
+            }
+        )
 
     def test_refresh_bonuscard_status_links_single_match(self):
         partner = self.partner_model.create(
@@ -488,9 +537,6 @@ class TestResPartnerBonuscard(TransactionCase):
         self.assertNotIn(partner.id, synced_partner_ids)
 
     def test_import_partner_from_bonuscard_for_pos_creates_partner(self):
-        config = self.env["pos.config"].search([], limit=1)
-        self.assertTrue(config)
-
         with patch(
             "odoo.addons.bonuscard_odoo.models.bonuscard_api_service.BonuscardApiService._search_customers",
             return_value=[
@@ -504,7 +550,7 @@ class TestResPartnerBonuscard(TransactionCase):
             ],
         ):
             result = self.partner_model.import_partner_from_bonuscard_for_pos(
-                config.id, "IMP55"
+                self.pos_config.id, "IMP55"
             )
 
         partner = self.partner_model.search(
@@ -516,7 +562,6 @@ class TestResPartnerBonuscard(TransactionCase):
         self.assertEqual(result["res.partner"][0]["id"], partner.id)
 
     def test_import_partner_from_bonuscard_for_pos_links_existing_partner(self):
-        config = self.env["pos.config"].search([], limit=1)
         partner = self.partner_model.create(
             {
                 "name": "Existing Customer",
@@ -537,7 +582,7 @@ class TestResPartnerBonuscard(TransactionCase):
             ],
         ):
             result = self.partner_model.import_partner_from_bonuscard_for_pos(
-                config.id, "LINK56"
+                self.pos_config.id, "LINK56"
             )
 
         self.assertEqual(result["res.partner"][0]["id"], partner.id)
@@ -545,8 +590,6 @@ class TestResPartnerBonuscard(TransactionCase):
         self.assertEqual(partner.bonuscard_status, "linked")
 
     def test_import_partner_from_bonuscard_for_pos_rejects_ambiguous_matches(self):
-        config = self.env["pos.config"].search([], limit=1)
-
         with patch(
             "odoo.addons.bonuscard_odoo.models.bonuscard_api_service.BonuscardApiService._search_customers",
             return_value=[
@@ -554,7 +597,9 @@ class TestResPartnerBonuscard(TransactionCase):
                 {"id": 2, "name": "B", "recruitmentCode": "BBB2"},
             ],
         ):
-            with self.assertRaises(UserError):
+            with self.assertRaises(UserError) as exc:
                 self.partner_model.import_partner_from_bonuscard_for_pos(
-                    config.id, "customer"
+                    self.pos_config.id, "customer"
                 )
+
+        self.assertIn("multiple", str(exc.exception).lower())

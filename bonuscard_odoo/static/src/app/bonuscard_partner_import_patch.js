@@ -2,6 +2,7 @@
 
 import { patch } from "@web/core/utils/patch";
 import { _t } from "@web/core/l10n/translation";
+import { sprintf } from "@web/core/utils/strings";
 import { logPosMessage } from "@point_of_sale/app/utils/pretty_console_log";
 import { PartnerList } from "@point_of_sale/app/screens/partner_list/partner_list";
 
@@ -58,7 +59,7 @@ patch(PartnerList.prototype, {
             }
             if (partners.length) {
                 this.notification.add(
-                    _t('Bonuscard customer "%s" added.', query),
+                    sprintf(_t('Bonuscard customer "%s" added.'), query),
                     { type: "success" }
                 );
             }
