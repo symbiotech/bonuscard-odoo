@@ -16,19 +16,19 @@ class ProductTemplate(models.Model):
             ("not_in_catalog", "Not in Bonuscard Catalog"),
         ],
         string="Bonuscard Catalog",
-        compute="_compute_bonuscard_catalog_fields",
+        compute="_compute_bonuscard_catalog_stored_fields",
         inverse="_inverse_bonuscard_catalog_status",
         store=True,
     )
     bonuscard_catalog_updated_at = fields.Datetime(
         string="Bonuscard Catalog Updated",
-        compute="_compute_bonuscard_catalog_fields",
+        compute="_compute_bonuscard_catalog_stored_fields",
         store=True,
         readonly=True,
     )
     bonuscard_catalog_probe_note = fields.Text(
         string="Bonuscard Catalog Probe Note",
-        compute="_compute_bonuscard_catalog_fields",
+        compute="_compute_bonuscard_catalog_probe_note",
         readonly=True,
     )
 
@@ -36,22 +36,32 @@ class ProductTemplate(models.Model):
         "product_variant_count",
         "product_variant_ids.bonuscard_catalog_status",
         "product_variant_ids.bonuscard_catalog_updated_at",
+    )
+    def _compute_bonuscard_catalog_stored_fields(self):
+        for template in self:
+            variant = template._bonuscard_catalog_variant()
+            if not variant:
+                template.bonuscard_catalog_status = False
+                template.bonuscard_catalog_updated_at = False
+                continue
+
+            template.bonuscard_catalog_status = variant.bonuscard_catalog_status
+            template.bonuscard_catalog_updated_at = variant.bonuscard_catalog_updated_at
+
+    @api.depends(
+        "product_variant_count",
         "product_variant_ids.bonuscard_catalog_probe_note",
     )
-    def _compute_bonuscard_catalog_fields(self):
+    def _compute_bonuscard_catalog_probe_note(self):
         is_probe_manager = self.env.user.has_group(
             "bonuscard_odoo.bonuscard_odoo_group_manager"
         )
         for template in self:
             variant = template._bonuscard_catalog_variant()
             if not variant:
-                template.bonuscard_catalog_status = False
-                template.bonuscard_catalog_updated_at = False
                 template.bonuscard_catalog_probe_note = False
                 continue
 
-            template.bonuscard_catalog_status = variant.bonuscard_catalog_status
-            template.bonuscard_catalog_updated_at = variant.bonuscard_catalog_updated_at
             template.bonuscard_catalog_probe_note = (
                 variant.bonuscard_catalog_probe_note if is_probe_manager else False
             )
@@ -85,7 +95,7 @@ class ProductTemplate(models.Model):
                         )
                     )
             variant.bonuscard_catalog_status = template.bonuscard_catalog_status
-        self._compute_bonuscard_catalog_fields()
+        self._compute_bonuscard_catalog_stored_fields()
 
     def _bonuscard_catalog_variant(self):
         """Return the single variant for template-level catalog management."""
