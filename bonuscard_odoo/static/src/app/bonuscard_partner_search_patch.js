@@ -28,7 +28,7 @@ patch(ResPartner.prototype, {
 
 patch(PartnerList.prototype, {
     _getSearchFields(query) {
-        const searchFields = super._getSearchFields(...arguments);
+        const searchFields = super._getSearchFields(query);
         if (!searchFields.includes(BONUSCARD_POS_SEARCH_FIELD)) {
             searchFields.push(BONUSCARD_POS_SEARCH_FIELD);
         }
