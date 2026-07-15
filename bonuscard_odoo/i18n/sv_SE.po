@@ -116,9 +116,9 @@ msgid ""
 "CancelPurchase cycle with this EAN releases the dedicated probe customer."
 msgstr ""
 "Streckkod eller artikelnummer för en produkt som är känd att finnas i "
-"Bonuscard-katalogen. Efter sondning av okända produkter frigör en kort "
+"Bonuscard-katalogen. Efter kontroll av okända produkter frigör en kort "
 "ValidatePurchase + CancelPurchase-cykel med denna EAN den dedikerade "
-"probkunden."
+"testkunden för katalogkontroll."
 
 #. module: bonuscard_odoo
 #. odoo-javascript
@@ -192,13 +192,13 @@ msgstr "Bonuscard-katalog"
 #: code:bonuscard_odoo/models/bonuscard_instance.py:0
 #: code:bonuscard_odoo/models/product_product.py:0
 msgid "Bonuscard Catalog Probe"
-msgstr "Bonuscard-katalogsond"
+msgstr "Bonuscard-katalogkontroll"
 
 #. module: bonuscard_odoo
 #: model:ir.model.fields,field_description:bonuscard_odoo.field_product_product__bonuscard_catalog_probe_note
 #: model:ir.model.fields,field_description:bonuscard_odoo.field_product_template__bonuscard_catalog_probe_note
 msgid "Bonuscard Catalog Probe Note"
-msgstr "Anteckning för Bonuscard-katalogsond"
+msgstr "Anteckning för Bonuscard-katalogkontroll"
 
 #. module: bonuscard_odoo
 #: model:ir.model.fields,field_description:bonuscard_odoo.field_product_product__bonuscard_catalog_updated_at
@@ -307,13 +307,13 @@ msgstr ""
 #. odoo-python
 #: code:bonuscard_odoo/models/product_product.py:0
 msgid "Bonuscard catalog probe could not be started."
-msgstr "Bonuscard-katalogsonden kunde inte startas."
+msgstr "Bonuscard-katalogkontrollen kunde inte startas."
 
 #. module: bonuscard_odoo
 #. odoo-python
 #: code:bonuscard_odoo/models/bonuscard_api_service.py:0
 msgid "Bonuscard catalog probe failed."
-msgstr "Bonuscard-katalogsonden misslyckades."
+msgstr "Bonuscard-katalogkontrollen misslyckades."
 
 #. module: bonuscard_odoo
 #. odoo-python
@@ -358,8 +358,8 @@ msgid ""
 "Bonuscard probe customer unlock raised an error after probing %(product)s. "
 "The customer may remain locked for the next catalog probe."
 msgstr ""
-"Bonuscard-probkundens upplåsning gav ett fel efter sondning av %(product)s. "
-"Kunden kan förbli låst för nästa katalogsond."
+"Bonuscard-testkundens upplåsning gav ett fel efter kontroll av %(product)s. "
+"Kunden kan förbli låst för nästa katalogkontroll."
 
 #. module: bonuscard_odoo
 #. odoo-javascript
@@ -454,7 +454,7 @@ msgstr "Bonuscard: Massförladdning av partners"
 #. module: bonuscard_odoo
 #: model:ir.actions.server,name:bonuscard_odoo.ir_cron_bonuscard_catalog_probe_ir_actions_server
 msgid "Bonuscard: Catalog probe"
-msgstr "Bonuscard: Katalogsond"
+msgstr "Bonuscard: Katalogkontroll"
 
 #. module: bonuscard_odoo
 #: model_terms:ir.ui.view,arch_db:bonuscard_odoo.view_pos_order_search_bonuscard
@@ -547,39 +547,39 @@ msgstr ""
 #. module: bonuscard_odoo
 #: model_terms:ir.ui.view,arch_db:bonuscard_odoo.bonuscard_odoo_instance_view_form
 msgid "Catalog Probe"
-msgstr "Katalogsond"
+msgstr "Katalogkontroll"
 
 #. module: bonuscard_odoo
 #: model:ir.model.fields,field_description:bonuscard_odoo.field_bonuscard_connector_instance__catalog_probe_batch_size
 msgid "Catalog Probe Batch Size"
-msgstr "Batchstorlek för katalogsond"
+msgstr "Batchstorlek för katalogkontroll"
 
 #. module: bonuscard_odoo
 #: model:ir.model.fields,field_description:bonuscard_odoo.field_bonuscard_connector_instance__catalog_probe_customer_identifier
 msgid "Catalog Probe Customer"
-msgstr "Katalogsond-kund"
+msgstr "Testkund för katalogkontroll"
 
 #. module: bonuscard_odoo
 #: model:ir.model.fields,field_description:bonuscard_odoo.field_bonuscard_connector_instance__catalog_probe_price
 msgid "Catalog Probe Price"
-msgstr "Pris för katalogsond"
+msgstr "Pris för katalogkontroll"
 
 #. module: bonuscard_odoo
 #: model:ir.model.fields,field_description:bonuscard_odoo.field_bonuscard_connector_instance__catalog_probe_unlock_ean
 msgid "Catalog Probe Unlock EAN"
-msgstr "Upplåsnings-EAN för katalogsond"
+msgstr "Upplåsnings-EAN för katalogkontroll"
 
 #. module: bonuscard_odoo
 #. odoo-python
 #: code:bonuscard_odoo/models/bonuscard_instance.py:0
 msgid "Catalog probe batch size must be greater than zero."
-msgstr "Batchstorlek för katalogsond måste vara större än noll."
+msgstr "Batchstorlek för katalogkontroll måste vara större än noll."
 
 #. module: bonuscard_odoo
 #. odoo-python
 #: code:bonuscard_odoo/models/bonuscard_instance.py:0
 msgid "Catalog probe could not be started."
-msgstr "Katalogsonden kunde inte startas."
+msgstr "Katalogkontrollen kunde inte startas."
 
 #. module: bonuscard_odoo
 #. odoo-python
@@ -589,7 +589,7 @@ msgid ""
 "Catalog probe customer identifier is not configured on the Bonuscard "
 "connection."
 msgstr ""
-"Katalogsondens kundidentifierare är inte konfigurerad på Bonuscard-"
+"Katalogkontrollens kundidentifierare är inte konfigurerad på Bonuscard-"
 "anslutningen."
 
 #. module: bonuscard_odoo
@@ -597,13 +597,13 @@ msgstr ""
 #: code:bonuscard_odoo/models/bonuscard_instance.py:0
 #: code:bonuscard_odoo/models/product_product.py:0
 msgid "Catalog probe is disabled for this connection."
-msgstr "Katalogsond är inaktiverad för denna anslutning."
+msgstr "Katalogkontroll är inaktiverad för denna anslutning."
 
 #. module: bonuscard_odoo
 #. odoo-python
 #: code:bonuscard_odoo/models/bonuscard_instance.py:0
 msgid "Catalog probe price must be greater than zero."
-msgstr "Pris för katalogsond måste vara större än noll."
+msgstr "Pris för katalogkontroll måste vara större än noll."
 
 #. module: bonuscard_odoo
 #: model_terms:ir.ui.view,arch_db:bonuscard_odoo.view_partner_form_bonuscard
@@ -655,7 +655,8 @@ msgstr "Kontakt"
 #. odoo-python
 #: code:bonuscard_odoo/models/product_product.py:0
 msgid "Could not cancel the open Bonuscard catalog probe transaction: %s"
-msgstr "Kunde inte avbryta den öppna Bonuscard-katalogsondtransaktionen: %s"
+msgstr ""
+"Kunde inte avbryta den öppna transaktionen för Bonuscard-katalogkontroll: %s"
 
 #. module: bonuscard_odoo
 #. odoo-javascript
@@ -694,8 +695,8 @@ msgid ""
 "Could not confirm the Bonuscard probe customer was unlocked after probing "
 "%(product)s. The customer may remain locked for the next catalog probe."
 msgstr ""
-"Kunde inte bekräfta att Bonuscard-probkunden låstes upp efter sondning av "
-"%(product)s. Kunden kan förbli låst för nästa katalogsond."
+"Kunde inte bekräfta att Bonuscard-testkunden låstes upp efter kontroll av "
+"%(product)s. Kunden kan förbli låst för nästa katalogkontroll."
 
 #. module: bonuscard_odoo
 #. odoo-javascript
@@ -790,7 +791,7 @@ msgid ""
 "email, etc.) used when probing product catalog status via ValidatePurchase."
 msgstr ""
 "Dedikerad Bonuscard-testkundidentifierare (rekryteringskod, telefon, e-post "
-"osv.) som används vid sondning av produktkatalogstatus via ValidatePurchase."
+"osv.) som används vid kontroll av produktkatalogstatus via ValidatePurchase."
 
 #. module: bonuscard_odoo
 #: model_terms:ir.ui.view,arch_db:bonuscard_odoo.bonuscard_odoo_instance_view_form
@@ -815,7 +816,7 @@ msgstr "Aktivera massförladdning av partners"
 #. module: bonuscard_odoo
 #: model:ir.model.fields,field_description:bonuscard_odoo.field_bonuscard_connector_instance__catalog_probe_active
 msgid "Enable catalog probe"
-msgstr "Aktivera katalogsond"
+msgstr "Aktivera katalogkontroll"
 
 #. module: bonuscard_odoo
 #: model:ir.model.fields,help:bonuscard_odoo.field_bonuscard_connector_instance__is_current
@@ -1032,15 +1033,15 @@ msgid ""
 "probing %(product)s. Configure catalog probe unlock EAN or probe a known "
 "product first."
 msgstr ""
-"Ingen katalog-EAN är tillgänglig ännu för att frigöra probkunden efter "
-"sondning av %(product)s. Konfigurera upplåsnings-EAN för katalogsond eller "
-"sonda en känd produkt först."
+"Ingen katalog-EAN är tillgänglig ännu för att frigöra testkunden för "
+"katalogkontroll efter kontroll av %(product)s. Konfigurera upplåsnings-EAN "
+"för katalogkontroll eller kontrollera en känd produkt först."
 
 #. module: bonuscard_odoo
 #: model:ir.model.fields,help:bonuscard_odoo.field_bonuscard_connector_instance__catalog_probe_price
 msgid "Nominal unit price sent to ValidatePurchase when probing products."
 msgstr ""
-"Nominellt enhetspris som skickas till ValidatePurchase vid produktsondning."
+"Nominellt enhetspris som skickas till ValidatePurchase vid produktkontroll."
 
 #. module: bonuscard_odoo
 #: model:ir.model.fields.selection,name:bonuscard_odoo.selection__bonuscard_connector_instance__api_culture__nb-no
@@ -1095,13 +1096,13 @@ msgstr ""
 #. odoo-python
 #: code:bonuscard_odoo/models/product_product.py:0
 msgid "Open catalog probe transaction cancelled on retry."
-msgstr "Öppen katalogsondtransaktion avbröts vid nytt försök."
+msgstr "Öppen transaktion för katalogkontroll avbröts vid nytt försök."
 
 #. module: bonuscard_odoo
 #. odoo-python
 #: code:bonuscard_odoo/models/product_product.py:0
 msgid "Open catalog probe transaction cancelled."
-msgstr "Öppen katalogsondtransaktion avbruten."
+msgstr "Öppen transaktion för katalogkontroll avbruten."
 
 #. module: bonuscard_odoo
 #. odoo-python
@@ -1152,8 +1153,8 @@ msgid ""
 "Probe Bonuscard catalog status for products that have never been scanned "
 "(same scope as the daily catalog probe cron)."
 msgstr ""
-"Sondra Bonuscard-katalogstatus för produkter som aldrig skannats (samma "
-"omfattning som daglig katalogsond-cron)."
+"Kontrollera Bonuscard-katalogstatus för produkter som aldrig skannats (samma"
+" omfattning som daglig katalogkontroll-cron)."
 
 #. module: bonuscard_odoo
 #: model_terms:ir.ui.view,arch_db:bonuscard_odoo.bonuscard_odoo_instance_view_form
@@ -1165,7 +1166,7 @@ msgid ""
 "                            by one. The daily cron only scans products with catalog\n"
 "                            status <strong>Not Set</strong>."
 msgstr ""
-"Sonderar produktkatalogstatus genom att anropa\n"
+"Kontrollerar produktkatalogstatus genom att anropa\n"
 "                            <strong>ValidatePurchase</strong> med testkunden nedan.\n"
 "                            Okända produkter upptäcks när Bonuscard returnerar ingen transaktionsidentifierare. Produkter bearbetas en i taget. Daglig cron skannar endast produkter med katalogstatus <strong>Ej angiven</strong>."
 
@@ -1280,7 +1281,7 @@ msgstr "Kör massförladdning"
 #. module: bonuscard_odoo
 #: model_terms:ir.ui.view,arch_db:bonuscard_odoo.bonuscard_odoo_instance_view_form
 msgid "Run Catalog Probe"
-msgstr "Kör katalogsond"
+msgstr "Kör katalogkontroll"
 
 #. module: bonuscard_odoo
 #: model_terms:ir.ui.view,arch_db:bonuscard_odoo.bonuscard_odoo_instance_view_search
@@ -1384,14 +1385,14 @@ msgid ""
 "When enabled, the daily cron and manual button probe Bonuscard catalog "
 "status for products that have not been scanned yet."
 msgstr ""
-"När aktiverat sondar daglig cron och manuell knapp Bonuscard-katalogstatus "
-"för produkter som ännu inte skannats."
+"När aktiverat kontrollerar daglig cron och manuell knapp Bonuscard-"
+"katalogstatus för produkter som ännu inte skannats."
 
 #. module: bonuscard_odoo
 #. odoo-python
 #: code:bonuscard_odoo/models/product_product.py:0
 msgid "You do not have permission to probe Bonuscard catalog status."
-msgstr "Du har inte behörighet att sonda Bonuscard-katalogstatus."
+msgstr "Du har inte behörighet att kontrollera Bonuscard-katalogstatus."
 
 #. module: bonuscard_odoo
 #. odoo-python
