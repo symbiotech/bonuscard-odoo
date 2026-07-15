@@ -140,9 +140,11 @@ This document explains how the Bonuscard POS integration works in the `bonuscard
   - Mirrors catalog status from the single underlying variant for list visibility
   - Writable on template forms (inverse writes the single variant) for Bonuscard
     users when the product has exactly one variant
-  - List columns on **Inventory > Products** for all Bonuscard users; search
-    filters on that list stay hidden for users with the Product Variants group
-    (use **Product Variants** filters when variants are enabled)
+  - List columns on **Inventory > Products** for all Bonuscard users; catalog
+    status uses color-coded badges (green/red/grey) on both **Products** and
+    **Product Variants** lists; search filters on the Products list stay hidden
+    for users with the Product Variants group (use **Product Variants** filters
+    when variants are enabled)
   - Refuses template-level bulk updates when a template does not have exactly
     one variant (form actions and field edits work for single-variant products
     even when Product Variants are enabled)
@@ -153,7 +155,9 @@ This document explains how the Bonuscard POS integration works in the `bonuscard
   - `_process_order` maps audit values from the POS UI payload onto the backend
     record when the order is synced
   - List/form/search views on **Point of Sale > Orders** expose the audit fields
-    and filters (Finalized, Validated, Skipped, Failed, Not applicable)
+    and filters (Finalized, Validated, Skipped, Failed, Not applicable); the
+    order form uses a dedicated **Bonuscard** tab, and the list view can show
+    an optional **Bonuscard** status badge column
 
 ## Important state tracked in POS
 
