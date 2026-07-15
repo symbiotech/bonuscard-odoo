@@ -6,53 +6,23 @@ import { PartnerList } from "@point_of_sale/app/screens/partner_list/partner_lis
 
 const BONUSCARD_POS_SEARCH_FIELD = "bonuscard_pos_search";
 
-function normalizePhone(value) {
-    return (value || "").replace(/[+\s()-]/g, "");
-}
-
 patch(ResPartner.prototype, {
     get searchString() {
-        if (this._searchString) {
-            return this._searchString;
+        const base = super.searchString;
+        if (this.bonuscard_recruitment_code) {
+            return `${base} ${this.bonuscard_recruitment_code}`.trim();
         }
-
-        const fields = [
-            "name",
-            "barcode",
-            "phone",
-            "email",
-            "vat",
-            "parent_name",
-            "pos_contact_address",
-            "bonuscard_recruitment_code",
-        ];
-        this._searchString = fields
-            .map((field) => {
-                if (field === "phone" && this[field]) {
-                    return normalizePhone(this[field]);
-                }
-                return this[field] || "";
-            })
-            .filter(Boolean)
-            .join(" ");
-        return this._searchString;
+        return base;
     },
 
     exactMatch(searchWord) {
         if (super.exactMatch(searchWord)) {
             return true;
         }
-        const normalizedSearch = normalizePhone(searchWord);
-        if (this.phone && normalizePhone(this.phone) === normalizedSearch) {
-            return true;
-        }
-        if (
-            this.bonuscard_recruitment_code &&
+        return (
+            !!this.bonuscard_recruitment_code &&
             this.bonuscard_recruitment_code.toLowerCase() === searchWord.toLowerCase()
-        ) {
-            return true;
-        }
-        return false;
+        );
     },
 });
 

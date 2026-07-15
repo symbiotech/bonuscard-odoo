@@ -23,7 +23,7 @@ Features
 * Test Connection server action from the form view
 * Security groups (Bonuscard User, Bonuscard Manager) and ACLs; admin is assigned Manager by default
 * Customer lookup by phone, email, and name when a customer is selected in POS
-* POS customer search by phone and Bonuscard recruitment code
+* POS customer search by Bonuscard recruitment code
 * Partner status fields and sync controls on ``res.partner``
 * POS badge for Bonuscard status on the partner-selection screen
 * Smart button for one-click Bonuscard status checks from the partner form
@@ -131,10 +131,10 @@ for single-variant products.
 Customer Lookup in POS
 ----------------------
 
-The POS customer list can be filtered by phone number and Bonuscard recruitment
-code in addition to the standard Odoo search fields (name, email, address,
-etc.). Press Enter or scroll to load more matches from the server when the
-customer is not in the initial POS session data.
+The POS customer list can be filtered by Bonuscard recruitment code in addition
+to the standard Odoo search fields (name, phone, email, address, etc.). Press
+Enter or scroll to load more matches from the server when the customer is not
+in the initial POS session data.
 
 When a cashier selects a customer in Point of Sale, the addon calls
 ``SearchCustomers`` using phone, email, and name — unless the partner already
