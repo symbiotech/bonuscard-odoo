@@ -4,7 +4,7 @@ msgstr ""
 "Project-Id-Version: bonuscard_odoo 19.0.1.0.1\n"
 "Report-Msgid-Bugs-To: \n"
 "POT-Creation-Date: 2026-07-15 06:42+0000\n"
-"PO-Revision-Date: 2026-07-15 06:42+0000\n"
+"PO-Revision-Date: 2026-07-15 16:20+0000\n"
 "Last-Translator: \n"
 "Language-Team: Swedish <sv@li.org>\n"
 "Language: sv_SE\n"
@@ -218,6 +218,12 @@ msgid "Bonuscard Connections"
 msgstr "Bonuscard-anslutningar"
 
 #. module: bonuscard_odoo
+#. odoo-python
+#: code:bonuscard_odoo/models/res_partner.py:0
+msgid "Bonuscard Customer"
+msgstr "Bonuscard-kund"
+
+#. module: bonuscard_odoo
 #: model:ir.model.fields,field_description:bonuscard_odoo.field_pos_order__bonuscard_finalized_at
 msgid "Bonuscard Finalized At"
 msgstr "Bonuscard slutförd"
@@ -249,6 +255,12 @@ msgstr "Bonuscard senast synkad"
 #: model:res.groups,name:bonuscard_odoo.bonuscard_odoo_group_manager
 msgid "Bonuscard Manager"
 msgstr "Bonuscard-administratör"
+
+#. module: bonuscard_odoo
+#: model:ir.model.fields,field_description:bonuscard_odoo.field_res_partner__bonuscard_pos_search
+#: model:ir.model.fields,field_description:bonuscard_odoo.field_res_users__bonuscard_pos_search
+msgid "Bonuscard POS Search"
+msgstr "Bonuscard POS-sökning"
 
 #. module: bonuscard_odoo
 #: model:ir.model.fields,field_description:bonuscard_odoo.field_res_partner__bonuscard_recruitment_code
@@ -324,6 +336,12 @@ msgid ""
 msgstr ""
 "Bonuscard-katalogstatus kan bara redigeras på produkter med exakt en "
 "variant."
+
+#. module: bonuscard_odoo
+#. odoo-javascript
+#: code:bonuscard_odoo/static/src/app/bonuscard_partner_import_patch.js:0
+msgid "Bonuscard customer \"%s\" added."
+msgstr "Bonuscard-kund \"%s\" tillagd."
 
 #. module: bonuscard_odoo
 #. odoo-javascript
@@ -415,6 +433,12 @@ msgstr "Bonuscard returnerade flera kundträffar för %s."
 #: code:bonuscard_odoo/static/src/app/bonuscard_pos.js:0
 msgid "Bonuscard returned multiple customer matches."
 msgstr "Bonuscard returnerade flera kundträffar."
+
+#. module: bonuscard_odoo
+#. odoo-python
+#: code:bonuscard_odoo/models/res_partner.py:0
+msgid "Bonuscard returned multiple customers for \"%s\". Refine your search."
+msgstr "Bonuscard returnerade flera kunder för \"%s\". Förfina din sökning."
 
 #. module: bonuscard_odoo
 #. odoo-python
@@ -833,6 +857,12 @@ msgid "English"
 msgstr "Engelska"
 
 #. module: bonuscard_odoo
+#. odoo-python
+#: code:bonuscard_odoo/models/res_partner.py:0
+msgid "Enter a phone number or Bonuscard ID to search Bonuscard."
+msgstr "Ange ett telefonnummer eller Bonuscard-ID för att söka i Bonuscard."
+
+#. module: bonuscard_odoo
 #: model:ir.model.fields.selection,name:bonuscard_odoo.selection__bonuscard_connector_instance__connection_status__error
 #: model:ir.model.fields.selection,name:bonuscard_odoo.selection__res_partner__bonuscard_status__error
 #: model_terms:ir.ui.view,arch_db:bonuscard_odoo.bonuscard_odoo_instance_view_search
@@ -895,6 +925,12 @@ msgid ""
 msgstr ""
 "Om aktiverat kan förladdningen använda partnernamn som sista utväg när "
 "telefon och e-post saknas."
+
+#. module: bonuscard_odoo
+#. odoo-python
+#: code:bonuscard_odoo/models/res_partner.py:0
+msgid "Imported from Bonuscard using \"%s\"."
+msgstr "Importerad från Bonuscard med \"%s\"."
 
 #. module: bonuscard_odoo
 #. odoo-javascript
@@ -1006,6 +1042,18 @@ msgid "No Bonuscard catalog products found in the order."
 msgstr "Inga Bonuscard-katalogprodukter hittades i ordern."
 
 #. module: bonuscard_odoo
+#. odoo-javascript
+#: code:bonuscard_odoo/static/src/app/bonuscard_partner_import_patch.js:0
+msgid "No Bonuscard customer found."
+msgstr "Ingen Bonuscard-kund hittades."
+
+#. module: bonuscard_odoo
+#. odoo-python
+#: code:bonuscard_odoo/models/res_partner.py:0
+msgid "No Bonuscard customer matched \"%s\"."
+msgstr "Ingen Bonuscard-kund matchade \"%s\"."
+
+#. module: bonuscard_odoo
 #. odoo-python
 #: code:bonuscard_odoo/models/res_partner.py:0
 msgid "No Bonuscard customer matched the available partner details."
@@ -1024,6 +1072,12 @@ msgstr "Ingen aktiv Bonuscard-anslutning är konfigurerad för detta företag."
 #: code:bonuscard_odoo/models/res_partner.py:0
 msgid "No active Bonuscard connection is configured."
 msgstr "Ingen aktiv Bonuscard-anslutning är konfigurerad."
+
+#. module: bonuscard_odoo
+#. odoo-javascript
+#: code:bonuscard_odoo/static/src/app/bonuscard_partner_import_patch.xml:0
+msgid "No customers found. Press Enter to search Odoo and Bonuscard."
+msgstr "Inga kunder hittades. Tryck Enter för att söka i Odoo och Bonuscard."
 
 #. module: bonuscard_odoo
 #. odoo-python
@@ -1146,6 +1200,12 @@ msgstr ""
 #: model:ir.model,name:bonuscard_odoo.model_pos_order
 msgid "Point of Sale Orders"
 msgstr "Kassorordrar"
+
+#. module: bonuscard_odoo
+#. odoo-python
+#: code:bonuscard_odoo/models/res_partner.py:0
+msgid "Point of Sale configuration not found."
+msgstr "Kassakonfiguration hittades inte."
 
 #. module: bonuscard_odoo
 #: model_terms:ir.ui.view,arch_db:bonuscard_odoo.bonuscard_odoo_instance_view_form
