@@ -9,6 +9,7 @@ This document explains how the Bonuscard POS integration works in the `bonuscard
 
 1. Customer selected in POS
    - `bonuscard_odoo/static/src/app/bonuscard_pos.js` extends `PosStore.setPartnerToCurrentOrder`
+   - `bonuscard_odoo/static/src/app/bonuscard_partner_search_patch.js` extends POS customer search to include Bonuscard recruitment code alongside the standard Odoo fields (phone search is already provided by Odoo POS)
    - Calls `res.partner.get_bonuscard_status_for_pos` to resolve Bonuscard status **unless** the partner already has status `linked` or `not_found` (cached from a prior lookup or the bulk prefetch job)
    - The backend searches Bonuscard using customer phone, email, or name
    - The partner record is updated with `bonuscard_status` and `bonuscard_recruitment_code`
