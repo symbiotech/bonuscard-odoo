@@ -123,6 +123,97 @@ class TestBonuscardValidatePurchase(TransactionCase):
             }
         )
 
+    def _make_child_contact_with_own_bonuscard_code(self):
+        """Contact and commercial partner are distinct Bonuscard entities."""
+        company = self.env["res.partner"].create(
+            {
+                "name": "Company",
+                "is_company": True,
+                "phone": "+46700000001",
+            }
+        )
+        company.write(
+            {
+                "bonuscard_recruitment_code": "COMP999",
+                "bonuscard_status": "linked",
+            }
+        )
+        contact = self.env["res.partner"].create(
+            {
+                "name": "Company Contact",
+                "parent_id": company.id,
+                "phone": "+46700000002",
+            }
+        )
+        contact.write(
+            {
+                "bonuscard_recruitment_code": "CONT999",
+                "bonuscard_status": "linked",
+            }
+        )
+        return contact, company
+
+    def test_validate_purchase_for_pos_uses_selected_contact_bonuscard_code(self):
+        """POS selects a child contact; validation must use that contact's code."""
+        contact, _company = self._make_child_contact_with_own_bonuscard_code()
+        product = self._make_product_with_barcode()
+        order_lines = [{"product_id": product.id, "qty": 1, "price_unit": 10.0}]
+
+        with patch(
+            "odoo.addons.bonuscard_odoo.models.bonuscard_api_service.BonuscardApiService._validate_purchase",
+            return_value={
+                "error": False,
+                "transactionIdentifier": "TX001",
+                "totalDiscount": 0,
+            },
+        ) as mock_validate:
+            result = self.service.validate_purchase_for_pos(contact.id, order_lines)
+
+        self.assertFalse(result.get("error"))
+        self.assertEqual(mock_validate.call_args.args[1], "CONT999")
+
+    def test_validate_purchase_for_pos_falls_back_to_company_bonuscard_code(self):
+        """When the selected contact has no code, use the commercial partner."""
+        _contact, company = self._make_child_contact_with_own_bonuscard_code()
+        company.write({"bonuscard_recruitment_code": "COMP999"})
+        contact = self.env["res.partner"].create(
+            {
+                "name": "No Code Contact",
+                "parent_id": company.id,
+                "phone": "+46700000003",
+            }
+        )
+        product = self._make_product_with_barcode()
+        order_lines = [{"product_id": product.id, "qty": 1, "price_unit": 10.0}]
+
+        with patch(
+            "odoo.addons.bonuscard_odoo.models.bonuscard_api_service.BonuscardApiService._validate_purchase",
+            return_value={
+                "error": False,
+                "transactionIdentifier": "TX001",
+                "totalDiscount": 0,
+            },
+        ) as mock_validate:
+            result = self.service.validate_purchase_for_pos(contact.id, order_lines)
+
+        self.assertFalse(result.get("error"))
+        self.assertEqual(mock_validate.call_args.args[1], "COMP999")
+
+    def test_finalize_purchase_for_pos_uses_selected_contact_bonuscard_code(self):
+        contact, _company = self._make_child_contact_with_own_bonuscard_code()
+        checkout_items = [{"ean": "8710255122465", "quantity": 1, "pricePerItem": 10.0}]
+
+        with patch(
+            "odoo.addons.bonuscard_odoo.models.bonuscard_api_service.BonuscardApiService._finalize_purchase",
+            return_value={"error": False},
+        ) as mock_finalize:
+            result = self.service.finalize_purchase_for_pos(
+                contact.id, "TX001", checkout_items
+            )
+
+        self.assertFalse(result.get("error"))
+        self.assertEqual(mock_finalize.call_args.args[1], "CONT999")
+
     def test_validate_purchase_for_pos_returns_result(self):
         partner = self._make_partner_with_code()
         product = self._make_product_with_barcode()
