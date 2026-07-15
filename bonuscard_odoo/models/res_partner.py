@@ -91,9 +91,11 @@ class ResPartner(models.Model):
     bonuscard_recruitment_code = fields.Char(copy=False, readonly=True)
     bonuscard_internal_id = fields.Integer(copy=False, readonly=True)
     bonuscard_pos_search = fields.Char(
+        related="bonuscard_recruitment_code",
         string="Bonuscard POS Search",
         store=False,
         search="_search_bonuscard_pos_search",
+        readonly=True,
     )
     bonuscard_status = fields.Selection(
         selection=[
