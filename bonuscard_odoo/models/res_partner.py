@@ -717,13 +717,7 @@ class ResPartner(models.Model):
             note=self.env._('Imported from Bonuscard using "%s".', query),
         )
 
-        fiscal_positions = partner.fiscal_position_id
-        return {
-            "res.partner": self._load_pos_data_read(partner, config),
-            "account.fiscal.position": self.env[
-                "account.fiscal.position"
-            ]._load_pos_data_read(fiscal_positions, config),
-        }
+        return self.get_new_partner(config_id, [("id", "=", partner.id)], 0)
 
     @api.model
     def get_bonuscard_status_for_pos(self, partner_id):
