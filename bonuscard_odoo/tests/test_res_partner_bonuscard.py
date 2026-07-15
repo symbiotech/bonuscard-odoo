@@ -503,3 +503,18 @@ class TestResPartnerBonuscard(TransactionCase):
         results = self.partner_model.search([("bonuscard_pos_search", "ilike", "WLKT")])
         self.assertIn(partner, results)
         self.assertNotIn(other, results)
+
+    def test_bonuscard_pos_search_empty_query_matches_nothing(self):
+        partner = self.partner_model.create(
+            {
+                "name": "Bonuscard Search Customer",
+                "phone": "+46701234567",
+            }
+        )
+        partner._write_bonuscard_status(
+            "linked",
+            customer={"recruitmentCode": "WLKT6", "id": 42},
+        )
+
+        results = self.partner_model.search([("bonuscard_pos_search", "ilike", "   ")])
+        self.assertFalse(results)

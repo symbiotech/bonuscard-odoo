@@ -123,7 +123,7 @@ class ResPartner(models.Model):
         """Search partners by Bonuscard recruitment code."""
         value = value.strip() if isinstance(value, str) else value
         if not value:
-            return []
+            return [("id", "=", 0)]
         if operator not in ("ilike", "like", "=", "!=", "not ilike"):
             operator = "ilike"
         return [("bonuscard_recruitment_code", operator, value)]
