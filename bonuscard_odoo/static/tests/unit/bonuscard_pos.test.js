@@ -674,6 +674,76 @@ test("removing a line clears pending Bonuscard transaction", async () => {
     expect(order.bonuscard_checkout_items).toBe(null);
 });
 
+test("numpad remove cancels pending Bonuscard transaction when last catalog line is removed", async () => {
+    const store = await setupPosEnv();
+    store.numpadMode = "quantity";
+    const order = store.addNewOrder();
+    const product = store.models["product.product"].get(5);
+    markProductBonuscardCatalog(product, "TEST-NUMPAD-REMOVE");
+
+    const line = await store.addLineToOrder(
+        {
+            product_id: product,
+            product_tmpl_id: product.product_tmpl_id,
+            qty: 1,
+            price_unit: 10,
+        },
+        order
+    );
+
+    const partner = store.models["res.partner"].create({
+        name: "Bonuscard Customer",
+    });
+    partner.bonuscard_recruitment_code = "ABC123";
+    partner.bonuscard_status = "linked";
+
+    let cancelledId = null;
+    const originalCall = store.data.call.bind(store.data);
+    patchWithCleanup(store.data, {
+        call: async function (model, method, args) {
+            if (model === "bonuscard.api.service" && method === "cancel_purchase_for_pos") {
+                cancelledId = args[0];
+                return { error: false };
+            }
+            if (model === "bonuscard.api.service" && method === "validate_purchase_for_pos") {
+                return {
+                    error: false,
+                    transactionIdentifier: "TXN-NUMPAD-REMOVE",
+                    checkoutItems: [
+                        {
+                            identifier: "ITEM1",
+                            ean: product.barcode,
+                            quantity: 1,
+                            pricePerItem: 10,
+                        },
+                    ],
+                    totalDiscount: 0,
+                };
+            }
+            return originalCall(...arguments);
+        },
+    });
+
+    await store.setPartnerToCurrentOrder(partner);
+    expect(order.bonuscard_transaction_id).toBe("TXN-NUMPAD-REMOVE");
+
+    order.getSelectedOrderline = () => line;
+
+    const fakeSummary = {
+        currentOrder: order,
+        pos: store,
+        dialog: { add: () => {} },
+        numberBuffer: { reset: () => {} },
+    };
+    fakeSummary._maybeRevalidateBonuscardOrder =
+        OrderSummary.prototype._maybeRevalidateBonuscardOrder.bind(fakeSummary);
+
+    await OrderSummary.prototype._setValue.call(fakeSummary, "remove");
+
+    expect(cancelledId).toBe("TXN-NUMPAD-REMOVE");
+    expect(order.bonuscard_transaction_id).toBe(null);
+});
+
 test("addLineToOrder re-validation does not show discount success toast", async () => {
     const store = await setupPosEnv();
     const order = store.addNewOrder();

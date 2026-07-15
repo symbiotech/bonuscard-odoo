@@ -1194,6 +1194,7 @@ patch(OrderSummary.prototype, {
                 }
                 if (val === "remove") {
                     this.currentOrder.removeOrderline(selectedLine);
+                    await this._maybeRevalidateBonuscardOrder();
                 } else {
                     const result = selectedLine.setQuantity(
                         val,
