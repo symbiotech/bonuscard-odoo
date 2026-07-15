@@ -21,6 +21,55 @@ class TestResPartnerBonuscard(TransactionCase):
                 "is_current": True,
             }
         )
+        cls.pos_config = cls._create_test_pos_config()
+
+    @classmethod
+    def _create_test_pos_config(cls):
+        company = cls.env.company
+        journal = cls.env["account.journal"].search(
+            [("type", "=", "sale"), ("company_id", "=", company.id)],
+            limit=1,
+        )
+        if not journal:
+            journal = cls.env["account.journal"].create(
+                {
+                    "name": "Bonuscard Test POS Sales",
+                    "type": "sale",
+                    "code": "BCPOS",
+                    "company_id": company.id,
+                }
+            )
+        payment_method = cls.env["pos.payment.method"].search(
+            [("company_id", "in", [company.id, False])],
+            limit=1,
+        )
+        if not payment_method:
+            cash_journal = cls.env["account.journal"].search(
+                [("type", "in", ["cash", "bank"]), ("company_id", "=", company.id)],
+                limit=1,
+            )
+            if not cash_journal:
+                cash_journal = cls.env["account.journal"].create(
+                    {
+                        "name": "Bonuscard Test POS Cash",
+                        "type": "cash",
+                        "code": "BPCSH",
+                        "company_id": company.id,
+                    }
+                )
+            payment_method = cls.env["pos.payment.method"].create(
+                {
+                    "name": "Bonuscard Test Cash",
+                    "journal_id": cash_journal.id,
+                }
+            )
+        return cls.env["pos.config"].create(
+            {
+                "name": "Bonuscard Test POS",
+                "journal_id": journal.id,
+                "payment_method_ids": [(6, 0, payment_method.ids)],
+            }
+        )
 
     def test_refresh_bonuscard_status_links_single_match(self):
         partner = self.partner_model.create(
@@ -486,6 +535,97 @@ class TestResPartnerBonuscard(TransactionCase):
             call.args[0].id for call in mock_sync.call_args_list if call.args
         }
         self.assertNotIn(partner.id, synced_partner_ids)
+
+    def test_import_partner_from_bonuscard_for_pos_creates_partner(self):
+        with patch(
+            "odoo.addons.bonuscard_odoo.models.bonuscard_api_service.BonuscardApiService._search_customers",
+            return_value=[
+                {
+                    "id": 55,
+                    "name": "Imported Customer",
+                    "phoneNumber": "+46701239999",
+                    "email": "import@example.com",
+                    "recruitmentCode": "IMP55",
+                }
+            ],
+        ):
+            result = self.partner_model.import_partner_from_bonuscard_for_pos(
+                self.pos_config.id, "IMP55"
+            )
+
+        partner = self.partner_model.search(
+            [("bonuscard_recruitment_code", "=", "IMP55")]
+        )
+        self.assertEqual(len(partner), 1)
+        self.assertEqual(partner.name, "Imported Customer")
+        self.assertEqual(partner.bonuscard_status, "linked")
+        self.assertEqual(result["res.partner"][0]["id"], partner.id)
+
+    def test_import_partner_from_bonuscard_for_pos_links_existing_partner(self):
+        partner = self.partner_model.create(
+            {
+                "name": "Existing Customer",
+                "phone": "+46707654321",
+                "customer_rank": 1,
+            }
+        )
+
+        with patch(
+            "odoo.addons.bonuscard_odoo.models.bonuscard_api_service.BonuscardApiService._search_customers",
+            return_value=[
+                {
+                    "id": 56,
+                    "name": "Existing Customer",
+                    "phoneNumber": "+46707654321",
+                    "recruitmentCode": "LINK56",
+                }
+            ],
+        ):
+            result = self.partner_model.import_partner_from_bonuscard_for_pos(
+                self.pos_config.id, "LINK56"
+            )
+
+        self.assertEqual(result["res.partner"][0]["id"], partner.id)
+        self.assertEqual(partner.bonuscard_recruitment_code, "LINK56")
+        self.assertEqual(partner.bonuscard_status, "linked")
+
+    def test_import_partner_from_bonuscard_for_pos_rejects_ambiguous_matches(self):
+        with patch(
+            "odoo.addons.bonuscard_odoo.models.bonuscard_api_service.BonuscardApiService._search_customers",
+            return_value=[
+                {"id": 1, "name": "A", "recruitmentCode": "AAA1"},
+                {"id": 2, "name": "B", "recruitmentCode": "BBB2"},
+            ],
+        ):
+            with self.assertRaises(UserError) as exc:
+                self.partner_model.import_partner_from_bonuscard_for_pos(
+                    self.pos_config.id, "customer"
+                )
+
+        self.assertIn("multiple", str(exc.exception).lower())
+
+    def test_import_partner_from_bonuscard_for_pos_imports_when_api_returns_duplicates(
+        self,
+    ):
+        duplicate_customer = {
+            "id": 57,
+            "name": "Duplicate Customer",
+            "phoneNumber": "+46701230057",
+            "recruitmentCode": "DUP57",
+        }
+        with patch(
+            "odoo.addons.bonuscard_odoo.models.bonuscard_api_service.BonuscardApiService._search_customers",
+            return_value=[duplicate_customer, dict(duplicate_customer)],
+        ):
+            result = self.partner_model.import_partner_from_bonuscard_for_pos(
+                self.pos_config.id, "DUP57"
+            )
+
+        partners = self.partner_model.search(
+            [("bonuscard_recruitment_code", "=", "DUP57")]
+        )
+        self.assertEqual(len(partners), 1)
+        self.assertEqual(result["res.partner"][0]["id"], partners.id)
 
     def test_bonuscard_pos_search_by_recruitment_code(self):
         partner = self.partner_model.create(

@@ -1,6 +1,6 @@
 flowchart LR
     subgraph POS Frontend
-        PL[PartnerList search\nrecruitment code]
+        PL[Customer list search\nrecruitment code + Enter fallback]
         A[Select Customer in POS]
         R[Register with Bonuscard\npartner list menu]
         B[Start Payment]
@@ -12,6 +12,7 @@ flowchart LR
     subgraph Odoo Backend
         BS[res.partner.bonuscard_pos_search]
         F[res.partner.get_bonuscard_status_for_pos]
+        IMP[res.partner.import_partner_from_bonuscard_for_pos]
         Q[res.partner.action_bulk_prefetch_bonuscard_status]
         S[ir.cron / manual bulk prefetch]
         O[res.partner.action_register_to_bonuscard]
@@ -40,13 +41,18 @@ flowchart LR
     BS -->|matching partners| PL
     PL -->|select partner| A
     A -->|setPartnerToCurrentOrder| F
-    F -->|search terms: phone/email/name| K
+    PL -->|local Odoo search empty| IMP
+    IMP -->|SearchCustomers query| K
+    K -->|single unambiguous match| IMP
+    IMP -->|create/link partner + load in POS| PL
+    PL -->|select imported partner| A
+    F -->|search terms phone email name| K
     K -->|match result| F
     F -->|status/recruitment_code| A
-    A -->|status=linked: auto-validate| G
+    A -->|status linked auto-validate| G
 
-    S -->|batch prefetch (phone→email→optional name)| Q
-    Q -->|search terms: phone/email/name| K
+    S -->|batch prefetch phone email optional name| Q
+    Q -->|search terms phone email name| K
     K -->|match result| Q
 
     R -->|not_found partner| O
@@ -57,18 +63,18 @@ flowchart LR
     B -->|final guard before payment| G
     G -->|checkoutItems + customerIdentifier| L
     L -->|transactionIdentifier + discounts| G
-    G -->|no catalog lines: cancel pending transaction| I
-    G -->|transactionIdentifier + discounts (POS applies discounts to order)| B
+    G -->|no catalog lines cancel pending transaction| I
+    G -->|transactionIdentifier + discounts POS applies discounts| B
 
     C -->|preSyncAllOrders before sync| H
     H -->|transactionIdentifier + checkoutItems| M
     M -->|commit purchase| H
-    H -->|finalize success: persist audit on pos.order| C
-    H -->|finalize failed after retry: cancel fallback preserves paid lines| I
-    H -->|finalize and cancel fallback failed: sticky warning| C
-    C -->|no checkoutItems: cancel pending transaction preserves paid lines| I
-    I -->|release success: persist audit on pos.order| C
-    I -->|release failed after payment: sticky warning| C
+    H -->|finalize success persist audit on pos.order| C
+    H -->|finalize failed cancel fallback preserves paid lines| I
+    H -->|finalize and cancel fallback failed sticky warning| C
+    C -->|no checkoutItems cancel pending transaction| I
+    I -->|release success persist audit on pos.order| C
+    I -->|release failed sticky warning| C
 
     E -->|cancel pending transaction| I
     I -->|transactionIdentifier| N
@@ -76,6 +82,7 @@ flowchart LR
     I -->|persist audit on pos.order| E
 
     J -->|used by search/status sync| F
+    J -->|used by POS customer import| IMP
     J -->|used by bulk prefetch| Q
     J -->|used by register| O
     J -->|used by validate/finalize/cancel| G
@@ -85,10 +92,10 @@ flowchart LR
     V -->|not_set products batch| U
     W -->|selected products| U
     U -->|bulk or single probe| T
-    T -->|ValidatePurchase per product;\nanchor + probe EAN when unlock configured| L
-    L -->|probe EAN enriched in checkoutItems → in catalog| T
-    L -->|tx without enriched probe EAN, anchor-only, or "No valid products…" → not in catalog| T
-    L -->|no transactionIdentifier, other message → unchanged| T
+    T -->|ValidatePurchase per product anchor + probe EAN| L
+    L -->|probe EAN enriched in checkoutItems in catalog| T
+    L -->|no enriched probe EAN or no valid products not in catalog| T
+    L -->|no transactionIdentifier other message unchanged| T
     T -->|auto-cancel open transaction before next product| I
     I -->|transactionIdentifier| N
     J -->|probe customer + credentials| T

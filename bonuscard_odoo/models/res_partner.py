@@ -576,6 +576,181 @@ class ResPartner(models.Model):
             ) from exc
 
     @api.model
+    def _dedupe_bonuscard_customers(self, customers):
+        unique = {}
+        for index, customer in enumerate(customers):
+            customer_key = (
+                customer.get("id") or customer.get("recruitmentCode") or index
+            )
+            unique[customer_key] = customer
+        return list(unique.values())
+
+    @api.model
+    def _filter_bonuscard_customers_for_pos_query(self, customers, query):
+        """Pick unambiguous Bonuscard customers for a POS search/import query."""
+        query = (query or "").strip()
+        if not query or not customers:
+            return []
+
+        customers = self._dedupe_bonuscard_customers(customers)
+        query_lower = query.lower()
+        normalized_query_phone = self._normalize_phone(query)
+        exact_matches = {}
+        for index, customer in enumerate(customers):
+            customer_key = (
+                customer.get("id") or customer.get("recruitmentCode") or index
+            )
+            recruitment_code = (customer.get("recruitmentCode") or "").strip()
+            if recruitment_code and recruitment_code.lower() == query_lower:
+                exact_matches[customer_key] = customer
+                continue
+            customer_phone = self._normalize_phone(customer.get("phoneNumber"))
+            if (
+                normalized_query_phone
+                and customer_phone
+                and customer_phone == normalized_query_phone
+            ):
+                exact_matches[customer_key] = customer
+                continue
+            customer_email = (customer.get("email") or "").strip().lower()
+            if "@" in query_lower and customer_email == query_lower:
+                exact_matches[customer_key] = customer
+
+        if exact_matches:
+            return list(exact_matches.values())
+        if len(customers) == 1:
+            return customers
+        return []
+
+    @api.model
+    def _prepare_partner_vals_from_bonuscard_customer(self, customer, *, company=None):
+        name = (customer.get("name") or "").strip()
+        phone = (customer.get("phoneNumber") or "").strip()
+        recruitment_code = (customer.get("recruitmentCode") or "").strip()
+        if not name:
+            name = recruitment_code or phone or self.env._("Bonuscard Customer")
+        vals = {
+            "name": name,
+            "phone": phone or False,
+            "email": (customer.get("email") or "").strip() or False,
+            "street": (customer.get("address") or "").strip() or False,
+            "city": (customer.get("city") or "").strip() or False,
+            "customer_rank": 1,
+        }
+        if company:
+            vals["company_id"] = company.id
+        return vals
+
+    def _apply_bonuscard_customer_details(self, customer):
+        self.ensure_one()
+        vals = {}
+        if customer.get("name") and not (self.name or "").strip():
+            vals["name"] = customer["name"]
+        if customer.get("phoneNumber") and not (self.phone or "").strip():
+            vals["phone"] = customer["phoneNumber"]
+        if customer.get("email") and not (self.email or "").strip():
+            vals["email"] = customer["email"]
+        if customer.get("address") and not (self.street or "").strip():
+            vals["street"] = customer["address"]
+        if customer.get("city") and not (self.city or "").strip():
+            vals["city"] = customer["city"]
+        if vals:
+            self.write(vals)
+
+    @api.model
+    def _find_or_create_partner_from_bonuscard_customer(
+        self, customer, *, company=None
+    ):
+        Partner = self.env["res.partner"]
+        recruitment_code = (customer.get("recruitmentCode") or "").strip()
+        internal_id = customer.get("id")
+        phone = (customer.get("phoneNumber") or "").strip()
+        email = (customer.get("email") or "").strip()
+        normalized_phone = self._normalize_phone(phone)
+
+        partner = Partner.browse()
+        if internal_id:
+            partner = Partner.search(
+                [("bonuscard_internal_id", "=", internal_id)], limit=1
+            )
+        if not partner and recruitment_code:
+            partner = Partner.search(
+                [("bonuscard_recruitment_code", "=", recruitment_code)], limit=1
+            )
+        if not partner and normalized_phone:
+            candidates = Partner.search(
+                [
+                    "|",
+                    ("phone", "ilike", phone),
+                    ("phone", "ilike", normalized_phone),
+                ],
+                limit=20,
+            )
+            partner = candidates.filtered(
+                lambda record: self._normalize_phone(record.phone) == normalized_phone
+            )[:1]
+        if not partner and email:
+            partner = Partner.search([("email", "=ilike", email)], limit=1)
+
+        if partner:
+            partner._apply_bonuscard_customer_details(customer)
+            return partner
+
+        return Partner.create(
+            self._prepare_partner_vals_from_bonuscard_customer(
+                customer, company=company
+            )
+        )
+
+    @api.model
+    def import_partner_from_bonuscard_for_pos(self, config_id, query):
+        """Search Bonuscard and create or link an Odoo partner for POS."""
+        query = (query or "").strip()
+        if not query:
+            raise UserError(
+                self.env._("Enter a phone number or Bonuscard ID to search Bonuscard.")
+            )
+
+        config = self.env["pos.config"].browse(config_id).exists()
+        if not config:
+            raise UserError(self.env._("Point of Sale configuration not found."))
+
+        company = config.company_id or self.env.company
+        service = self.env["bonuscard.api.service"]
+        instance = service._get_company_instance(company)
+        if not instance:
+            raise UserError(
+                self.env._(
+                    "No active Bonuscard connection is configured for this company."
+                )
+            )
+
+        customers = service._search_customers(instance, query)
+        if not customers:
+            raise UserError(self.env._('No Bonuscard customer matched "%s".', query))
+
+        matches = self._filter_bonuscard_customers_for_pos_query(customers, query)
+        if len(matches) != 1:
+            raise UserError(
+                self.env._(
+                    'Bonuscard returned multiple customers for "%s". Refine your search.',
+                    query,
+                )
+            )
+
+        customer = matches[0]
+        partner = self._find_or_create_partner_from_bonuscard_customer(
+            customer, company=company
+        )
+        partner._write_bonuscard_status(
+            "linked",
+            customer=customer,
+            note=self.env._('Imported from Bonuscard using "%s".', query),
+        )
+
+        return self.get_new_partner(config_id, [("id", "=", partner.id)], 0)
+
+    @api.model
     def get_bonuscard_status_for_pos(self, partner_id):
         partner = self.browse(partner_id).exists()
         if not partner:
