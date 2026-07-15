@@ -1034,7 +1034,7 @@ msgid ""
 msgstr ""
 "Ingen katalog-EAN är tillgänglig ännu för att frigöra probkunden efter "
 "sondning av %(product)s. Konfigurera upplåsnings-EAN för katalogsond eller "
-"sond en känd produkt först."
+"sonda en känd produkt först."
 
 #. module: bonuscard_odoo
 #: model:ir.model.fields,help:bonuscard_odoo.field_bonuscard_connector_instance__catalog_probe_price
@@ -1152,7 +1152,7 @@ msgid ""
 "Probe Bonuscard catalog status for products that have never been scanned "
 "(same scope as the daily catalog probe cron)."
 msgstr ""
-"Sond Bonuscard-katalogstatus för produkter som aldrig skannats (samma "
+"Sondra Bonuscard-katalogstatus för produkter som aldrig skannats (samma "
 "omfattning som daglig katalogsond-cron)."
 
 #. module: bonuscard_odoo
@@ -1165,7 +1165,7 @@ msgid ""
 "                            by one. The daily cron only scans products with catalog\n"
 "                            status <strong>Not Set</strong>."
 msgstr ""
-"Sonder produktkatalogstatus genom att anropa\n"
+"Sonderar produktkatalogstatus genom att anropa\n"
 "                            <strong>ValidatePurchase</strong> med testkunden nedan.\n"
 "                            Okända produkter upptäcks när Bonuscard returnerar ingen transaktionsidentifierare. Produkter bearbetas en i taget. Daglig cron skannar endast produkter med katalogstatus <strong>Ej angiven</strong>."
 
@@ -1384,14 +1384,14 @@ msgid ""
 "When enabled, the daily cron and manual button probe Bonuscard catalog "
 "status for products that have not been scanned yet."
 msgstr ""
-"När aktiverat sond daglig cron och manuell knapp Bonuscard-katalogstatus för"
-" produkter som ännu inte skannats."
+"När aktiverat sondar daglig cron och manuell knapp Bonuscard-katalogstatus "
+"för produkter som ännu inte skannats."
 
 #. module: bonuscard_odoo
 #. odoo-python
 #: code:bonuscard_odoo/models/product_product.py:0
 msgid "You do not have permission to probe Bonuscard catalog status."
-msgstr "Du har inte behörighet att söndra Bonuscard-katalogstatus."
+msgstr "Du har inte behörighet att sonda Bonuscard-katalogstatus."
 
 #. module: bonuscard_odoo
 #. odoo-python
