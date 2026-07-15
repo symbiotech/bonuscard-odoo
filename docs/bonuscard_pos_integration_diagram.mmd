@@ -1,8 +1,7 @@
 flowchart LR
     subgraph POS Frontend
-        PL[PartnerList search\nrecruitment code]
+        PL[Customer list search\nrecruitment code + Enter fallback]
         A[Select Customer in POS]
-        PL[Customer list Enter search]
         R[Register with Bonuscard\npartner list menu]
         B[Start Payment]
         C[Payment Validation]
@@ -13,7 +12,7 @@ flowchart LR
     subgraph Odoo Backend
         BS[res.partner.bonuscard_pos_search]
         F[res.partner.get_bonuscard_status_for_pos]
-        I[res.partner.import_partner_from_bonuscard_for_pos]
+        IMP[res.partner.import_partner_from_bonuscard_for_pos]
         Q[res.partner.action_bulk_prefetch_bonuscard_status]
         S[ir.cron / manual bulk prefetch]
         O[res.partner.action_register_to_bonuscard]
@@ -42,10 +41,10 @@ flowchart LR
     BS -->|matching partners| PL
     PL -->|select partner| A
     A -->|setPartnerToCurrentOrder| F
-    PL -->|local Odoo search empty| I
-    I -->|SearchCustomers query| K
-    K -->|single unambiguous match| I
-    I -->|create/link partner + load in POS| PL
+    PL -->|local Odoo search empty| IMP
+    IMP -->|SearchCustomers query| K
+    K -->|single unambiguous match| IMP
+    IMP -->|create/link partner + load in POS| PL
     PL -->|select imported partner| A
     F -->|search terms: phone/email/name| K
     K -->|match result| F
@@ -83,7 +82,7 @@ flowchart LR
     I -->|persist audit on pos.order| E
 
     J -->|used by search/status sync| F
-    J -->|used by POS customer import| I
+    J -->|used by POS customer import| IMP
     J -->|used by bulk prefetch| Q
     J -->|used by register| O
     J -->|used by validate/finalize/cancel| G
