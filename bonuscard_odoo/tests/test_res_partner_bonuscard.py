@@ -603,3 +603,26 @@ class TestResPartnerBonuscard(TransactionCase):
                 )
 
         self.assertIn("multiple", str(exc.exception).lower())
+
+    def test_import_partner_from_bonuscard_for_pos_imports_when_api_returns_duplicates(
+        self,
+    ):
+        duplicate_customer = {
+            "id": 57,
+            "name": "Duplicate Customer",
+            "phoneNumber": "+46701230057",
+            "recruitmentCode": "DUP57",
+        }
+        with patch(
+            "odoo.addons.bonuscard_odoo.models.bonuscard_api_service.BonuscardApiService._search_customers",
+            return_value=[duplicate_customer, dict(duplicate_customer)],
+        ):
+            result = self.partner_model.import_partner_from_bonuscard_for_pos(
+                self.pos_config.id, "DUP57"
+            )
+
+        partners = self.partner_model.search(
+            [("bonuscard_recruitment_code", "=", "DUP57")]
+        )
+        self.assertEqual(len(partners), 1)
+        self.assertEqual(result["res.partner"][0]["id"], partners.id)

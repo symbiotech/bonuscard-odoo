@@ -559,19 +559,33 @@ class ResPartner(models.Model):
             ) from exc
 
     @api.model
+    def _dedupe_bonuscard_customers(self, customers):
+        unique = {}
+        for index, customer in enumerate(customers):
+            customer_key = (
+                customer.get("id") or customer.get("recruitmentCode") or index
+            )
+            unique[customer_key] = customer
+        return list(unique.values())
+
+    @api.model
     def _filter_bonuscard_customers_for_pos_query(self, customers, query):
         """Pick unambiguous Bonuscard customers for a POS search/import query."""
         query = (query or "").strip()
         if not query or not customers:
             return []
 
+        customers = self._dedupe_bonuscard_customers(customers)
         query_lower = query.lower()
         normalized_query_phone = self._normalize_phone(query)
-        exact_matches = []
-        for customer in customers:
+        exact_matches = {}
+        for index, customer in enumerate(customers):
+            customer_key = (
+                customer.get("id") or customer.get("recruitmentCode") or index
+            )
             recruitment_code = (customer.get("recruitmentCode") or "").strip()
             if recruitment_code and recruitment_code.lower() == query_lower:
-                exact_matches.append(customer)
+                exact_matches[customer_key] = customer
                 continue
             customer_phone = self._normalize_phone(customer.get("phoneNumber"))
             if (
@@ -579,14 +593,14 @@ class ResPartner(models.Model):
                 and customer_phone
                 and customer_phone == normalized_query_phone
             ):
-                exact_matches.append(customer)
+                exact_matches[customer_key] = customer
                 continue
             customer_email = (customer.get("email") or "").strip().lower()
             if "@" in query_lower and customer_email == query_lower:
-                exact_matches.append(customer)
+                exact_matches[customer_key] = customer
 
         if exact_matches:
-            return exact_matches
+            return list(exact_matches.values())
         if len(customers) == 1:
             return customers
         return []
