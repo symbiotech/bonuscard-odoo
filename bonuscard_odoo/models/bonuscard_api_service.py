@@ -322,8 +322,10 @@ class BonuscardApiService(models.AbstractModel):
                 "messages": [self.env._("Partner not found.")],
             }
 
-        commercial_partner = partner.commercial_partner_id
-        customer_identifier = commercial_partner.bonuscard_recruitment_code
+        customer_identifier = (
+            partner.bonuscard_recruitment_code
+            or partner.commercial_partner_id.bonuscard_recruitment_code
+        )
         if not customer_identifier:
             return {
                 "error": True,
@@ -570,7 +572,10 @@ class BonuscardApiService(models.AbstractModel):
                 "messages": [self.env._("Partner not found.")],
             }
 
-        customer_identifier = partner.commercial_partner_id.bonuscard_recruitment_code
+        customer_identifier = (
+            partner.bonuscard_recruitment_code
+            or partner.commercial_partner_id.bonuscard_recruitment_code
+        )
         if not customer_identifier:
             return {
                 "error": True,
