@@ -486,3 +486,75 @@ class TestResPartnerBonuscard(TransactionCase):
             call.args[0].id for call in mock_sync.call_args_list if call.args
         }
         self.assertNotIn(partner.id, synced_partner_ids)
+
+    def test_import_partner_from_bonuscard_for_pos_creates_partner(self):
+        config = self.env["pos.config"].search([], limit=1)
+        self.assertTrue(config)
+
+        with patch(
+            "odoo.addons.bonuscard_odoo.models.bonuscard_api_service.BonuscardApiService._search_customers",
+            return_value=[
+                {
+                    "id": 55,
+                    "name": "Imported Customer",
+                    "phoneNumber": "+46701239999",
+                    "email": "import@example.com",
+                    "recruitmentCode": "IMP55",
+                }
+            ],
+        ):
+            result = self.partner_model.import_partner_from_bonuscard_for_pos(
+                config.id, "IMP55"
+            )
+
+        partner = self.partner_model.search(
+            [("bonuscard_recruitment_code", "=", "IMP55")]
+        )
+        self.assertEqual(len(partner), 1)
+        self.assertEqual(partner.name, "Imported Customer")
+        self.assertEqual(partner.bonuscard_status, "linked")
+        self.assertEqual(result["res.partner"][0]["id"], partner.id)
+
+    def test_import_partner_from_bonuscard_for_pos_links_existing_partner(self):
+        config = self.env["pos.config"].search([], limit=1)
+        partner = self.partner_model.create(
+            {
+                "name": "Existing Customer",
+                "phone": "+46707654321",
+                "customer_rank": 1,
+            }
+        )
+
+        with patch(
+            "odoo.addons.bonuscard_odoo.models.bonuscard_api_service.BonuscardApiService._search_customers",
+            return_value=[
+                {
+                    "id": 56,
+                    "name": "Existing Customer",
+                    "phoneNumber": "+46707654321",
+                    "recruitmentCode": "LINK56",
+                }
+            ],
+        ):
+            result = self.partner_model.import_partner_from_bonuscard_for_pos(
+                config.id, "LINK56"
+            )
+
+        self.assertEqual(result["res.partner"][0]["id"], partner.id)
+        self.assertEqual(partner.bonuscard_recruitment_code, "LINK56")
+        self.assertEqual(partner.bonuscard_status, "linked")
+
+    def test_import_partner_from_bonuscard_for_pos_rejects_ambiguous_matches(self):
+        config = self.env["pos.config"].search([], limit=1)
+
+        with patch(
+            "odoo.addons.bonuscard_odoo.models.bonuscard_api_service.BonuscardApiService._search_customers",
+            return_value=[
+                {"id": 1, "name": "A", "recruitmentCode": "AAA1"},
+                {"id": 2, "name": "B", "recruitmentCode": "BBB2"},
+            ],
+        ):
+            with self.assertRaises(UserError):
+                self.partner_model.import_partner_from_bonuscard_for_pos(
+                    config.id, "customer"
+                )

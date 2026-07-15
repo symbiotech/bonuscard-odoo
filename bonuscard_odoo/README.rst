@@ -23,6 +23,7 @@ Features
 * Test Connection server action from the form view
 * Security groups (Bonuscard User, Bonuscard Manager) and ACLs; admin is assigned Manager by default
 * Customer lookup by phone, email, and name when a customer is selected in POS
+* POS import of Bonuscard customers when local partner search finds no match
 * Partner status fields and sync controls on ``res.partner``
 * POS badge for Bonuscard status on the partner-selection screen
 * Smart button for one-click Bonuscard status checks from the partner form
@@ -137,6 +138,11 @@ matches prefer phone and email; name is used only when neither side has phone
 or email details. The result is written back to the partner and shown as a
 badge in the partner list.
 Use **Check Bonuscard** on the partner form to force a fresh lookup.
+
+If the customer is not found in the local Odoo partner search, pressing Enter
+in the POS customer list also queries Bonuscard. When Bonuscard returns a
+single unambiguous match, the addon creates or links an Odoo partner from the
+Bonuscard customer data and adds it to the POS session.
 
 Bulk Prefetch (Reduce POS Lookups)
 ---------------------------------
