@@ -175,7 +175,6 @@ patch(PosStore.prototype, {
         this._clearBonuscardRuntimeTransactionState(order);
         order.bonuscard_partner_id = false;
         order.bonuscard_needs_validation = true;
-        order.bonuscard_pending_codes = null;
         order.clearBonuscardDiscounts?.();
 
         this._clearBonuscardAuditFields(order);
@@ -188,6 +187,7 @@ patch(PosStore.prototype, {
         order.bonuscard_transaction_id = null;
         order._bonuscardCandidateTxId = null;
         order.bonuscard_checkout_items = null;
+        order.bonuscard_pending_codes = null;
     },
 
     _getBonuscardPendingCodes(order) {
@@ -229,9 +229,9 @@ patch(PosStore.prototype, {
             return false;
         }
         const partner = order.getPartner();
-        if (!partner?.id || !partner.bonuscard_recruitment_code) {
+        if (!partner?.id) {
             this.notification.add(
-                _t("Select a Bonuscard-linked customer before activating a discount code."),
+                _t("Select a customer before activating a Bonuscard discount code."),
                 { type: "warning" }
             );
             return false;

@@ -28,7 +28,7 @@ This document explains how the Bonuscard POS integration works in the `bonuscard
 
 3. Activate discount code (POS Actions)
    - The POS **Actions** modal includes a **Bonuscard** button (same control-buttons grid as loyalty’s Enter Code; no `pos_loyalty` dependency)
-   - Cashier enters a code via `TextInputPopup`; `PosStore.activateBonuscardDiscountCode` requires a linked partner with `bonuscard_recruitment_code`
+   - Cashier enters a code via `TextInputPopup`; `PosStore.activateBonuscardDiscountCode` requires a selected customer (backend resolves recruitment code on the partner or commercial partner)
    - Calls `bonuscard.api.service.activate_discount_code_for_pos` → Bonuscard `ActivateDiscountCode`
    - On success: show API message and re-run `_validateBonuscardPurchaseForOrder`
    - On Bonuscard error code 5 (not eligible for pre-registration): append the code to `order.bonuscard_pending_codes` (deduped), warn the cashier, and re-validate so the code is sent in the `codes` array on `ValidatePurchase`

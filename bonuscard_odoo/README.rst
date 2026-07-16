@@ -182,9 +182,10 @@ code. A phone number is required.
 Activate Discount Code in POS
 -----------------------------
 
-With a Bonuscard-linked customer on the order, open the POS **Actions** menu
-and choose **Bonuscard**. Enter the discount code to call
-``ActivateDiscountCode``.
+With a customer on the order, open the POS **Actions** menu and choose
+**Bonuscard**. Enter the discount code to call ``ActivateDiscountCode``.
+The backend resolves the Bonuscard recruitment code on the selected partner
+or its commercial partner.
 
 * On success, the code is pre-registered on the customer and the cart is
   re-validated so matching discounts can apply.

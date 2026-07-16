@@ -3160,5 +3160,5 @@ test("activateBonuscardDiscountCode skips stash when order changes during activa
     const activateResult = await activateResultPromise;
 
     expect(activateResult).toBe(false);
-    expect(order.bonuscard_pending_codes).toBeFalsy();
+    expect(!!order.bonuscard_pending_codes?.length).toBe(false);
 });
