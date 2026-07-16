@@ -225,6 +225,20 @@ patch(PosStore.prototype, {
         return currentOrder.getPartner()?.id === partnerId;
     },
 
+    /**
+     * Notifications render via Owl `t-out`. Plain objects are treated as block
+     * vnodes and crash with `this.child.mount is not a function`.
+     */
+    _bonuscardNotificationText(message, fallback) {
+        if (typeof message === "string" || message instanceof String) {
+            const text = String(message).trim();
+            if (text) {
+                return text;
+            }
+        }
+        return fallback;
+    },
+
     async activateBonuscardDiscountCode(code) {
         const order = this.getOrder();
         if (!order) {
@@ -257,7 +271,10 @@ patch(PosStore.prototype, {
             if (!this._isBonuscardActivateContextCurrent(order, partnerId)) {
                 if (!result?.error) {
                     this.notification.add(
-                        result.messages?.[0] || _t("Bonuscard discount code activated."),
+                        this._bonuscardNotificationText(
+                            result.messages?.[0],
+                            _t("Bonuscard discount code activated.")
+                        ),
                         { type: "success" }
                     );
                 }
@@ -269,9 +286,13 @@ patch(PosStore.prototype, {
             }
 
             if (!result?.error) {
-                const message =
-                    result.messages?.[0] || _t("Bonuscard discount code activated.");
-                this.notification.add(message, { type: "success" });
+                this.notification.add(
+                    this._bonuscardNotificationText(
+                        result.messages?.[0],
+                        _t("Bonuscard discount code activated.")
+                    ),
+                    { type: "success" }
+                );
                 await this._validateBonuscardPurchaseForOrder(order, {
                     notifyOnDiscount: true,
                 });
@@ -279,7 +300,7 @@ patch(PosStore.prototype, {
             }
 
             const errorCode = Number(result.errorCode);
-            const apiMessage = result.messages?.[0] || null;
+            const apiMessage = this._bonuscardNotificationText(result.messages?.[0], null);
 
             if (errorCode === 5) {
                 // Purchase-time codes: stash silently and re-validate. Cashiers
@@ -772,7 +793,10 @@ patch(PosStore.prototype, {
             ) {
                 order.bonuscard_pending_codes = null;
             }
-            const msg = result.messages?.[0] || _t("Bonuscard validation failed.");
+            const msg = this._bonuscardNotificationText(
+                result.messages?.[0],
+                _t("Bonuscard validation failed.")
+            );
             this._setBonuscardAuditFields(order, {
                 state: "failed",
                 transactionIdentifier:
