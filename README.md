@@ -60,7 +60,7 @@ Configuration and functional usage are documented in
 | Product catalog gating and manager catalog probe | Done |
 | Bulk partner prefetch (cron + manual) | Done |
 | Bonuscard audit fields on POS orders | Done |
-| ActivateDiscountCode | Planned |
+| ActivateDiscountCode | Done |
 | Sales report import | Planned |
 
 ## Development Setup

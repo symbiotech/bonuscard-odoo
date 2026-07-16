@@ -27,3 +27,7 @@ Full flow docs: `docs/bonuscard_pos_integration_explanation.md` and `.github/cop
 
 When adding/renaming POS hooks, update `docs/bonuscard_pos_integration_explanation.md`
 and `docs/bonuscard_pos_integration_diagram.mmd` in the same change.
+
+When adding/changing/removing `_t("...")` or XML-visible POS labels, update
+`bonuscard_odoo/i18n/sv_SE.po` in the same change (Translation Maintenance Rule in
+`.github/copilot-instructions.md`).

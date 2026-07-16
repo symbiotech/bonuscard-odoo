@@ -3,8 +3,8 @@ msgid ""
 msgstr ""
 "Project-Id-Version: bonuscard_odoo 19.0.1.0.1\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-07-15 06:42+0000\n"
-"PO-Revision-Date: 2026-07-15 16:20+0000\n"
+"POT-Creation-Date: 2026-07-16 10:33+0000\n"
+"PO-Revision-Date: 2026-07-16 10:34+0000\n"
 "Last-Translator: \n"
 "Language-Team: Swedish <sv@li.org>\n"
 "Language: sv_SE\n"
@@ -42,6 +42,14 @@ msgstr ""
 "                        <span class=\"o_stat_text\" invisible=\"bonuscard_status != 'ambiguous'\">Flera</span>\n"
 "                        <span class=\"o_stat_text\" invisible=\"bonuscard_status != 'error'\">Fel</span>\n"
 "                        <span class=\"o_stat_text\" invisible=\"bonuscard_status != 'not_checked'\">Kontrollera</span>"
+
+#. module: bonuscard_odoo
+#. odoo-javascript
+#. odoo-python
+#: code:bonuscard_odoo/models/bonuscard_api_service.py:0
+#: code:bonuscard_odoo/static/src/app/bonuscard_pos.js:0
+msgid "A discount code is required."
+msgstr "En rabattkod krävs."
 
 #. module: bonuscard_odoo
 #. odoo-javascript
@@ -112,21 +120,28 @@ msgstr "Arkiverade Bonuscard-anslutningar kan inte väljas för API-användning.
 #: model:ir.model.fields,help:bonuscard_odoo.field_bonuscard_connector_instance__catalog_probe_unlock_ean
 msgid ""
 "Barcode or article number of a product known to exist in the Bonuscard "
-"catalog. After probing unknown products, a short ValidatePurchase + "
-"CancelPurchase cycle with this EAN releases the dedicated probe customer."
+"catalog. When configured, unknown products are probed in the same "
+"ValidatePurchase call as this anchor EAN. Bonuscard may still return a "
+"transactionIdentifier while only recognizing the anchor; membership is "
+"determined from enriched checkoutItems for the probed EAN. CancelPurchase on"
+" that transaction releases the dedicated probe customer."
 msgstr ""
 "Streckkod eller artikelnummer för en produkt som är känd att finnas i "
-"Bonuscard-katalogen. Efter kontroll av okända produkter frigör en kort "
-"ValidatePurchase + CancelPurchase-cykel med denna EAN den dedikerade "
+"Bonuscard-katalogen. När den är konfigurerad kontrolleras okända produkter i"
+" samma ValidatePurchase-anrop som denna ankare-EAN. Bonuscard kan "
+"fortfarande returnera en transactionIdentifier även om endast ankaret känns "
+"igen; medlemskap avgörs utifrån berikade checkoutItems för den kontrollerade"
+" EAN-koden. CancelPurchase på den transaktionen frigör den dedikerade "
 "testkunden för katalogkontroll."
 
 #. module: bonuscard_odoo
 #. odoo-javascript
+#: code:bonuscard_odoo/static/src/app/bonuscard_control_buttons.xml:0
 #: code:bonuscard_odoo/static/src/app/bonuscard_partner_line.xml:0
 #: model:ir.model.fields,field_description:bonuscard_odoo.field_pos_order__bonuscard_state
 #: model:ir.ui.menu,name:bonuscard_odoo.menu_bonuscard_odoo_root
 #: model_terms:ir.ui.view,arch_db:bonuscard_odoo.view_partner_form_bonuscard
-#: model_terms:ir.ui.view,arch_db:bonuscard_odoo.view_product_product_form_bonuscard
+#: model_terms:ir.ui.view,arch_db:bonuscard_odoo.view_pos_order_form_bonuscard
 #: model_terms:ir.ui.view,arch_db:bonuscard_odoo.view_product_template_form_bonuscard
 msgid "Bonuscard"
 msgstr ""
@@ -222,6 +237,12 @@ msgstr "Bonuscard-anslutningar"
 #: code:bonuscard_odoo/models/res_partner.py:0
 msgid "Bonuscard Customer"
 msgstr "Bonuscard-kund"
+
+#. module: bonuscard_odoo
+#. odoo-javascript
+#: code:bonuscard_odoo/static/src/app/bonuscard_control_buttons.js:0
+msgid "Bonuscard Discount Code"
+msgstr "Bonuscard-rabattkod"
 
 #. module: bonuscard_odoo
 #: model:ir.model.fields,field_description:bonuscard_odoo.field_pos_order__bonuscard_finalized_at
@@ -342,6 +363,20 @@ msgstr ""
 #: code:bonuscard_odoo/static/src/app/bonuscard_partner_import_patch.js:0
 msgid "Bonuscard customer \"%s\" added."
 msgstr "Bonuscard-kund \"%s\" tillagd."
+
+#. module: bonuscard_odoo
+#. odoo-javascript
+#. odoo-python
+#: code:bonuscard_odoo/models/bonuscard_api_service.py:0
+#: code:bonuscard_odoo/static/src/app/bonuscard_pos.js:0
+msgid "Bonuscard discount activation failed."
+msgstr "Aktivering av Bonuscard-rabattkod misslyckades."
+
+#. module: bonuscard_odoo
+#. odoo-javascript
+#: code:bonuscard_odoo/static/src/app/bonuscard_pos.js:0
+msgid "Bonuscard discount code activated."
+msgstr "Bonuscard-rabattkod aktiverad."
 
 #. module: bonuscard_odoo
 #. odoo-javascript
@@ -637,7 +672,6 @@ msgstr "Kontrollera Bonuscard"
 #. module: bonuscard_odoo
 #: model:ir.actions.server,name:bonuscard_odoo.action_bonuscard_probe_products_catalog_status
 #: model:ir.actions.server,name:bonuscard_odoo.action_bonuscard_probe_templates_catalog_status
-#: model_terms:ir.ui.view,arch_db:bonuscard_odoo.view_product_product_form_bonuscard
 #: model_terms:ir.ui.view,arch_db:bonuscard_odoo.view_product_template_form_bonuscard
 msgid "Check Bonuscard Catalog"
 msgstr "Kontrollera Bonuscard-katalog"
@@ -861,6 +895,12 @@ msgstr "Engelska"
 #: code:bonuscard_odoo/models/res_partner.py:0
 msgid "Enter a phone number or Bonuscard ID to search Bonuscard."
 msgstr "Ange ett telefonnummer eller Bonuscard-ID för att söka i Bonuscard."
+
+#. module: bonuscard_odoo
+#. odoo-javascript
+#: code:bonuscard_odoo/static/src/app/bonuscard_control_buttons.js:0
+msgid "Enter discount code"
+msgstr "Ange rabattkod"
 
 #. module: bonuscard_odoo
 #: model:ir.model.fields.selection,name:bonuscard_odoo.selection__bonuscard_connector_instance__connection_status__error
@@ -1355,6 +1395,12 @@ msgid "Search Bonuscard Connections"
 msgstr "Sök Bonuscard-anslutningar"
 
 #. module: bonuscard_odoo
+#. odoo-javascript
+#: code:bonuscard_odoo/static/src/app/bonuscard_pos.js:0
+msgid "Select a customer before activating a Bonuscard discount code."
+msgstr "Välj en kund innan du aktiverar en Bonuscard-rabattkod."
+
+#. module: bonuscard_odoo
 #. odoo-python
 #: code:bonuscard_odoo/models/product_product.py:0
 #: code:bonuscard_odoo/models/res_partner.py:0
@@ -1394,6 +1440,12 @@ msgstr "Svenska"
 #: model_terms:ir.ui.view,arch_db:bonuscard_odoo.bonuscard_odoo_instance_view_form
 msgid "Test Connection"
 msgstr "Testa anslutning"
+
+#. module: bonuscard_odoo
+#. odoo-javascript
+#: code:bonuscard_odoo/static/src/app/bonuscard_pos.js:0
+msgid "The order or customer changed; the cart was not updated."
+msgstr "Ordern eller kunden ändrades; varukorgen uppdaterades inte."
 
 #. module: bonuscard_odoo
 #. odoo-python
@@ -1448,11 +1500,13 @@ msgstr ""
 #. module: bonuscard_odoo
 #: model:ir.model.fields,help:bonuscard_odoo.field_bonuscard_connector_instance__catalog_probe_active
 msgid ""
-"When enabled, the daily cron and manual button probe Bonuscard catalog "
-"status for products that have not been scanned yet."
+"When enabled, the daily cron, manual button, and automatic probes on manual "
+"product create or identifier update check Bonuscard catalog status for "
+"products that have not been scanned yet."
 msgstr ""
-"När aktiverat kontrollerar daglig cron och manuell knapp Bonuscard-"
-"katalogstatus för produkter som ännu inte skannats."
+"När aktiverat kontrollerar daglig cron, manuell knapp och automatiska "
+"kontroller vid manuell produktskapande eller uppdatering av identifierare "
+"Bonuscard-katalogstatus för produkter som ännu inte skannats."
 
 #. module: bonuscard_odoo
 #. odoo-python

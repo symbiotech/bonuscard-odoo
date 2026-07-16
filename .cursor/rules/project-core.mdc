@@ -43,3 +43,5 @@ pre-commit run --all-files
 ```
 
 Behavior changes require doc updates — see `documentation.mdc` or copilot instructions.
+Translatable string changes (`self.env._`, `_t`, XML labels) require `bonuscard_odoo/i18n/`
+updates in the same change — see Translation Maintenance Rule in `.github/copilot-instructions.md`.

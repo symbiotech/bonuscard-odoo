@@ -95,12 +95,21 @@ Examples:
 - New cancel/validation path: update flow steps in docs.
 - Completed roadmap item: mark it Done in README.md.
 
+## Translations
+
+When adding, changing, or removing translatable strings (`self.env._`, `_t`, XML
+labels), update `bonuscard_odoo/i18n/sv_SE.po` in the same PR. See
+`bonuscard_odoo/i18n/README.md` and the Translation Maintenance Rule in
+`.github/copilot-instructions.md`. Do not leave new English-only strings for a
+later pass unless explicitly asked.
+
 ## Pull Request Checklist
 
 - Describe what changed and why.
 - Link issue/task if available.
 - Include tests updated/added.
 - Include docs updated (when behavior changed).
+- Include `bonuscard_odoo/i18n/` updated when user-facing strings changed.
 - Confirm no secrets or local-only data were committed.
 
 ## Commit Guidance

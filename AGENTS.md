@@ -33,6 +33,10 @@ Copy `LOCAL_SETUP.example.md` → `LOCAL_SETUP.md` locally (gitignored). Use
 - Do not call live or test Bonuscard APIs from automated tests — mock HTTP.
 - Run verification via `pre-commit run --all-files` and commands from `LOCAL_SETUP.md`.
 - Update docs in the same change when observable behavior changes (see copilot file).
+- When adding/changing/removing translatable strings (`self.env._`, `_t`, XML labels),
+  update `bonuscard_odoo/i18n/sv_SE.po` in the same change (see Translation Maintenance
+  Rule in the copilot file). If a merge clears `msgstr` after an `msgid` change,
+  adapt/carry forward the prior Swedish — do not leave previously translated entries empty.
 
 ## Workflow (summary)
 

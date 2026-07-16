@@ -280,6 +280,123 @@ class BonuscardApiService(models.AbstractModel):
             params={"phoneNumber": phone_number},
         )
 
+    def _activate_discount_code(self, instance, customer_identifier, code):
+        instance.ensure_one()
+        return self._request(
+            instance,
+            endpoint="ActivateDiscountCode",
+            method="POST",
+            payload={
+                "customerIdentifier": customer_identifier,
+                "code": code,
+            },
+        )
+
+    def _sanitize_discount_codes(self, codes):
+        if not codes:
+            return None
+        if isinstance(codes, str):
+            codes = [codes]
+        if not isinstance(codes, list):
+            return None
+        sanitized = []
+        seen = set()
+        for code in codes:
+            if not isinstance(code, str):
+                continue
+            trimmed = code.strip()
+            if not trimmed or trimmed in seen:
+                continue
+            seen.add(trimmed)
+            sanitized.append(trimmed)
+        return sanitized or None
+
+    @api.model
+    def activate_discount_code_for_pos(self, partner_id, code):
+        """Pre-register a discount code on a Bonuscard customer from POS.
+
+        Never raises — returns ``{error, messages[, errorCode]}`` so the POS
+        can keep the sale flowing (including errorCode 5 for codes that must
+        be supplied on ValidatePurchase instead).
+        """
+        partner = self.env["res.partner"].browse(partner_id).exists()
+        if not partner:
+            return {
+                "error": True,
+                "messages": [self.env._("Partner not found.")],
+            }
+
+        customer_identifier = (
+            partner.bonuscard_recruitment_code
+            or partner.commercial_partner_id.bonuscard_recruitment_code
+        )
+        if not customer_identifier:
+            return {
+                "error": True,
+                "messages": [
+                    self.env._("Customer does not have a Bonuscard recruitment code.")
+                ],
+            }
+
+        trimmed_code = (code or "").strip() if isinstance(code, str) else ""
+        if not trimmed_code:
+            return {
+                "error": True,
+                "messages": [self.env._("A discount code is required.")],
+            }
+
+        company = self.env.company
+        instance = self._get_company_instance(company)
+        if not instance:
+            return {
+                "error": True,
+                "messages": [
+                    self.env._("No active Bonuscard connection is configured.")
+                ],
+            }
+
+        try:
+            return self._activate_discount_code(
+                instance, customer_identifier, trimmed_code
+            )
+        except BonuscardApiError as exc:
+            error_code = exc.error_code
+            try:
+                error_code = int(error_code)
+            except (TypeError, ValueError):
+                error_code = None
+            message = self._get_bonuscard_error_message(
+                exc, self.env._("Bonuscard discount activation failed.")
+            )
+            response = {
+                "error": True,
+                "messages": [message],
+            }
+            if error_code is not None:
+                response["errorCode"] = error_code
+            return response
+        except Exception as exc:  # pylint: disable=broad-except
+            if isinstance(exc, BonuscardHttpError):
+                _logger.warning(
+                    "Bonuscard HTTP error during POS activate discount "
+                    "(HTTP %s) for partner %s",
+                    exc.status_code,
+                    partner.id,
+                )
+                message = self.env._("Bonuscard service is temporarily unavailable.")
+            elif isinstance(exc, UserError):
+                message = getattr(exc, "name", None) or str(exc)
+            else:
+                _logger.exception(
+                    "Unexpected error during Bonuscard activate discount for partner %s",
+                    partner.id,
+                )
+                message = self.env._("Bonuscard discount activation failed.")
+            return {
+                "error": True,
+                "messages": [message],
+            }
+
     def _validate_purchase(
         self,
         instance,
@@ -303,7 +420,7 @@ class BonuscardApiService(models.AbstractModel):
 
     @api.model
     def validate_purchase_for_pos(
-        self, partner_id, order_lines, transaction_identifier=None
+        self, partner_id, order_lines, transaction_identifier=None, codes=None
     ):
         """Called from POS JS before payment to apply Bonuscard discounts.
 
@@ -311,6 +428,7 @@ class BonuscardApiService(models.AbstractModel):
             partner_id: int – the POS partner's id
             order_lines: list of {product_id, qty, price_unit}
             transaction_identifier: str or None – preserved across calls
+            codes: list of str or None – purchase-time discount codes
 
         Returns a dict with keys: error, messages, transactionIdentifier,
         totalDiscount, resultItems (or error keys on failure).
@@ -402,6 +520,7 @@ class BonuscardApiService(models.AbstractModel):
                 customer_identifier,
                 checkout_items,
                 transaction_identifier=transaction_identifier,
+                codes=self._sanitize_discount_codes(codes),
             )
         except BonuscardApiError as exc:
             error_code = exc.error_code
@@ -553,7 +672,7 @@ class BonuscardApiService(models.AbstractModel):
 
     @api.model
     def finalize_purchase_for_pos(
-        self, partner_id, transaction_identifier, checkout_items
+        self, partner_id, transaction_identifier, checkout_items, codes=None
     ):
         """Called from POS JS after payment succeeds to commit Bonuscard discounts.
 
@@ -561,6 +680,7 @@ class BonuscardApiService(models.AbstractModel):
             partner_id: int – the POS partner's id
             transaction_identifier: str – transaction ID from ValidatePurchase
             checkout_items: list – checkoutItems echoed by ValidatePurchase API response
+            codes: list of str or None – purchase-time discount codes
 
         Returns a dict with the API response keys, or {error, messages} on failure.
         Never raises — returns an error dict instead.
@@ -620,6 +740,7 @@ class BonuscardApiService(models.AbstractModel):
                 customer_identifier,
                 transaction_identifier,
                 formatted_items,
+                codes=self._sanitize_discount_codes(codes),
             )
         except BonuscardApiError as exc:
             error_code = exc.error_code

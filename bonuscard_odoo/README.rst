@@ -29,6 +29,7 @@ Features
 * POS badge for Bonuscard status on the partner-selection screen
 * Smart button for one-click Bonuscard status checks from the partner form
 * Manual customer registration from the partner form or POS partner list when lookup returns ``not_found``
+* Activate discount codes from the POS Actions menu (``ActivateDiscountCode``), with purchase-time fallback when a code cannot be pre-registered
 * Automatic discount application in POS after validation
 * Bonuscard audit fields stored on POS orders (validated/finalized/skipped/failed), even when discount is 0
 * Product catalog status on ``product.product`` to control which lines are sent to Bonuscard
@@ -177,6 +178,29 @@ When lookup returns ``not_found``, registration is available from:
 Both paths call ``action_register_to_bonuscard``, which re-checks Bonuscard
 first, registers by phone if still missing, then stores the returned recruitment
 code. A phone number is required.
+
+Activate Discount Code in POS
+-----------------------------
+
+With a customer on the order, open the POS **Actions** menu and choose
+**Bonuscard**. Enter the discount code to call ``ActivateDiscountCode``.
+The backend resolves the Bonuscard recruitment code on the selected partner
+or its commercial partner.
+
+* On success, the code is pre-registered on the customer and the cart is
+  re-validated so matching discounts can apply.
+* If Bonuscard returns error code 5 (code not eligible for pre-registration),
+  the code is stashed silently (no cashier message) and resent in the ``codes``
+  array on every ``ValidatePurchase`` (including payment re-validate) and on
+  ``FinalizePurchase``, so Finalize matches the last Validate. A success toast
+  may still appear if re-validation applies a discount.
+* Pending purchase-time codes are cleared after Finalize succeeds, after a
+  Bonuscard business error (``errorCode`` set, excluding customer lock), or
+  when runtime/purchase Bonuscard state is cleared (cancel, partner change).
+  Precondition / service-unavailable responses and transport/RPC failures keep
+  the codes for retry.
+* If the order or customer changes while activation is in flight, the POS does
+  not update the wrong cart.
 
 Partner Form Controls
 ---------------------
