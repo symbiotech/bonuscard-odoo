@@ -80,6 +80,10 @@ referens) skickas till Bonuscard från kassan.
 
 Produkter utan streckkod eller artikelnummer kan inte markeras som i katalog.
 
+I kassan visas produkter markerade **I Bonuscard-katalog** med ett rosa
+Bonuscard-märke på produktbrickan (kassörer använder det för att se vilka
+rader som går till Bonuscard).
+
 ## 5. Granska kundens Bonuscard-status
 
 1. Öppna **Fakturering → Kunder → Kunder** (eller Kontakter, om installerat).

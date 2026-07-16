@@ -12,7 +12,8 @@ English version: [POS cashier guide](../en/pos-cashier.md)
 - En administratör måste redan ha konfigurerat Bonuscard-anslutningen och
   markerat vilka produkter som ingår i Bonuscard-katalogen. Endast
   katalogprodukter ingår i Bonuscard-rabatter och poäng; övriga produkter
-  säljs som vanligt.
+  säljs som vanligt. På produktskärmen visas katalogprodukter med ett rosa
+  Bonuscard-märke i övre vänstra hörnet.
 
 ![Kassans produktskärm](../images/pos-cashier/03-pos-product-screen.png)
 
@@ -68,9 +69,19 @@ Lägg till produkter som vanligt. Bonuscard utvärderar bara rader som är
 markerade **I Bonuscard-katalog** av en administratör (och som har
 streckkod eller intern referens).
 
-- Katalogprodukter: Bonuscard kan tillämpa rabatter eller samla förmåner
-  automatiskt när kunden är kopplad.
-- Övriga produkter: säljs som vanligt; ignoreras av Bonuscard.
+### Hitta katalogprodukter i rutnätet
+
+På produktbrickorna visas katalogprodukter med ett litet **rosa
+Bonuscard-märke** (B) i **övre vänstra** hörnet. Produkter utan det märket
+skickas inte till Bonuscard (status **Ej angivet** eller **Ej i
+Bonuscard-katalog**).
+
+Tryck länge på en produktbricka för att öppna **Produktinfo** — där visas
+också Bonuscard-katalogstatus för produkter med en variant.
+
+- Katalogprodukter (märke synligt): Bonuscard kan tillämpa rabatter eller
+  samla förmåner automatiskt när kunden är kopplad.
+- Övriga produkter (inget märke): säljs som vanligt; ignoreras av Bonuscard.
 
 Om en rabatt tillämpas visas en bekräftelse och ordersumman uppdateras.
 Varaktiga varningar stannar tills du stänger dem — läs dem om något
@@ -127,7 +138,8 @@ vänta tills låsningen går ut.
 ## Snabbchecklista
 
 1. Välj (eller registrera) kunden — leta efter det gröna märket **Bonuscard**.
-2. Lägg till katalogprodukter; håll utkik efter automatiska rabatter.
+2. Lägg till katalogprodukter (rosa **B**-märke på brickan); håll utkik efter
+   automatiska rabatter.
 3. Valfritt: **Åtgärder → Bonuscard** för en rabattkod.
 4. Ta betalt som vanligt.
 5. Stäng och åtgärda eventuella varaktiga Bonuscard-varningar.

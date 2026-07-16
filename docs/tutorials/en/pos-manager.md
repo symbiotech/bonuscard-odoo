@@ -79,6 +79,9 @@ reference) are sent to Bonuscard from POS.
 
 Products without a barcode or article number cannot be marked as in catalog.
 
+In POS, products marked **In Bonuscard Catalog** show a pink Bonuscard mark
+on the product tile (cashiers use this to see which lines go to Bonuscard).
+
 ## 5. Review customer Bonuscard status
 
 1. Open **Invoicing → Customers → Customers** (or Contacts, if installed).

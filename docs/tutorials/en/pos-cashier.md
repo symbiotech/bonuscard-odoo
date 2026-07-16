@@ -12,6 +12,8 @@ Swedish version: [Kassa-guide](../sv/pos-kassor.md)
 - A manager must already have configured the Bonuscard connection and marked
   which products belong to the Bonuscard catalog. Only catalog products take
   part in Bonuscard discounts and points; other products sell normally.
+  On the product grid, catalog items show a pink Bonuscard mark in the
+  top-left corner.
 
 ![POS product screen](../images/pos-cashier/03-pos-product-screen.png)
 
@@ -67,9 +69,18 @@ Add products as usual. Bonuscard only evaluates lines that are marked **In
 Bonuscard Catalog** by a manager (and that have a barcode or internal
 reference).
 
-- Catalog products: Bonuscard may apply discounts or accumulate benefits
-  automatically after the customer is linked.
-- Other products: sold normally; ignored by Bonuscard.
+### Spot catalog products on the grid
+
+On the product tiles, catalog items show a small **pink Bonuscard mark** (B)
+in the **top-left** corner. Products without that mark are not sent to
+Bonuscard (status **Not Set** or **Not in Bonuscard Catalog**).
+
+Long-press a product tile to open **Product Info** — the Bonuscard catalog
+status badge is also shown there for single-variant products.
+
+- Catalog products (mark visible): Bonuscard may apply discounts or
+  accumulate benefits automatically after the customer is linked.
+- Other products (no mark): sold normally; ignored by Bonuscard.
 
 If a discount applies, a success toast appears and the order total updates.
 Sticky warning notifications stay until you dismiss them — read them if
@@ -127,7 +138,8 @@ expire.
 ## Quick checklist
 
 1. Select (or register) the customer — look for the green **Bonuscard** badge.
-2. Add catalog products; watch for automatic discounts.
+2. Add catalog products (pink **B** mark on the tile); watch for automatic
+   discounts.
 3. Optional: **Actions → Bonuscard** for a discount code.
 4. Pay as usual.
 5. Dismiss and act on any sticky Bonuscard warnings.
