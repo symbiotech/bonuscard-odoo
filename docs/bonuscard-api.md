@@ -25,6 +25,9 @@ Captured: 2026-03-12
 ## Error Handling
 
 All API errors return HTTP 200 with `"error": true`, an `"errorCode"`, and a `"messages"` array.
+Entries are usually strings; some endpoints may return UI-oriented objects with a ``message``
+field (and optional styling keys). The Odoo addon always normalizes these to plain strings
+before cashier-facing display.
 
 | Code | Meaning |
 |------|---------|

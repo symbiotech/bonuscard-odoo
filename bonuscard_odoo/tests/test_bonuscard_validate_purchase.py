@@ -921,6 +921,67 @@ class TestBonuscardValidatePurchase(TransactionCase):
         self.assertTrue(result.get("error"))
         self.assertIn("temporarily unavailable", result.get("messages")[0].lower())
 
+    def test_extract_error_messages_unwraps_structured_message_objects(self):
+        messages = self.service._extract_error_messages(
+            {
+                "error": True,
+                "messages": [
+                    {
+                        "message": "You have already activated this code",
+                        "kind": 4,
+                        "typeClass": "alert alert-danger",
+                        "fadeOut": False,
+                    }
+                ],
+            }
+        )
+        self.assertEqual(messages, ["You have already activated this code"])
+
+    def test_raise_on_api_error_uses_structured_message_text(self):
+        with self.assertRaises(BonuscardApiError) as ctx:
+            self.service._raise_on_api_error(
+                self.instance,
+                {
+                    "error": True,
+                    "messages": [
+                        {
+                            "message": "You have already activated this code",
+                            "kind": 4,
+                            "typeClass": "alert alert-danger",
+                            "fadeOut": False,
+                        }
+                    ],
+                },
+            )
+        message = str(ctx.exception)
+        self.assertIn("You have already activated this code", message)
+        self.assertNotIn("typeClass", message)
+        self.assertNotIn("fadeOut", message)
+
+    def test_activate_discount_code_for_pos_normalizes_structured_messages(self):
+        partner = self._make_partner_with_code()
+
+        with patch(
+            "odoo.addons.bonuscard_odoo.models.bonuscard_api_service.BonuscardApiService._activate_discount_code",
+            return_value={
+                "error": True,
+                "messages": [
+                    {
+                        "message": "You have already activated this code",
+                        "kind": 4,
+                        "typeClass": "alert alert-danger",
+                        "fadeOut": False,
+                    }
+                ],
+            },
+        ):
+            result = self.service.activate_discount_code_for_pos(partner.id, "SOMMAR")
+
+        self.assertTrue(result.get("error"))
+        self.assertEqual(
+            result.get("messages"), ["You have already activated this code"]
+        )
+
     def test_validate_purchase_for_pos_forwards_codes(self):
         partner = self._make_partner_with_code()
         product = self._make_product_with_barcode()

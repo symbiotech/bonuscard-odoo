@@ -175,6 +175,27 @@ test("BonuscardRegistrationService.registerPartnerToBonuscard shows warning when
     expect(notifications[0].options.type).toBe("warning");
 });
 
+test("BonuscardRegistrationService.registerPartnerToBonuscard shows sticky danger on failure", async () => {
+    const partner = { id: 99, name: "Failing Customer", phone: "+1234567890" };
+    const notifications = [];
+    const fakeNotification = { add: (message, options) => notifications.push({ message, options }) };
+    const fakePos = {
+        data: {
+            call: async () => {
+                throw { message: "Registration rejected by Bonuscard" };
+            },
+        },
+    };
+
+    const service = new BonuscardRegistrationService({}, { notification: fakeNotification, action: {} });
+    await service.registerPartnerToBonuscard(partner, fakePos);
+
+    expect(notifications.length).toBe(1);
+    expect(notifications[0].message).toBe("Registration rejected by Bonuscard");
+    expect(notifications[0].options.type).toBe("danger");
+    expect(notifications[0].options.sticky).toBe(true);
+});
+
 test("_extractErrorMessage extracts meaningful error messages from various error formats", () => {
     const fakeEnv = {};
     const fakeNotification = { add: () => { } };
@@ -3384,4 +3405,55 @@ test("activateBonuscardDiscountCode skips stash when order changes during activa
 
     expect(activateResult).toBe(false);
     expect(!!order.bonuscard_pending_codes?.length).toBe(false);
+});
+
+test("_bonuscardNotificationText extracts text from structured Bonuscard message objects", async () => {
+    const store = await setupPosEnv();
+    expect(
+        store._bonuscardNotificationText(
+            {
+                message: "You have already activated this code",
+                kind: 4,
+                typeClass: "alert alert-danger",
+                fadeOut: false,
+            },
+            "fallback"
+        )
+    ).toBe("You have already activated this code");
+    expect(store._bonuscardNotificationText({ kind: 4 }, "fallback")).toBe("fallback");
+});
+
+test("activateBonuscardDiscountCode shows sticky danger notification on API error", async () => {
+    const store = await setupPosEnv();
+    const partner = store.models["res.partner"].create({ name: "Bonuscard Customer" });
+    partner.bonuscard_recruitment_code = "ABC123";
+    partner.bonuscard_status = "linked";
+
+    const order = store.addNewOrder();
+    await store.setPartnerToCurrentOrder(partner);
+
+    const notifications = [];
+    patchWithCleanup(store.notification, {
+        add: (message, options) => notifications.push({ message, options }),
+    });
+
+    const originalCall = store.data.call.bind(store.data);
+    patchWithCleanup(store.data, {
+        call: async function (model, method, args) {
+            if (model === "bonuscard.api.service" && method === "activate_discount_code_for_pos") {
+                return {
+                    error: true,
+                    messages: ["You have already activated this code"],
+                };
+            }
+            return originalCall(...arguments);
+        },
+    });
+
+    const ok = await store.activateBonuscardDiscountCode("SOMMAR");
+    expect(ok).toBe(false);
+    expect(notifications.length).toBe(1);
+    expect(notifications[0].message).toBe("You have already activated this code");
+    expect(notifications[0].options.type).toBe("danger");
+    expect(notifications[0].options.sticky).toBe(true);
 });

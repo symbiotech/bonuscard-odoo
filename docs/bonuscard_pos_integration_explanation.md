@@ -33,7 +33,8 @@ This document explains how the Bonuscard POS integration works in the `bonuscard
    - On success: show API message and re-run `_validateBonuscardPurchaseForOrder`
    - On Bonuscard error code 5 (not eligible for pre-registration): silently append the code to `order.bonuscard_pending_codes` (deduped) and re-validate so the code is sent in the `codes` array on `ValidatePurchase` — no cashier notification for this technical path (a discount success toast may still appear if re-validate applies a discount)
    - After the activate RPC returns, the POS re-checks that the same order and partner are still selected; if not, it skips stash/re-validate (and warns) so a mid-request order switch cannot update the wrong cart
-   - Other activate errors are shown as danger notifications without stashing the code
+   - Other activate errors are shown as sticky danger notifications (persist until dismissed) without stashing the code
+   - API ``messages`` entries that are structured objects are reduced to their human-readable ``message`` text before display (never dump ``kind`` / ``typeClass`` / ``fadeOut``)
    - Pending codes stay on the order and are resent on every Validate (including `pay()`) and on Finalize until Finalize succeeds; they are also cleared on cancel / purchase-state clears and on Bonuscard business errors that reject the codes
 
 4. Continuous purchase validation
@@ -54,6 +55,7 @@ This document explains how the Bonuscard POS integration works in the `bonuscard
    - Previous discounts are cleared (`_clearAppliedBonuscardDiscounts`) before each new validation
    - On Bonuscard error code 2 (customer locked), the POS cancels the current or any other order's pending transaction for the same partner (including already paid orders) and retries validation once
    - When the cart has no Bonuscard catalog lines, no `ValidatePurchase` call is made; if a pending transaction already exists from earlier catalog lines, it is cancelled
+   - Validation failures (business or transport) show sticky warnings that persist until the cashier dismisses them
 
 5. Payment confirmation
    - `PosStore.preSyncAllOrders()` finalizes or cancels the pending Bonuscard transaction **before** the paid order is synced to the backend, so audit fields such as `bonuscard_finalized_at` are included in the first `sync_from_ui` payload
