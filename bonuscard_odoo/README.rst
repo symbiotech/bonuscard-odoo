@@ -120,6 +120,13 @@ Configuration
 Usage
 =====
 
+Step-by-step cashier tutorials with screenshots (English and Swedish):
+
+* ``docs/tutorials/en/pos-cashier.md``
+* ``docs/tutorials/sv/pos-kassor.md``
+
+See ``docs/tutorials/README.md`` for the full tutorial index.
+
 Product Catalog in POS
 ----------------------
 

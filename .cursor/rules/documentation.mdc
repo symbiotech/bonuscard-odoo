@@ -15,6 +15,7 @@ When code changes affect observable behavior, update docs in the **same change**
 | `bonuscard_odoo/static/description/index.html` | User-visible features change |
 | `docs/bonuscard_pos_integration_explanation.md` | POS patch added/renamed/removed; API service or partner method changes |
 | `docs/bonuscard_pos_integration_diagram.mmd` | Trigger points or data-flow between POS and backend change |
+| `docs/tutorials/` | Cashier/admin how-tos or screenshots need updating for UI/flow changes |
 | `bonuscard_odoo/i18n/sv_SE.po` | Translatable strings added/changed/removed (`self.env._`, `_t`, XML labels) |
 
 Checks before finishing:
