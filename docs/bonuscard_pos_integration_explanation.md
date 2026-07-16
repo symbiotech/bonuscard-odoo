@@ -90,6 +90,7 @@ This document explains how the Bonuscard POS integration works in the `bonuscard
     - `bonuscard_last_lookup_note`
   - Implements search/match logic and status synchronization
   - When status is written for a contact, the same status is also written to its commercial partner if both share the same phone number
+  - `_filter_bonuscard_customers_for_pos_query` accepts only exact recruitment-code, normalized-phone, or email matches for POS import; fuzzy single API hits are rejected
   - Adds `action_register_to_bonuscard`, `action_refresh_bonuscard_status`, and `action_clear_bonuscard_link`
   - Adds `import_partner_from_bonuscard_for_pos` to create or link an Odoo partner from Bonuscard when POS search finds no local match; requires an exact recruitment-code, phone, or email match on the Bonuscard API result
   - Adds `action_bulk_prefetch_bonuscard_status` to prefetch linking in batches (used by the cron job and the connection form button)

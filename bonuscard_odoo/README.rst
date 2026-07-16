@@ -23,7 +23,7 @@ Features
 * Test Connection server action from the form view
 * Security groups (Bonuscard User, Bonuscard Manager) and ACLs; admin is assigned Manager by default
 * Customer lookup by phone, email, and name when a customer is selected in POS
-* POS import of Bonuscard customers when local partner search finds no match
+* POS import of Bonuscard customers when local partner search finds no match (exact recruitment code, normalized phone, or email only; fuzzy API hits are rejected)
 * POS customer search by Bonuscard recruitment code
 * Partner status fields and sync controls on ``res.partner``
 * POS badge for Bonuscard status on the partner-selection screen
