@@ -26,7 +26,9 @@ Checks before finishing:
 5. Never describe implemented flows as "(Foundation)" or "Ready for".
 6. New/changed user-facing strings → sync `bonuscard_odoo/i18n/` in the same change
    (export/merge pot into `sv_SE.po` per copilot Translation Maintenance Rule; do not
-   defer translations unless explicitly asked). README/markdown are not via `.po`.
+   defer translations unless explicitly asked). When msgid text changes, adapt/carry
+   forward prior Swedish `msgstr` — do not leave previously translated entries empty
+   after a fuzzy merge. README/markdown are not via `.po`.
 
 When updating AI agent guidance, edit `.github/copilot-instructions.md` first, then
 sync `AGENTS.md` and `.cursor/rules/` if the condensed rules need the same change.

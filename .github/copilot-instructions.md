@@ -222,7 +222,15 @@ Workflow (match existing repo practice):
    `msgstr` values. Keep `#: code:bonuscard_odoo/...` references (not `code:addons/bonuscard_odoo/...`).
 3. Add Swedish `msgstr` for every new/changed msgid. Brand-only strings like `Bonuscard`
    may stay empty (English fallback) when that is already the convention.
-4. For a small feature delta, manually inserting the new entries into `sv_SE.po` (same
+4. **Msgid changes / fuzzy merges:** gettext merge tools often clear `msgstr` (or mark
+   `#, fuzzy`) when the English `msgid` changes even if a prior Swedish translation
+   existed. Agents must **not** leave previously translated entries empty after a sync.
+   Re-translate or adapt the old `msgstr` to the new `msgid` meaning (carry forward the
+   prior Swedish and update it). Only leave `msgstr ""` when the entry was never
+   translated, is brand-only by convention, or emptiness is an intentional product
+   choice. Diff `sv_SE.po` against the pre-sync version and restore any accidentally
+   cleared `msgstr` before committing.
+5. For a small feature delta, manually inserting the new entries into `sv_SE.po` (same
    reference format) is acceptable when a full export/merge is impractical.
 
 ## When Generating Code

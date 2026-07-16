@@ -126,6 +126,13 @@ msgid ""
 "determined from enriched checkoutItems for the probed EAN. CancelPurchase on"
 " that transaction releases the dedicated probe customer."
 msgstr ""
+"Streckkod eller artikelnummer för en produkt som är känd att finnas i "
+"Bonuscard-katalogen. När den är konfigurerad kontrolleras okända produkter i"
+" samma ValidatePurchase-anrop som denna ankare-EAN. Bonuscard kan "
+"fortfarande returnera en transactionIdentifier även om endast ankaret känns "
+"igen; medlemskap avgörs utifrån berikade checkoutItems för den kontrollerade"
+" EAN-koden. CancelPurchase på den transaktionen frigör den dedikerade "
+"testkunden för katalogkontroll."
 
 #. module: bonuscard_odoo
 #. odoo-javascript
@@ -1497,6 +1504,9 @@ msgid ""
 "product create or identifier update check Bonuscard catalog status for "
 "products that have not been scanned yet."
 msgstr ""
+"När aktiverat kontrollerar daglig cron, manuell knapp och automatiska "
+"kontroller vid manuell produktskapande eller uppdatering av identifierare "
+"Bonuscard-katalogstatus för produkter som ännu inte skannats."
 
 #. module: bonuscard_odoo
 #. odoo-python

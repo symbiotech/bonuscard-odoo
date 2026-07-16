@@ -24,6 +24,11 @@ When module user-facing strings change, sync `sv_SE.po` in the same change:
 3. Merge into `sv_SE.po`, keep existing Swedish `msgstr`, and restore
    `code:bonuscard_odoo/...` references if the export used `code:addons/bonuscard_odoo/...`.
 4. Translate new msgids. This repo normally commits `sv_SE.po` only (drop the pot after merge unless asked to keep it).
+5. When an English `msgid` changes, merge tools often drop or fuzzy-clear the old
+   `msgstr`. Re-translate or adapt the previous Swedish to the new wording — do not
+   commit empty `msgstr` for entries that already had a translation unless emptiness
+   is intentional (e.g. brand-only `Bonuscard`). Diff against the pre-sync `.po` and
+   fix any accidental clears before committing.
 
 Small feature deltas may add entries to `sv_SE.po` directly when a full export is impractical.
 
