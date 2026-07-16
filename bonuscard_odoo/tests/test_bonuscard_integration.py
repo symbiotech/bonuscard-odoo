@@ -309,6 +309,7 @@ class TestBonuscardIntegration(TransactionCase):
             method="GET",
             params={"query": query},
         )
+        self.assertFalse(payload.get("error"), f"API error: {payload.get('messages')}")
         customers = payload.get("customers") or []
         filtered = partner_model._filter_bonuscard_customers_for_pos_query(
             customers, query
