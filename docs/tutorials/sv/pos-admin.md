@@ -115,7 +115,7 @@ Kassörer kan inte åtgärda detta från kassan.
 1. Anslutning konfigurerad, **Använd för Bonuscard API** markerad, **Testa anslutning** = OK.
 2. Katalogprodukter markerade (och kontrollerade om ni använder katalogkontroll).
 3. Viktiga kunder kopplade (eller massförladdning aktiverad).
-4. Kassarabbitprodukt konfigurerad.
+4. Kassarabattprodukt konfigurerad.
 5. Ge kassörerna [kassa-guiden](pos-kassor.md).
 
 ## Behöver du mer hjälp?
