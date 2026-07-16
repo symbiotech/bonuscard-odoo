@@ -194,10 +194,10 @@ or its commercial partner.
   array on ``ValidatePurchase`` (and on Finalize only if still pending). A
   success toast may still appear if re-validation applies a discount.
 * Pending purchase-time codes are cleared after a Validate that included them
-  succeeds, or after a Bonuscard API error response. Transient transport/RPC
-  failures keep the codes for retry. They are also cleared when
-  runtime/purchase Bonuscard state is cleared (cancel, partner change,
-  successful finalize).
+  succeeds, or after a Bonuscard business error (``errorCode`` set).
+  Precondition / service-unavailable responses and transport/RPC failures keep
+  the codes for retry. They are also cleared when runtime/purchase Bonuscard
+  state is cleared (cancel, partner change, successful finalize).
 * If the order or customer changes while activation is in flight, the POS does
   not update the wrong cart.
 

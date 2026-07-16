@@ -757,9 +757,10 @@ patch(PosStore.prototype, {
                     });
                 }
             }
-            // Drop purchase-time codes that were tried on this failed Validate so
-            // they are not resent on every later cart edit.
-            if (pendingCodes?.length) {
+            // Drop purchase-time codes only when Bonuscard returned a business
+            // error (errorCode present). Precondition / service-unavailable
+            // payloads have no errorCode — keep codes for retry.
+            if (pendingCodes?.length && result.errorCode != null) {
                 order.bonuscard_pending_codes = null;
             }
             const msg = result.messages?.[0] || _t("Bonuscard validation failed.");
