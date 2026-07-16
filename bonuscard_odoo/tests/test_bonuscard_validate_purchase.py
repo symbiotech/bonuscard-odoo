@@ -894,7 +894,7 @@ class TestBonuscardValidatePurchase(TransactionCase):
 
         self.assertTrue(result.get("error"))
         self.assertEqual(result.get("errorCode"), 5)
-        self.assertIn("cannot be pre-registered", result.get("messages")[0])
+        self.assertIn("Not for pre-registering", result.get("messages")[0])
 
     def test_activate_discount_code_for_pos_http_error_non_blocking(self):
         partner = self._make_partner_with_code()

@@ -3127,6 +3127,49 @@ test("validation clears pending discount codes after a successful Validate that 
     expect(validateArgs[3]).toBe(null);
 });
 
+test("validation clears pending discount codes after a failed Validate that included them", async () => {
+    const store = await setupPosEnv();
+    const product = store.models["product.product"].get(5);
+    markProductBonuscardCatalog(product, "CODE-FAIL-123");
+
+    const partner = store.models["res.partner"].create({ name: "Bonuscard Customer" });
+    partner.bonuscard_recruitment_code = "ABC123";
+    partner.bonuscard_status = "linked";
+
+    const order = store.addNewOrder();
+    await store.addLineToOrder(
+        {
+            product_id: product,
+            product_tmpl_id: product.product_tmpl_id,
+            qty: 1,
+            price_unit: 10,
+        },
+        order
+    );
+    await store.setPartnerToCurrentOrder(partner);
+    order.bonuscard_pending_codes = ["BADCODE"];
+
+    let validateArgs = null;
+    const originalCall = store.data.call.bind(store.data);
+    patchWithCleanup(store.data, {
+        call: async function (model, method, args) {
+            if (model === "bonuscard.api.service" && method === "validate_purchase_for_pos") {
+                validateArgs = args;
+                return {
+                    error: true,
+                    messages: ["Invalid discount code."],
+                };
+            }
+            return originalCall(...arguments);
+        },
+    });
+
+    const ok = await store._validateBonuscardPurchaseForOrder(order);
+    expect(ok).toBe(false);
+    expect(validateArgs[3]).toEqual(["BADCODE"]);
+    expect(order.bonuscard_pending_codes).toBe(null);
+});
+
 test("activateBonuscardDiscountCode skips stash when order changes during activate RPC", async () => {
     const store = await setupPosEnv();
     const partner = store.models["res.partner"].create({ name: "Bonuscard Customer" });

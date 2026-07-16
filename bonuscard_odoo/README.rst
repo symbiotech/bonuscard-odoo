@@ -190,11 +190,12 @@ or its commercial partner.
 * On success, the code is pre-registered on the customer and the cart is
   re-validated so matching discounts can apply.
 * If Bonuscard returns error code 5 (code not eligible for pre-registration),
-  the code is kept on the order and sent in the ``codes`` array on the next
-  successful ``ValidatePurchase`` (and on Finalize only if still pending).
-* Pending purchase-time codes are cleared after a successful Validate that
-  included them, or when the order's Bonuscard state is cleared (cancel,
-  partner change, successful finalize).
+  the code is stashed silently (no cashier message) and sent in the ``codes``
+  array on ``ValidatePurchase`` (and on Finalize only if still pending). A
+  success toast may still appear if re-validation applies a discount.
+* Pending purchase-time codes are cleared after a Validate that included them
+  succeeds or fails, or when runtime/purchase Bonuscard state is cleared
+  (cancel, partner change, successful finalize).
 * If the order or customer changes while activation is in flight, the POS does
   not update the wrong cart.
 

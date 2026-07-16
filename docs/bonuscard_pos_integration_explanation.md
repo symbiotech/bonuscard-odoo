@@ -31,10 +31,10 @@ This document explains how the Bonuscard POS integration works in the `bonuscard
    - Cashier enters a code via `TextInputPopup`; `PosStore.activateBonuscardDiscountCode` requires a selected customer (backend resolves recruitment code on the partner or commercial partner)
    - Calls `bonuscard.api.service.activate_discount_code_for_pos` → Bonuscard `ActivateDiscountCode`
    - On success: show API message and re-run `_validateBonuscardPurchaseForOrder`
-   - On Bonuscard error code 5 (not eligible for pre-registration): append the code to `order.bonuscard_pending_codes` (deduped), warn the cashier, and re-validate so the code is sent in the `codes` array on `ValidatePurchase`
+   - On Bonuscard error code 5 (not eligible for pre-registration): silently append the code to `order.bonuscard_pending_codes` (deduped) and re-validate so the code is sent in the `codes` array on `ValidatePurchase` — no cashier notification for this technical path (a discount success toast may still appear if re-validate applies a discount)
    - After the activate RPC returns, the POS re-checks that the same order and partner are still selected; if not, it skips stash/re-validate (and warns) so a mid-request order switch cannot update the wrong cart
    - Other activate errors are shown as danger notifications without stashing the code
-   - Pending codes remaining after a failed validate (or when validate never ran) are still passed to `finalize_purchase_for_pos`; they are also cleared when Bonuscard purchase state is cleared
+   - Pending codes remaining when Validate never consumed them are still passed to `finalize_purchase_for_pos`; they are also cleared with runtime/purchase-state clears
 
 4. Continuous purchase validation
    - `_validateBonuscardPurchaseForOrder` is called in multiple situations:
@@ -46,7 +46,7 @@ This document explains how the Bonuscard POS integration works in the `bonuscard
    - Calls `bonuscard.api.service.validate_purchase_for_pos`, including any `order.bonuscard_pending_codes`
    - Stores `order.bonuscard_transaction_id`, `order.bonuscard_checkout_items`, and `order.bonuscard_partner_id`
    - Clears `bonuscard_needs_validation` on successful validation
-   - Clears `bonuscard_pending_codes` after a successful Validate that included them, so later cart edits do not resend the same codes
+   - Clears `bonuscard_pending_codes` after a Validate that included them succeeds **or** ultimately fails (so bad codes are not resent on later cart edits); stale discarded concurrent results and lock-recovery retries keep codes until that final outcome
    - If discounts are returned (`totalDiscount > 0`), they are applied automatically to the order via `_applyBonuscardDiscountsToOrder` — as percentage discounts on matched order lines, or as separate discount lines using the POS discount product when partial coverage remains; when no POS discount product is configured, partial coverage is applied as a proportional line discount instead
    - If the POS discount product is not configured, the cashier sees a warning; proportional discounts can still apply to matched lines, but discounts that cannot be matched to a line may not apply
    - The POS generates the `transactionIdentifier` client-side (GUID without dashes) before the first validation, so concurrent validations (e.g. add product, then immediately edit quantity) all send the same identifier — this prevents Bonuscard error 2 (customer locked) caused by a racing request arriving without an identifier

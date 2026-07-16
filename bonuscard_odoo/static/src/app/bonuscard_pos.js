@@ -280,13 +280,16 @@ patch(PosStore.prototype, {
             const apiMessage = result.messages?.[0] || null;
 
             if (errorCode === 5) {
+                // Purchase-time codes: stash silently and re-validate. Cashiers
+                // should not see technical pre-registration errors; they only
+                // notice when a discount actually applies.
                 this._addBonuscardPendingCode(order, trimmedCode);
-                this.notification.add(
-                    apiMessage ||
-                        _t(
-                            "This discount code cannot be pre-registered. It will be applied on the next purchase validation."
-                        ),
-                    { type: "warning" }
+                logPosMessage(
+                    "Bonuscard",
+                    "activateBonuscardDiscountCode",
+                    "Discount code not eligible for pre-registration; applying at purchase time.",
+                    false,
+                    [{ partnerId, code: trimmedCode, apiMessage }]
                 );
                 await this._validateBonuscardPurchaseForOrder(order, {
                     notifyOnDiscount: true,
@@ -651,9 +654,9 @@ patch(PosStore.prototype, {
         }
         const transactionIdentifier =
             order.bonuscard_transaction_id || order._bonuscardCandidateTxId;
+        const pendingCodes = this._getBonuscardPendingCodes(order);
 
         try {
-            const pendingCodes = this._getBonuscardPendingCodes(order);
             const result = await this.data.call(
                 "bonuscard.api.service",
                 "validate_purchase_for_pos",
@@ -754,6 +757,11 @@ patch(PosStore.prototype, {
                     });
                 }
             }
+            // Drop purchase-time codes that were tried on this failed Validate so
+            // they are not resent on every later cart edit.
+            if (pendingCodes?.length) {
+                order.bonuscard_pending_codes = null;
+            }
             const msg = result.messages?.[0] || _t("Bonuscard validation failed.");
             this._setBonuscardAuditFields(order, {
                 state: "failed",
@@ -770,6 +778,9 @@ patch(PosStore.prototype, {
             );
             this.notification.add(msg, { type: "warning" });
         } catch (error) {
+            if (pendingCodes?.length) {
+                order.bonuscard_pending_codes = null;
+            }
             logPosMessage(
                 "Bonuscard",
                 "_validateBonuscardPurchaseForOrder",
