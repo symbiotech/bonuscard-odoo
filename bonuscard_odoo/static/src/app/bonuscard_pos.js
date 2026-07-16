@@ -253,8 +253,7 @@ patch(PosStore.prototype, {
             }
 
             const errorCode = Number(result.errorCode);
-            const apiMessage =
-                result.messages?.[0] || _t("Bonuscard discount activation failed.");
+            const apiMessage = result.messages?.[0] || null;
 
             if (errorCode === 5) {
                 this._addBonuscardPendingCode(order, trimmedCode);
@@ -271,7 +270,10 @@ patch(PosStore.prototype, {
                 return true;
             }
 
-            this.notification.add(apiMessage, { type: "danger" });
+            this.notification.add(
+                apiMessage || _t("Bonuscard discount activation failed."),
+                { type: "danger" }
+            );
             return false;
         } catch (error) {
             this.notification.add(_t("Bonuscard discount activation failed."), {

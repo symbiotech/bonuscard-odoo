@@ -1975,10 +1975,12 @@ test("preSyncAllOrders clears Bonuscard transaction state on successful finalize
         42,
         "TXN-FINALIZE",
         [{ ean: "TEST-123", quantity: 1, pricePerItem: 10 }],
+        null,
     ]);
     expect(order.bonuscard_transaction_id).toBe(null);
     expect(order.bonuscard_checkout_items).toBe(null);
     expect(order._bonuscardCandidateTxId).toBe(null);
+    expect(order.bonuscard_pending_codes).toBe(null);
 });
 
 test("preSyncAllOrders retries finalize once before clearing transaction state", async () => {
@@ -2704,10 +2706,12 @@ test("preSyncAllOrders finalizes zero-discount transaction when checkout items e
         42,
         "TXN-ZERO",
         [{ ean: "TEST-999", quantity: 1, pricePerItem: 10 }],
+        null,
     ]);
     expect(cancelledId).toBe(null);
     expect(order.bonuscard_transaction_id).toBe(null);
     expect(order.bonuscard_checkout_items).toBe(null);
+    expect(order.bonuscard_pending_codes).toBe(null);
     expect(order.bonuscard_state).toBe("finalized");
     expect(order.bonuscard_transaction_identifier).toBe("TXN-ZERO");
     expect(order.bonuscard_finalized_at).not.toBe(false);
