@@ -190,9 +190,12 @@ and choose **Bonuscard**. Enter the discount code to call
   re-validated so matching discounts can apply.
 * If Bonuscard returns error code 5 (code not eligible for pre-registration),
   the code is kept on the order and sent in the ``codes`` array on the next
-  ``ValidatePurchase`` / ``FinalizePurchase`` instead.
-* Pending purchase-time codes are cleared when the order's Bonuscard state is
-  cleared (cancel, partner change, successful finalize).
+  successful ``ValidatePurchase`` (and on Finalize only if still pending).
+* Pending purchase-time codes are cleared after a successful Validate that
+  included them, or when the order's Bonuscard state is cleared (cancel,
+  partner change, successful finalize).
+* If the order or customer changes while activation is in flight, the POS does
+  not update the wrong cart.
 
 Partner Form Controls
 ---------------------

@@ -72,11 +72,12 @@ flowchart LR
     B -->|final guard before payment| G
     G -->|checkoutItems + customerIdentifier + pending codes| L
     L -->|transactionIdentifier + discounts| G
+    G -->|success clears pending codes| G
     G -->|no catalog lines cancel pending transaction| I
     G -->|transactionIdentifier + discounts POS applies discounts| B
 
     C -->|preSyncAllOrders before sync| H
-    H -->|transactionIdentifier + checkoutItems + pending codes| M
+    H -->|transactionIdentifier + checkoutItems + remaining pending codes| M
     M -->|commit purchase| H
     H -->|finalize success persist audit on pos.order| C
     H -->|finalize failed cancel fallback preserves paid lines| I

@@ -32,8 +32,9 @@ This document explains how the Bonuscard POS integration works in the `bonuscard
    - Calls `bonuscard.api.service.activate_discount_code_for_pos` → Bonuscard `ActivateDiscountCode`
    - On success: show API message and re-run `_validateBonuscardPurchaseForOrder`
    - On Bonuscard error code 5 (not eligible for pre-registration): append the code to `order.bonuscard_pending_codes` (deduped), warn the cashier, and re-validate so the code is sent in the `codes` array on `ValidatePurchase`
+   - After the activate RPC returns, the POS re-checks that the same order and partner are still selected; if not, it skips stash/re-validate (and warns) so a mid-request order switch cannot update the wrong cart
    - Other activate errors are shown as danger notifications without stashing the code
-   - Pending codes are also passed to `finalize_purchase_for_pos` and cleared on successful finalize or when Bonuscard purchase state is cleared
+   - Pending codes remaining after a failed validate (or when validate never ran) are still passed to `finalize_purchase_for_pos`; they are also cleared when Bonuscard purchase state is cleared
 
 4. Continuous purchase validation
    - `_validateBonuscardPurchaseForOrder` is called in multiple situations:
@@ -45,6 +46,7 @@ This document explains how the Bonuscard POS integration works in the `bonuscard
    - Calls `bonuscard.api.service.validate_purchase_for_pos`, including any `order.bonuscard_pending_codes`
    - Stores `order.bonuscard_transaction_id`, `order.bonuscard_checkout_items`, and `order.bonuscard_partner_id`
    - Clears `bonuscard_needs_validation` on successful validation
+   - Clears `bonuscard_pending_codes` after a successful Validate that included them, so later cart edits do not resend the same codes
    - If discounts are returned (`totalDiscount > 0`), they are applied automatically to the order via `_applyBonuscardDiscountsToOrder` — as percentage discounts on matched order lines, or as separate discount lines using the POS discount product when partial coverage remains; when no POS discount product is configured, partial coverage is applied as a proportional line discount instead
    - If the POS discount product is not configured, the cashier sees a warning; proportional discounts can still apply to matched lines, but discounts that cannot be matched to a line may not apply
    - The POS generates the `transactionIdentifier` client-side (GUID without dashes) before the first validation, so concurrent validations (e.g. add product, then immediately edit quantity) all send the same identifier — this prevents Bonuscard error 2 (customer locked) caused by a racing request arriving without an identifier
@@ -56,8 +58,8 @@ This document explains how the Bonuscard POS integration works in the `bonuscard
 5. Payment confirmation
    - `PosStore.preSyncAllOrders()` finalizes or cancels the pending Bonuscard transaction **before** the paid order is synced to the backend, so audit fields such as `bonuscard_finalized_at` are included in the first `sync_from_ui` payload
    - When checkout items exist (including zero-discount validations for accumulation programs), it calls `bonuscard.api.service.finalize_purchase_for_pos` to register the purchase with Bonuscard
-   - This sends the stored `transactionIdentifier`, `checkoutItems`, and any `bonuscard_pending_codes` to Bonuscard
-   - Finalization is retried once on failure; on success the POS clears runtime transaction fields (`bonuscard_transaction_id`, `_bonuscardCandidateTxId`, `bonuscard_checkout_items`) via `_clearBonuscardRuntimeTransactionState` and clears `bonuscard_pending_codes`
+   - This sends the stored `transactionIdentifier`, `checkoutItems`, and any remaining `bonuscard_pending_codes` to Bonuscard
+   - Finalization is retried once on failure; on success the POS clears runtime transaction fields (`bonuscard_transaction_id`, `_bonuscardCandidateTxId`, `bonuscard_checkout_items`) via `_clearBonuscardRuntimeTransactionState` and clears any leftover `bonuscard_pending_codes`
    - If there is a pending transaction but no checkout items to finalize (e.g. the cart ended up with no `in_catalog` products), the POS cancels the pending transaction after payment instead of leaving the customer locked; cancel failure is logged and shown as a sticky warning
    - Post-payment cancel paths (skip and finalize-failure fallback) use `preserveOrderLines: true` so already-paid Bonuscard discount lines are not removed before sync; only runtime transaction identifiers are cleared
    - If finalization fails after payment, the POS attempts cancel as a fallback before showing a sticky warning

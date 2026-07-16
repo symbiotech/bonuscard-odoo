@@ -215,6 +215,14 @@ patch(PosStore.prototype, {
         order.bonuscard_pending_codes = [...existing, trimmed];
     },
 
+    _isBonuscardActivateContextCurrent(order, partnerId) {
+        const currentOrder = this.getOrder();
+        if (!currentOrder || currentOrder !== order) {
+            return false;
+        }
+        return currentOrder.getPartner()?.id === partnerId;
+    },
+
     async activateBonuscardDiscountCode(code) {
         const order = this.getOrder();
         if (!order) {
@@ -235,12 +243,28 @@ patch(PosStore.prototype, {
             return false;
         }
 
+        const partnerId = partner.id;
+
         try {
             const result = await this.data.call(
                 "bonuscard.api.service",
                 "activate_discount_code_for_pos",
-                [partner.id, trimmedCode]
+                [partnerId, trimmedCode]
             );
+
+            if (!this._isBonuscardActivateContextCurrent(order, partnerId)) {
+                if (!result?.error) {
+                    this.notification.add(
+                        result.messages?.[0] || _t("Bonuscard discount code activated."),
+                        { type: "success" }
+                    );
+                }
+                this.notification.add(
+                    _t("The order or customer changed; the cart was not updated."),
+                    { type: "warning" }
+                );
+                return !result?.error;
+            }
 
             if (!result?.error) {
                 const message =
@@ -284,7 +308,7 @@ patch(PosStore.prototype, {
                 "activateBonuscardDiscountCode",
                 "Bonuscard discount activation failed.",
                 false,
-                [{ partnerId: partner.id, code: trimmedCode, error }]
+                [{ partnerId, code: trimmedCode, error }]
             );
             return false;
         }
@@ -658,6 +682,11 @@ patch(PosStore.prototype, {
                         : orderLines;
                 order.bonuscard_partner_id = partner.id;
                 order.bonuscard_needs_validation = false;
+                // Codes were applied on this ValidatePurchase transaction; do not
+                // resend them on later cart edits or Finalize.
+                if (pendingCodes?.length) {
+                    order.bonuscard_pending_codes = null;
+                }
                 this._setBonuscardAuditFields(order, {
                     state: "validated",
                     transactionIdentifier: order.bonuscard_transaction_id,

@@ -3069,3 +3069,96 @@ test("ProductInfoPopup hides Bonuscard catalog status for multi-variant products
 
     expect(document.querySelector(".section-bonuscard")).toBe(null);
 });
+
+test("validation clears pending discount codes after a successful Validate that included them", async () => {
+    const store = await setupPosEnv();
+    const product = store.models["product.product"].get(5);
+    markProductBonuscardCatalog(product, "CODE-CLEAR-123");
+
+    const partner = store.models["res.partner"].create({ name: "Bonuscard Customer" });
+    partner.bonuscard_recruitment_code = "ABC123";
+    partner.bonuscard_status = "linked";
+
+    const order = store.addNewOrder();
+    await store.addLineToOrder(
+        {
+            product_id: product,
+            product_tmpl_id: product.product_tmpl_id,
+            qty: 1,
+            price_unit: 10,
+        },
+        order
+    );
+    await store.setPartnerToCurrentOrder(partner);
+    order.bonuscard_pending_codes = ["SOMMAR"];
+
+    let validateArgs = null;
+    const originalCall = store.data.call.bind(store.data);
+    patchWithCleanup(store.data, {
+        call: async function (model, method, args) {
+            if (model === "bonuscard.api.service" && method === "validate_purchase_for_pos") {
+                validateArgs = args;
+                return {
+                    error: false,
+                    transactionIdentifier: "TXN-CODES",
+                    checkoutItems: [
+                        {
+                            identifier: "ITEM1",
+                            ean: product.barcode,
+                            quantity: 1,
+                            pricePerItem: 10,
+                        },
+                    ],
+                    totalDiscount: 0,
+                    resultItems: [],
+                };
+            }
+            return originalCall(...arguments);
+        },
+    });
+
+    const ok = await store._validateBonuscardPurchaseForOrder(order);
+    expect(ok).toBe(true);
+    expect(validateArgs[3]).toEqual(["SOMMAR"]);
+    expect(order.bonuscard_pending_codes).toBe(null);
+
+    validateArgs = null;
+    await store._validateBonuscardPurchaseForOrder(order);
+    expect(validateArgs[3]).toBe(null);
+});
+
+test("activateBonuscardDiscountCode skips stash when order changes during activate RPC", async () => {
+    const store = await setupPosEnv();
+    const partner = store.models["res.partner"].create({ name: "Bonuscard Customer" });
+    partner.bonuscard_recruitment_code = "ABC123";
+    partner.bonuscard_status = "linked";
+
+    const order = store.addNewOrder();
+    await store.setPartnerToCurrentOrder(partner);
+
+    let resolveActivate;
+    const activatePromise = new Promise((resolve) => {
+        resolveActivate = resolve;
+    });
+    const originalCall = store.data.call.bind(store.data);
+    patchWithCleanup(store.data, {
+        call: async function (model, method, args) {
+            if (model === "bonuscard.api.service" && method === "activate_discount_code_for_pos") {
+                return activatePromise;
+            }
+            return originalCall(...arguments);
+        },
+    });
+
+    const activateResultPromise = store.activateBonuscardDiscountCode("SOMMAR");
+    store.addNewOrder();
+    resolveActivate({
+        error: true,
+        errorCode: 5,
+        messages: ["Not for pre-registering."],
+    });
+    const activateResult = await activateResultPromise;
+
+    expect(activateResult).toBe(false);
+    expect(order.bonuscard_pending_codes).toBeFalsy();
+});
