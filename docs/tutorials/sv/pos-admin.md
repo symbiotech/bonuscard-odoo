@@ -104,7 +104,7 @@ rader som går till Bonuscard).
 
 ![Partnerfliken Bonuscard](../images/pos-manager/09-partner-bonuscard-tab.png)
 
-## 6. Kassarabbitprodukt
+## 6. Kassarabattprodukt
 
 I **Kassa → Konfiguration → Inställningar**, ange en **Rabattprodukt**.
 Bonuscard-rabatter som inte kan läggas som radprocent använder den produkten.
