@@ -295,7 +295,7 @@ class TestBonuscardIntegration(TransactionCase):
         Default query is ``0724`` (the POS customer-search scenario under investigation).
         Override with ``BONUSCARD_TEST_POS_SEARCH_QUERY``.
 
-        The test always passes when credentials are valid; inspect the WARNING log lines
+        The test is intended for diagnostics and may fail if the API returns an error payload; inspect the WARNING log lines
         for the raw API payload summary and how Odoo would treat the result.
         """
         query = os.getenv("BONUSCARD_TEST_POS_SEARCH_QUERY", "0724").strip()
