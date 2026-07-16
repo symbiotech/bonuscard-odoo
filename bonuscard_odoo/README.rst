@@ -286,6 +286,14 @@ Run only the manual integration suite with::
 
 Use runtime or local secret configuration. Never commit real credentials.
 
+Documentation
+=============
+
+Step-by-step cashier and manager guides (English and Swedish) live under
+``docs/tutorials/`` in the repository. In Odoo, open
+**Bonuscard > Documentation** to open the same guides on GitHub (new browser
+tab). The Apps module page also links to them.
+
 Bug Tracker
 ===========
 

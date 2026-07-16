@@ -1,8 +1,91 @@
 <?xml version="1.0" encoding="UTF-8" ?>
 <odoo>
 
-    <menuitem id="menu_bonuscard_odoo_root" name="Bonuscard" sequence="40" web_icon="bonuscard_odoo,static/description/icon.png" groups="bonuscard_odoo.bonuscard_odoo_group_user"/>
+    <menuitem
+        id="menu_bonuscard_odoo_root"
+        name="Bonuscard"
+        sequence="40"
+        web_icon="bonuscard_odoo,static/description/icon.png"
+        groups="bonuscard_odoo.bonuscard_odoo_group_user"
+    />
 
-    <menuitem id="menu_bonuscard_odoo_connections" name="Connections" parent="menu_bonuscard_odoo_root" action="action_bonuscard_odoo_instance" sequence="10" groups="bonuscard_odoo.bonuscard_odoo_group_user"/>
+    <menuitem
+        id="menu_bonuscard_odoo_connections"
+        name="Connections"
+        parent="menu_bonuscard_odoo_root"
+        action="action_bonuscard_odoo_instance"
+        sequence="10"
+        groups="bonuscard_odoo.bonuscard_odoo_group_user"
+    />
+
+    <!-- Documentation: opens guides on GitHub (19.0 branch) -->
+    <record id="action_bonuscard_docs_tutorials" model="ir.actions.act_url">
+        <field name="name">Tutorials</field>
+        <field
+            name="url"
+        >https://github.com/symbiotech/bonuscard-odoo/blob/19.0/docs/tutorials/README.md</field>
+        <field name="target">new</field>
+    </record>
+    <record id="action_bonuscard_docs_cashier" model="ir.actions.act_url">
+        <field name="name">Cashier Guide</field>
+        <field
+            name="url"
+        >https://github.com/symbiotech/bonuscard-odoo/blob/19.0/docs/tutorials/en/pos-cashier.md</field>
+        <field name="target">new</field>
+    </record>
+    <record id="action_bonuscard_docs_manager" model="ir.actions.act_url">
+        <field name="name">Manager Guide</field>
+        <field
+            name="url"
+        >https://github.com/symbiotech/bonuscard-odoo/blob/19.0/docs/tutorials/en/pos-manager.md</field>
+        <field name="target">new</field>
+    </record>
+    <record id="action_bonuscard_docs_readme" model="ir.actions.act_url">
+        <field name="name">Module README</field>
+        <field
+            name="url"
+        >https://github.com/symbiotech/bonuscard-odoo/blob/19.0/bonuscard_odoo/README.rst</field>
+        <field name="target">new</field>
+    </record>
+
+    <menuitem
+        id="menu_bonuscard_odoo_documentation"
+        name="Documentation"
+        parent="menu_bonuscard_odoo_root"
+        sequence="90"
+        groups="bonuscard_odoo.bonuscard_odoo_group_user"
+    />
+    <menuitem
+        id="menu_bonuscard_odoo_docs_tutorials"
+        name="Tutorials"
+        parent="menu_bonuscard_odoo_documentation"
+        action="action_bonuscard_docs_tutorials"
+        sequence="10"
+        groups="bonuscard_odoo.bonuscard_odoo_group_user"
+    />
+    <menuitem
+        id="menu_bonuscard_odoo_docs_cashier"
+        name="Cashier Guide"
+        parent="menu_bonuscard_odoo_documentation"
+        action="action_bonuscard_docs_cashier"
+        sequence="20"
+        groups="bonuscard_odoo.bonuscard_odoo_group_user"
+    />
+    <menuitem
+        id="menu_bonuscard_odoo_docs_manager"
+        name="Manager Guide"
+        parent="menu_bonuscard_odoo_documentation"
+        action="action_bonuscard_docs_manager"
+        sequence="30"
+        groups="bonuscard_odoo.bonuscard_odoo_group_user"
+    />
+    <menuitem
+        id="menu_bonuscard_odoo_docs_readme"
+        name="Module README"
+        parent="menu_bonuscard_odoo_documentation"
+        action="action_bonuscard_docs_readme"
+        sequence="40"
+        groups="bonuscard_odoo.bonuscard_odoo_group_user"
+    />
 
 </odoo>
