@@ -607,7 +607,7 @@ msgstr ""
 #: model:ir.actions.act_url,name:bonuscard_odoo.action_bonuscard_docs_cashier
 #: model:ir.ui.menu,name:bonuscard_odoo.menu_bonuscard_odoo_docs_cashier
 msgid "Cashier Guide"
-msgstr "Kassörsguide"
+msgstr "Kassa-guide"
 
 #. module: bonuscard_odoo
 #: model_terms:ir.ui.view,arch_db:bonuscard_odoo.bonuscard_odoo_instance_view_form
