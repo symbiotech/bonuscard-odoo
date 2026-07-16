@@ -356,9 +356,27 @@ class BonuscardApiService(models.AbstractModel):
             }
 
         try:
-            return self._activate_discount_code(
+            result = self._activate_discount_code(
                 instance, customer_identifier, trimmed_code
             )
+            # Normalize for POS notifications (Owl t-out crashes on non-strings).
+            if not isinstance(result, dict):
+                return {
+                    "error": True,
+                    "messages": [self.env._("Bonuscard discount activation failed.")],
+                }
+            messages = result.get("messages")
+            if isinstance(messages, str):
+                messages = [messages]
+            elif not isinstance(messages, list):
+                messages = []
+            payload = {
+                "error": bool(result.get("error")),
+                "messages": [str(message) for message in messages if message],
+            }
+            if result.get("errorCode") is not None:
+                payload["errorCode"] = result.get("errorCode")
+            return payload
         except BonuscardApiError as exc:
             error_code = exc.error_code
             try:
