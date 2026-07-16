@@ -227,13 +227,19 @@ patch(PosStore.prototype, {
 
     /**
      * Notifications render via Owl `t-out`. Plain objects are treated as block
-     * vnodes and crash with `this.child.mount is not a function`.
+     * vnodes and crash with `this.child.mount is not a function`. Structured
+     * Bonuscard message objects are reduced to their human-readable text.
      */
     _bonuscardNotificationText(message, fallback) {
         if (typeof message === "string" || message instanceof String) {
             const text = String(message).trim();
             if (text) {
                 return text;
+            }
+        } else if (message && typeof message === "object") {
+            const nested = message.message ?? message.text;
+            if (typeof nested === "string" && nested.trim()) {
+                return nested.trim();
             }
         }
         return fallback;
@@ -322,12 +328,13 @@ patch(PosStore.prototype, {
 
             this.notification.add(
                 apiMessage || _t("Bonuscard discount activation failed."),
-                { type: "danger" }
+                { type: "danger", sticky: true }
             );
             return false;
         } catch (error) {
             this.notification.add(_t("Bonuscard discount activation failed."), {
                 type: "danger",
+                sticky: true,
             });
             logPosMessage(
                 "Bonuscard",
@@ -537,6 +544,7 @@ patch(PosStore.prototype, {
                     );
                     this.notification.add(result.note || _t("Bonuscard lookup failed."), {
                         type: "danger",
+                        sticky: true,
                     });
                 }
             } catch (error) {
@@ -547,7 +555,10 @@ patch(PosStore.prototype, {
                     false,
                     [{ partnerId: partner?.id, error }]
                 );
-                this.notification.add(_t("Bonuscard lookup failed."), { type: "danger" });
+                this.notification.add(_t("Bonuscard lookup failed."), {
+                    type: "danger",
+                    sticky: true,
+                });
             }
         }
 
@@ -810,7 +821,7 @@ patch(PosStore.prototype, {
                 false,
                 [{ partnerId: partner?.id, message: msg }]
             );
-            this.notification.add(msg, { type: "warning" });
+            this.notification.add(msg, { type: "warning", sticky: true });
         } catch (error) {
             // Keep pending codes on transport/RPC failure so a transient outage
             // does not drop an error-5 purchase-time code before retry/finalize.
@@ -821,7 +832,10 @@ patch(PosStore.prototype, {
                 false,
                 [{ partnerId: partner?.id, transactionId: transactionIdentifier, error }]
             );
-            this.notification.add(_t("Bonuscard validation failed."), { type: "warning" });
+            this.notification.add(_t("Bonuscard validation failed."), {
+                type: "warning",
+                sticky: true,
+            });
             this._setBonuscardAuditFields(order, {
                 state: "failed",
                 transactionIdentifier:

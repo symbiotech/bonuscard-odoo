@@ -71,6 +71,27 @@ class BonuscardApiService(models.AbstractModel):
         except json.JSONDecodeError:
             return {"raw": raw_data}
 
+    def _format_api_message(self, message):
+        """Normalize one Bonuscard ``messages`` entry to a plain string.
+
+        The API usually returns strings, but some endpoints send UI-oriented
+        objects (``message`` / ``kind`` / ``typeClass`` / ``fadeOut``). Never
+        stringify those objects wholesale — cashiers would see internal attrs.
+        """
+        if message is None or message is False:
+            return None
+        if isinstance(message, str):
+            text = message.strip()
+            return text or None
+        if isinstance(message, dict):
+            for key in ("message", "text", "Message", "Text", "description"):
+                value = message.get(key)
+                if isinstance(value, str) and value.strip():
+                    return value.strip()
+            return None
+        text = str(message).strip()
+        return text or None
+
     def _extract_error_messages(self, payload):
         messages = (
             payload.get("messages")
@@ -78,9 +99,18 @@ class BonuscardApiService(models.AbstractModel):
             or payload.get("errors")
         )
         if isinstance(messages, str):
-            return [messages]
+            formatted = self._format_api_message(messages)
+            return [formatted] if formatted else []
+        if isinstance(messages, dict):
+            formatted = self._format_api_message(messages)
+            return [formatted] if formatted else []
         if isinstance(messages, list):
-            return [str(message) for message in messages if message]
+            result = []
+            for message in messages:
+                formatted = self._format_api_message(message)
+                if formatted:
+                    result.append(formatted)
+            return result
         return []
 
     def _raise_on_api_error(self, instance, payload):
@@ -365,14 +395,10 @@ class BonuscardApiService(models.AbstractModel):
                     "error": True,
                     "messages": [self.env._("Bonuscard discount activation failed.")],
                 }
-            messages = result.get("messages")
-            if isinstance(messages, str):
-                messages = [messages]
-            elif not isinstance(messages, list):
-                messages = []
+            messages = self._extract_error_messages(result)
             payload = {
                 "error": bool(result.get("error")),
-                "messages": [str(message) for message in messages if message],
+                "messages": messages,
             }
             if result.get("errorCode") is not None:
                 payload["errorCode"] = result.get("errorCode")

@@ -46,7 +46,7 @@ export class BonuscardRegistrationService {
             partner.bonuscard_last_lookup_note = statusResult.note;
         } catch (error) {
             const errorMessage = this._extractErrorMessage(error);
-            this.notification.add(errorMessage, { type: "danger", sticky: false });
+            this.notification.add(errorMessage, { type: "danger", sticky: true });
             logPosMessage(
                 "Bonuscard",
                 "registerPartnerToBonuscard",
