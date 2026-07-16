@@ -645,11 +645,6 @@ class BonuscardApiService(models.AbstractModel):
             return self.env._(
                 "Customer needs to verify their Bonuscard account before purchasing."
             )
-        if error_code == 5:
-            return self.env._(
-                "This discount code cannot be pre-registered. "
-                "It will be applied on the next purchase validation."
-            )
         return getattr(exc, "name", None) or str(exc) or default_message
 
     def _finalize_purchase(
