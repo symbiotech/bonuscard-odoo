@@ -361,7 +361,10 @@ class BonuscardApiService(models.AbstractModel):
             )
             # Normalize for POS notifications (Owl t-out crashes on non-strings).
             if not isinstance(result, dict):
-                return {"error": False, "messages": []}
+                return {
+                    "error": True,
+                    "messages": [self.env._("Unexpected Bonuscard response format.")],
+                }
             messages = result.get("messages")
             if isinstance(messages, str):
                 messages = [messages]

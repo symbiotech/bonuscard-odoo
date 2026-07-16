@@ -908,6 +908,21 @@ class TestBonuscardValidatePurchase(TransactionCase):
         self.assertTrue(result.get("error"))
         self.assertIn("temporarily unavailable", result.get("messages")[0].lower())
 
+    def test_activate_discount_code_for_pos_non_dict_response(self):
+        partner = self._make_partner_with_code()
+
+        with patch(
+            "odoo.addons.bonuscard_odoo.models.bonuscard_api_service.BonuscardApiService._activate_discount_code",
+            return_value="unexpected payload",
+        ):
+            result = self.service.activate_discount_code_for_pos(partner.id, "SOMMAR")
+
+        self.assertTrue(result.get("error"))
+        self.assertIn(
+            "Unexpected Bonuscard response format",
+            result.get("messages")[0],
+        )
+
     def test_validate_purchase_for_pos_forwards_codes(self):
         partner = self._make_partner_with_code()
         product = self._make_product_with_barcode()
