@@ -1,7 +1,7 @@
 # Bonuscard tutorials
 
 Step-by-step guides with screenshots for people who use Bonuscard Connector
-day to day.
+day-to-day.
 
 | Audience | English | Svenska |
 |----------|---------|---------|
