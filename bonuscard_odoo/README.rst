@@ -120,10 +120,10 @@ Configuration
 Usage
 =====
 
-Step-by-step cashier tutorials with screenshots (English and Swedish):
+Step-by-step tutorials with screenshots (English and Swedish):
 
-* ``docs/tutorials/en/pos-cashier.md``
-* ``docs/tutorials/sv/pos-kassor.md``
+* Cashiers: ``docs/tutorials/en/pos-cashier.md``, ``docs/tutorials/sv/pos-kassor.md``
+* Managers: ``docs/tutorials/en/pos-manager.md``, ``docs/tutorials/sv/pos-admin.md``
 
 See ``docs/tutorials/README.md`` for the full tutorial index.
 
