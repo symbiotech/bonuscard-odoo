@@ -26,14 +26,23 @@ This document explains how the Bonuscard POS integration works in the `bonuscard
    - After POS registration, `BonuscardRegistrationService` refreshes partner status in the POS session
    - Error handling: `BonuscardRegistrationService._extractErrorMessage` extracts detailed error messages from backend exceptions to show meaningful notifications to the cashier (e.g., "Partner must have a phone number to register with Bonuscard." instead of a generic "Odoo Server Error")
 
-3. Continuous purchase validation
+3. Activate discount code (POS Actions)
+   - The POS **Actions** modal includes a **Bonuscard** button (same control-buttons grid as loyalty’s Enter Code; no `pos_loyalty` dependency)
+   - Cashier enters a code via `TextInputPopup`; `PosStore.activateBonuscardDiscountCode` requires a linked partner with `bonuscard_recruitment_code`
+   - Calls `bonuscard.api.service.activate_discount_code_for_pos` → Bonuscard `ActivateDiscountCode`
+   - On success: show API message and re-run `_validateBonuscardPurchaseForOrder`
+   - On Bonuscard error code 5 (not eligible for pre-registration): append the code to `order.bonuscard_pending_codes` (deduped), warn the cashier, and re-validate so the code is sent in the `codes` array on `ValidatePurchase`
+   - Other activate errors are shown as danger notifications without stashing the code
+   - Pending codes are also passed to `finalize_purchase_for_pos` and cleared on successful finalize or when Bonuscard purchase state is cleared
+
+4. Continuous purchase validation
    - `_validateBonuscardPurchaseForOrder` is called in multiple situations:
      - Immediately after partner selection, if `bonuscard_status` resolves to `linked`
      - When a product line is added via `addLineToOrder` and the partner has a `bonuscard_recruitment_code`
      - When a line quantity or price is edited via `OrderSummary._setValue` / `updateQuantityNumber`
      - As a final guard in `PosStore.pay()` whenever the partner has a `bonuscard_recruitment_code`
    - Each call builds `orderLines` from products marked `in_catalog` on `product.product`, with `qty > 0`, `price_unit > 0`, and a barcode or article number
-   - Calls `bonuscard.api.service.validate_purchase_for_pos`
+   - Calls `bonuscard.api.service.validate_purchase_for_pos`, including any `order.bonuscard_pending_codes`
    - Stores `order.bonuscard_transaction_id`, `order.bonuscard_checkout_items`, and `order.bonuscard_partner_id`
    - Clears `bonuscard_needs_validation` on successful validation
    - If discounts are returned (`totalDiscount > 0`), they are applied automatically to the order via `_applyBonuscardDiscountsToOrder` — as percentage discounts on matched order lines, or as separate discount lines using the POS discount product when partial coverage remains; when no POS discount product is configured, partial coverage is applied as a proportional line discount instead
@@ -44,18 +53,18 @@ This document explains how the Bonuscard POS integration works in the `bonuscard
    - On Bonuscard error code 2 (customer locked), the POS cancels the current or any other order's pending transaction for the same partner (including already paid orders) and retries validation once
    - When the cart has no Bonuscard catalog lines, no `ValidatePurchase` call is made; if a pending transaction already exists from earlier catalog lines, it is cancelled
 
-4. Payment confirmation
+5. Payment confirmation
    - `PosStore.preSyncAllOrders()` finalizes or cancels the pending Bonuscard transaction **before** the paid order is synced to the backend, so audit fields such as `bonuscard_finalized_at` are included in the first `sync_from_ui` payload
    - When checkout items exist (including zero-discount validations for accumulation programs), it calls `bonuscard.api.service.finalize_purchase_for_pos` to register the purchase with Bonuscard
-   - This sends the stored `transactionIdentifier` and `checkoutItems` to Bonuscard
-   - Finalization is retried once on failure; on success the POS clears runtime transaction fields (`bonuscard_transaction_id`, `_bonuscardCandidateTxId`, `bonuscard_checkout_items`) via `_clearBonuscardRuntimeTransactionState`
+   - This sends the stored `transactionIdentifier`, `checkoutItems`, and any `bonuscard_pending_codes` to Bonuscard
+   - Finalization is retried once on failure; on success the POS clears runtime transaction fields (`bonuscard_transaction_id`, `_bonuscardCandidateTxId`, `bonuscard_checkout_items`) via `_clearBonuscardRuntimeTransactionState` and clears `bonuscard_pending_codes`
    - If there is a pending transaction but no checkout items to finalize (e.g. the cart ended up with no `in_catalog` products), the POS cancels the pending transaction after payment instead of leaving the customer locked; cancel failure is logged and shown as a sticky warning
    - Post-payment cancel paths (skip and finalize-failure fallback) use `preserveOrderLines: true` so already-paid Bonuscard discount lines are not removed before sync; only runtime transaction identifiers are cleared
    - If finalization fails after payment, the POS attempts cancel as a fallback before showing a sticky warning
    - If the cancel fallback succeeds, the transaction fields are cleared and the backend audit state is stored as `failed`
    - If finalization and the cancel fallback both fail, the transaction fields are kept and a sticky warning is shown so the loyalty lock can be recovered manually
 
-5. Cancel or rollback flows
+6. Cancel or rollback flows
    - `PosStore.onClickBackButton()` (only when on the Payment Screen), `onDeleteOrder()`, `closePos()`, `addNewOrder()`, and `setOrder()` cancel pending Bonuscard transactions on the order being left behind
    - `setPartnerToCurrentOrder` cancels an open transaction **before** changing the partner; if cancel fails, the partner change is blocked to avoid orphaning the Bonuscard lock
    - All cancel paths call `bonuscard.api.service.cancel_purchase_for_pos`
@@ -78,7 +87,8 @@ This document explains how the Bonuscard POS integration works in the `bonuscard
 
 - `bonuscard.api.service`
   - Abstract model that performs HTTP calls to Bonuscard
-  - Implements `validate_purchase_for_pos`, `finalize_purchase_for_pos`, and `cancel_purchase_for_pos`
+  - Implements `activate_discount_code_for_pos`, `validate_purchase_for_pos`, `finalize_purchase_for_pos`, and `cancel_purchase_for_pos`
+  - `validate_purchase_for_pos` / `finalize_purchase_for_pos` accept optional purchase-time `codes`
   - Handles error mapping and non-blocking POS responses
 
 - `res.partner` extension

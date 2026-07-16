@@ -244,6 +244,7 @@ class TestBonuscardValidatePurchase(TransactionCase):
             "WLKT6",
             [{"ean": "8710255122465", "quantity": 2.0, "pricePerItem": 299.0}],
             transaction_identifier=None,
+            codes=None,
         )
 
     def test_bonuscard_api_service_allows_read_access_for_rpc(self):
@@ -497,6 +498,7 @@ class TestBonuscardValidatePurchase(TransactionCase):
             "WLKT6",
             [{"ean": "EAN-SAFE", "quantity": 1.0, "pricePerItem": 10.0}],
             transaction_identifier=None,
+            codes=None,
         )
 
     def test_finalize_purchase_sends_correct_payload(self):
@@ -571,6 +573,7 @@ class TestBonuscardValidatePurchase(TransactionCase):
             "WLKT6",
             "TX001",
             [{"ean": "8710255122465", "quantity": 1.0, "pricePerItem": 100.0}],
+            codes=None,
         )
 
     def test_finalize_purchase_for_pos_no_partner(self):
@@ -762,6 +765,7 @@ class TestBonuscardValidatePurchase(TransactionCase):
             "WLKT6",
             "TX001",
             [{"ean": "8710255122465", "quantity": 1.0, "pricePerItem": 10.0}],
+            codes=None,
         )
 
     def test_finalize_purchase_for_pos_handles_api_error_code_2(self):
@@ -809,4 +813,144 @@ class TestBonuscardValidatePurchase(TransactionCase):
         self.assertEqual(
             result.get("messages"),
             ["Customer needs to verify their Bonuscard account before purchasing."],
+        )
+
+    # ------------------------------------------------------------------
+    # ActivateDiscountCode
+    # ------------------------------------------------------------------
+
+    def test_activate_discount_code_sends_correct_payload(self):
+        with patch(
+            "odoo.addons.bonuscard_odoo.models.bonuscard_api_service.BonuscardApiService._request",
+            return_value={"error": False, "messages": ["Rabattkod aktiverad!"]},
+        ) as mock_request:
+            result = self.service._activate_discount_code(
+                self.instance, "WLKT6", "SOMMAR"
+            )
+
+        self.assertFalse(result.get("error"))
+        mock_request.assert_called_once_with(
+            self.instance,
+            endpoint="ActivateDiscountCode",
+            method="POST",
+            payload={
+                "customerIdentifier": "WLKT6",
+                "code": "SOMMAR",
+            },
+        )
+
+    def test_activate_discount_code_for_pos_success(self):
+        partner = self._make_partner_with_code()
+
+        with patch(
+            "odoo.addons.bonuscard_odoo.models.bonuscard_api_service.BonuscardApiService._activate_discount_code",
+            return_value={"error": False, "messages": ["Rabattkod aktiverad!"]},
+        ) as mock_activate:
+            result = self.service.activate_discount_code_for_pos(partner.id, "SOMMAR")
+
+        self.assertFalse(result.get("error"))
+        self.assertEqual(result.get("messages"), ["Rabattkod aktiverad!"])
+        mock_activate.assert_called_once_with(self.instance, "WLKT6", "SOMMAR")
+
+    def test_activate_discount_code_for_pos_trims_code(self):
+        partner = self._make_partner_with_code()
+
+        with patch(
+            "odoo.addons.bonuscard_odoo.models.bonuscard_api_service.BonuscardApiService._activate_discount_code",
+            return_value={"error": False, "messages": ["ok"]},
+        ) as mock_activate:
+            self.service.activate_discount_code_for_pos(partner.id, "  SOMMAR  ")
+
+        mock_activate.assert_called_once_with(self.instance, "WLKT6", "SOMMAR")
+
+    def test_activate_discount_code_for_pos_missing_partner(self):
+        result = self.service.activate_discount_code_for_pos(0, "SOMMAR")
+        self.assertTrue(result.get("error"))
+        self.assertIn("Partner not found", result.get("messages")[0])
+
+    def test_activate_discount_code_for_pos_missing_code(self):
+        partner = self._make_partner_with_code()
+        result = self.service.activate_discount_code_for_pos(partner.id, "   ")
+        self.assertTrue(result.get("error"))
+        self.assertIn("discount code is required", result.get("messages")[0].lower())
+
+    def test_activate_discount_code_for_pos_missing_recruitment_code(self):
+        partner = self.env["res.partner"].create({"name": "No Code"})
+        result = self.service.activate_discount_code_for_pos(partner.id, "SOMMAR")
+        self.assertTrue(result.get("error"))
+        self.assertIn("recruitment code", result.get("messages")[0].lower())
+
+    def test_activate_discount_code_for_pos_handles_error_code_5(self):
+        partner = self._make_partner_with_code()
+
+        with patch(
+            "odoo.addons.bonuscard_odoo.models.bonuscard_api_service.BonuscardApiService._activate_discount_code",
+            side_effect=BonuscardApiError(
+                "Bonuscard API error (5): Not for pre-registering.",
+                error_code=5,
+            ),
+        ):
+            result = self.service.activate_discount_code_for_pos(partner.id, "SOMMAR")
+
+        self.assertTrue(result.get("error"))
+        self.assertEqual(result.get("errorCode"), 5)
+        self.assertIn("cannot be pre-registered", result.get("messages")[0])
+
+    def test_activate_discount_code_for_pos_http_error_non_blocking(self):
+        partner = self._make_partner_with_code()
+
+        with patch(
+            "odoo.addons.bonuscard_odoo.models.bonuscard_api_service.BonuscardApiService._activate_discount_code",
+            side_effect=BonuscardHttpError("Service down", status_code=503),
+        ):
+            result = self.service.activate_discount_code_for_pos(partner.id, "SOMMAR")
+
+        self.assertTrue(result.get("error"))
+        self.assertIn("temporarily unavailable", result.get("messages")[0].lower())
+
+    def test_validate_purchase_for_pos_forwards_codes(self):
+        partner = self._make_partner_with_code()
+        product = self._make_product_with_barcode()
+        order_lines = [{"product_id": product.id, "qty": 1, "price_unit": 100.0}]
+
+        with patch(
+            "odoo.addons.bonuscard_odoo.models.bonuscard_api_service.BonuscardApiService._validate_purchase",
+            return_value={
+                "error": False,
+                "transactionIdentifier": "TX001",
+                "totalDiscount": 0,
+            },
+        ) as mock_validate:
+            result = self.service.validate_purchase_for_pos(
+                partner.id, order_lines, codes=["SOMMAR", " SOMMAR ", ""]
+            )
+
+        self.assertFalse(result.get("error"))
+        mock_validate.assert_called_once_with(
+            self.instance,
+            "WLKT6",
+            [{"ean": "8710255122465", "quantity": 1.0, "pricePerItem": 100.0}],
+            transaction_identifier=None,
+            codes=["SOMMAR"],
+        )
+
+    def test_finalize_purchase_for_pos_forwards_codes(self):
+        partner = self._make_partner_with_code()
+        checkout_items = [{"ean": "8710255122465", "quantity": 1, "pricePerItem": 10.0}]
+
+        with patch(
+            "odoo.addons.bonuscard_odoo.models.bonuscard_api_service.BonuscardApiService._finalize_purchase",
+            return_value={"error": False},
+        ) as mock_finalize:
+            result = self.service.finalize_purchase_for_pos(
+                partner.id, "TX001", checkout_items, codes=["SOMMAR"]
+            )
+
+        self.assertFalse(result.get("error"))
+        mock_finalize.assert_called_once_with(
+            self.instance,
+            "WLKT6",
+            "TX001",
+            [{"ean": "8710255122465", "quantity": 1.0, "pricePerItem": 10.0}],
+            codes=["SOMMAR"],
         )

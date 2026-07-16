@@ -16,6 +16,7 @@ import { BonuscardRegistrationService } from "./bonuscard_registration_service";
 import "./bonuscard_partner_line_patch";
 import "./bonuscard_partner_import_patch";
 import "./bonuscard_partner_search_patch";
+import "./bonuscard_control_buttons";
 
 // Register the Bonuscard Registration Service
 registry.category("services").add("bonuscard_registration", {
@@ -174,6 +175,7 @@ patch(PosStore.prototype, {
         this._clearBonuscardRuntimeTransactionState(order);
         order.bonuscard_partner_id = false;
         order.bonuscard_needs_validation = true;
+        order.bonuscard_pending_codes = null;
         order.clearBonuscardDiscounts?.();
 
         this._clearBonuscardAuditFields(order);
@@ -186,6 +188,104 @@ patch(PosStore.prototype, {
         order.bonuscard_transaction_id = null;
         order._bonuscardCandidateTxId = null;
         order.bonuscard_checkout_items = null;
+    },
+
+    _getBonuscardPendingCodes(order) {
+        const codes = order?.bonuscard_pending_codes;
+        if (!Array.isArray(codes) || !codes.length) {
+            return null;
+        }
+        return codes;
+    },
+
+    _addBonuscardPendingCode(order, code) {
+        if (!order || !code) {
+            return;
+        }
+        const trimmed = String(code).trim();
+        if (!trimmed) {
+            return;
+        }
+        const existing = Array.isArray(order.bonuscard_pending_codes)
+            ? order.bonuscard_pending_codes
+            : [];
+        if (existing.includes(trimmed)) {
+            return;
+        }
+        order.bonuscard_pending_codes = [...existing, trimmed];
+    },
+
+    async activateBonuscardDiscountCode(code) {
+        const order = this.getOrder();
+        if (!order) {
+            return false;
+        }
+        const partner = order.getPartner();
+        if (!partner?.id || !partner.bonuscard_recruitment_code) {
+            this.notification.add(
+                _t("Select a Bonuscard-linked customer before activating a discount code."),
+                { type: "warning" }
+            );
+            return false;
+        }
+
+        const trimmedCode = String(code || "").trim();
+        if (!trimmedCode) {
+            this.notification.add(_t("A discount code is required."), { type: "warning" });
+            return false;
+        }
+
+        try {
+            const result = await this.data.call(
+                "bonuscard.api.service",
+                "activate_discount_code_for_pos",
+                [partner.id, trimmedCode]
+            );
+
+            if (!result?.error) {
+                const message =
+                    result.messages?.[0] || _t("Bonuscard discount code activated.");
+                this.notification.add(message, { type: "success" });
+                await this._validateBonuscardPurchaseForOrder(order, {
+                    notifyOnDiscount: true,
+                });
+                return true;
+            }
+
+            const errorCode = Number(result.errorCode);
+            const apiMessage =
+                result.messages?.[0] || _t("Bonuscard discount activation failed.");
+
+            if (errorCode === 5) {
+                this._addBonuscardPendingCode(order, trimmedCode);
+                this.notification.add(
+                    apiMessage ||
+                        _t(
+                            "This discount code cannot be pre-registered. It will be applied on the next purchase validation."
+                        ),
+                    { type: "warning" }
+                );
+                await this._validateBonuscardPurchaseForOrder(order, {
+                    notifyOnDiscount: true,
+                });
+                return true;
+            }
+
+            this.notification.add(apiMessage, { type: "danger" });
+            return false;
+        } catch (error) {
+            this.notification.add(_t("Bonuscard discount activation failed."), {
+                type: "danger",
+            });
+            logPosMessage(
+                "Bonuscard",
+                "activateBonuscardDiscountCode",
+                "Bonuscard discount activation failed.",
+                false,
+                [{ partnerId: partner.id, code: trimmedCode, error }]
+            );
+            return false;
+        }
     },
 
     _isBonuscardCustomerLockError(result) {
@@ -527,10 +627,11 @@ patch(PosStore.prototype, {
             order.bonuscard_transaction_id || order._bonuscardCandidateTxId;
 
         try {
+            const pendingCodes = this._getBonuscardPendingCodes(order);
             const result = await this.data.call(
                 "bonuscard.api.service",
                 "validate_purchase_for_pos",
-                [partner.id, orderLines, transactionIdentifier]
+                [partner.id, orderLines, transactionIdentifier, pendingCodes]
             );
 
             // A newer validation was triggered while we were waiting; discard this result
@@ -954,9 +1055,11 @@ patch(PosStore.prototype, {
                         order.bonuscard_partner_id,
                         order.bonuscard_transaction_id,
                         order.bonuscard_checkout_items,
+                        this._getBonuscardPendingCodes(order),
                     ]
                 );
                 if (!result?.error) {
+                    order.bonuscard_pending_codes = null;
                     return { success: true };
                 }
                 lastMessage = result.messages?.[0] || null;

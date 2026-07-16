@@ -3,6 +3,7 @@ flowchart LR
         PL[Customer list search\nrecruitment code + Enter fallback]
         A[Select Customer in POS]
         R[Register with Bonuscard\npartner list menu]
+        AD[Actions Bonuscard button\nactivate discount code]
         B[Start Payment]
         C[Payment Validation]
         D[Payment Success]
@@ -16,6 +17,7 @@ flowchart LR
         Q[res.partner.action_bulk_prefetch_bonuscard_status]
         S[ir.cron / manual bulk prefetch]
         O[res.partner.action_register_to_bonuscard]
+        ACT[bonuscard.api.service.activate_discount_code_for_pos]
         G[bonuscard.api.service.validate_purchase_for_pos]
         H[bonuscard.api.service.finalize_purchase_for_pos]
         I[bonuscard.api.service.cancel_purchase_for_pos]
@@ -27,6 +29,7 @@ flowchart LR
     subgraph Bonuscard API
         K[SearchCustomers]
         P[RegisterCustomer]
+        ADC[ActivateDiscountCode]
         L[ValidatePurchase]
         M[FinalizePurchase]
         N[CancelPurchase]
@@ -60,14 +63,20 @@ flowchart LR
     P -->|recruitmentCode| O
     O -->|refresh partner status| A
 
+    AD -->|linked partner + code| ACT
+    ACT -->|customerIdentifier + code| ADC
+    ADC -->|success or errorCode 5| ACT
+    ACT -->|success re-validate| G
+    ACT -->|errorCode 5 stash pending codes then re-validate| G
+
     B -->|final guard before payment| G
-    G -->|checkoutItems + customerIdentifier| L
+    G -->|checkoutItems + customerIdentifier + pending codes| L
     L -->|transactionIdentifier + discounts| G
     G -->|no catalog lines cancel pending transaction| I
     G -->|transactionIdentifier + discounts POS applies discounts| B
 
     C -->|preSyncAllOrders before sync| H
-    H -->|transactionIdentifier + checkoutItems| M
+    H -->|transactionIdentifier + checkoutItems + pending codes| M
     M -->|commit purchase| H
     H -->|finalize success persist audit on pos.order| C
     H -->|finalize failed cancel fallback preserves paid lines| I
@@ -85,6 +94,7 @@ flowchart LR
     J -->|used by POS customer import| IMP
     J -->|used by bulk prefetch| Q
     J -->|used by register| O
+    J -->|used by activate discount| ACT
     J -->|used by validate/finalize/cancel| G
     J -->|used by validate/finalize/cancel| H
     J -->|used by validate/finalize/cancel| I
