@@ -15,6 +15,7 @@ When code changes affect observable behavior, update docs in the **same change**
 | `bonuscard_odoo/static/description/index.html` | User-visible features change |
 | `docs/bonuscard_pos_integration_explanation.md` | POS patch added/renamed/removed; API service or partner method changes |
 | `docs/bonuscard_pos_integration_diagram.mmd` | Trigger points or data-flow between POS and backend change |
+| `bonuscard_odoo/i18n/sv_SE.po` | Translatable strings added/changed/removed (`self.env._`, `_t`, XML labels) |
 
 Checks before finishing:
 
@@ -23,6 +24,9 @@ Checks before finishing:
 3. New cancel path → add to step 5 in explanation.md.
 4. Roadmap item done → mark Done in README.md.
 5. Never describe implemented flows as "(Foundation)" or "Ready for".
+6. New/changed user-facing strings → sync `bonuscard_odoo/i18n/` in the same change
+   (export/merge pot into `sv_SE.po` per copilot Translation Maintenance Rule; do not
+   defer translations unless explicitly asked). README/markdown are not via `.po`.
 
 When updating AI agent guidance, edit `.github/copilot-instructions.md` first, then
 sync `AGENTS.md` and `.cursor/rules/` if the condensed rules need the same change.

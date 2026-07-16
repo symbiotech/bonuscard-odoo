@@ -91,6 +91,7 @@ The following rules apply when writing or modifying Python code:
 - **Translations**: Use `self.env._("text")` instead of `_("text")` for all user-facing
 	strings in model methods (Odoo 18+ practice). Use the lazy form
 	`self.env._("text %s", value)` instead of `_("text %s") % value`.
+	JavaScript uses `_t(...)`. XML visible labels are extracted by Odoo.
 - **Pylint**: All code must pass `.pylintrc-mandatory` without warnings. The `.pylintrc`
 	file (loaded by IDEs) also includes optional checks that are non-blocking.
 - **OCA hooks**: XML files are validated by `oca-checks-odoo-module`. Avoid deprecated
@@ -196,6 +197,33 @@ Concrete checks before finishing a code change:
 4. If a Roadmap item in README.md is implemented, mark it Done in the same PR.
 5. If a new end-to-end feature is added, add a bullet to the **Features** section of `bonuscard_odoo/README.rst` and update `static/description/index.html`.
 6. Never describe a flow as "(Foundation)" or "Ready for" once it is fully implemented.
+
+## Translation Maintenance Rule
+
+When adding, changing, or removing translatable user-facing strings, update
+`bonuscard_odoo/i18n/` in the **same change**. Do not leave new English-only
+strings for a later pass unless explicitly asked.
+
+Covers:
+
+- Python: `self.env._("...")`
+- JavaScript: `_t("...")`
+- XML: visible labels and QWeb text (e.g. button text `Bonuscard`)
+
+Does **not** cover: README / markdown docs (not shipped via `.po`).
+
+Workflow (match existing repo practice):
+
+1. Prefer Odoo export via `LOCAL_SETUP.md` paths: update the module (`-u bonuscard_odoo`),
+   then `python -m odoo --addons-path=... i18n export bonuscard_odoo -c odoo.conf -d <db> -l pot`
+   (writes `bonuscard_odoo/i18n/bonuscard_odoo.pot`). This repo normally commits
+   `sv_SE.po` only — use the pot as a merge source, then remove it unless asked to keep it.
+2. Merge the exported template into `bonuscard_odoo/i18n/sv_SE.po`, preserving existing
+   `msgstr` values. Keep `#: code:bonuscard_odoo/...` references (not `code:addons/bonuscard_odoo/...`).
+3. Add Swedish `msgstr` for every new/changed msgid. Brand-only strings like `Bonuscard`
+   may stay empty (English fallback) when that is already the convention.
+4. For a small feature delta, manually inserting the new entries into `sv_SE.po` (same
+   reference format) is acceptable when a full export/merge is impractical.
 
 ## When Generating Code
 

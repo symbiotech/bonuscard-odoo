@@ -11,7 +11,7 @@ Follow conventions in `.github/copilot-instructions.md` and existing repo code.
 ## Style & Linting
 
 - **Ruff**: formatting + linting, line length 88, sorted imports (stdlib → third-party → Odoo → relative).
-- **Translations**: `self.env._("text")` in model methods (not bare `_()`). Lazy form: `self.env._("text %s", value)`.
+- **Translations**: `self.env._("text")` in model methods (not bare `_()`). Lazy form: `self.env._("text %s", value)`. When adding/changing/removing these strings, update `bonuscard_odoo/i18n/sv_SE.po` in the same change (see Translation Maintenance Rule in `.github/copilot-instructions.md`).
 - **Pylint**: must pass `.pylintrc-mandatory`. Avoid `# noqa` / pylint disables unless justified.
 - **XML** (in Python-adjacent changes): all `<record>` tags need `id`; pass `oca-checks-odoo-module`.
 
