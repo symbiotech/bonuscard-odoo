@@ -778,9 +778,8 @@ patch(PosStore.prototype, {
             );
             this.notification.add(msg, { type: "warning" });
         } catch (error) {
-            if (pendingCodes?.length) {
-                order.bonuscard_pending_codes = null;
-            }
+            // Keep pending codes on transport/RPC failure so a transient outage
+            // does not drop an error-5 purchase-time code before retry/finalize.
             logPosMessage(
                 "Bonuscard",
                 "_validateBonuscardPurchaseForOrder",
