@@ -72,7 +72,7 @@ flowchart LR
     B -->|final guard before payment| G
     G -->|checkoutItems + customerIdentifier + pending codes| L
     L -->|transactionIdentifier + discounts| G
-    G -->|success clears pending codes| G
+    G -->|success keeps pending codes for pay/Finalize| G
     G -->|no catalog lines cancel pending transaction| I
     G -->|transactionIdentifier + discounts POS applies discounts| B
 

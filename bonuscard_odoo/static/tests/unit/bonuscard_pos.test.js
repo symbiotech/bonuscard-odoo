@@ -2552,8 +2552,8 @@ test("lock recovery preserves pending discount codes for the retry Validate", as
     expect(ok).toBe(true);
     expect(validateCallCount).toBe(2);
     expect(retryCodes).toEqual(["SOMMAR"]);
-    // Successful Validate that included codes clears the stash.
-    expect(order.bonuscard_pending_codes).toBe(null);
+    // Codes stay until Finalize so pay() re-validate / Finalize match.
+    expect(order.bonuscard_pending_codes).toEqual(["SOMMAR"]);
 });
 
 test("validation releases pending transaction when cart has no Bonuscard-eligible lines", async () => {
@@ -3141,10 +3141,10 @@ test("ProductInfoPopup hides Bonuscard catalog status for multi-variant products
     expect(document.querySelector(".section-bonuscard")).toBe(null);
 });
 
-test("validation clears pending discount codes after a successful Validate that included them", async () => {
+test("validation keeps pending discount codes after success so later Validate matches Finalize", async () => {
     const store = await setupPosEnv();
     const product = store.models["product.product"].get(5);
-    markProductBonuscardCatalog(product, "CODE-CLEAR-123");
+    markProductBonuscardCatalog(product, "CODE-KEEP-123");
 
     const partner = store.models["res.partner"].create({ name: "Bonuscard Customer" });
     partner.bonuscard_recruitment_code = "ABC123";
@@ -3191,11 +3191,42 @@ test("validation clears pending discount codes after a successful Validate that 
     const ok = await store._validateBonuscardPurchaseForOrder(order);
     expect(ok).toBe(true);
     expect(validateArgs[3]).toEqual(["SOMMAR"]);
-    expect(order.bonuscard_pending_codes).toBe(null);
+    expect(order.bonuscard_pending_codes).toEqual(["SOMMAR"]);
 
     validateArgs = null;
     await store._validateBonuscardPurchaseForOrder(order);
-    expect(validateArgs[3]).toBe(null);
+    expect(validateArgs[3]).toEqual(["SOMMAR"]);
+});
+
+test("finalize sends pending discount codes and clears them on success", async () => {
+    const store = await setupPosEnv();
+    const order = store.addNewOrder();
+    order.bonuscard_partner_id = 42;
+    order.bonuscard_transaction_id = "TXN-CODES-FINALIZE";
+    order.bonuscard_checkout_items = [{ ean: "TEST-123", quantity: 1, pricePerItem: 10 }];
+    order.bonuscard_pending_codes = ["SOMMAR"];
+
+    let finalizedArgs = null;
+    const originalCall = store.data.call.bind(store.data);
+    patchWithCleanup(store.data, {
+        call: async function (model, method, args) {
+            if (model === "bonuscard.api.service" && method === "finalize_purchase_for_pos") {
+                finalizedArgs = args;
+                return { error: false, messages: [] };
+            }
+            return originalCall(...arguments);
+        },
+    });
+
+    await applyBonuscardAuditAfterPayment(store, order);
+
+    expect(finalizedArgs).toEqual([
+        42,
+        "TXN-CODES-FINALIZE",
+        [{ ean: "TEST-123", quantity: 1, pricePerItem: 10 }],
+        ["SOMMAR"],
+    ]);
+    expect(order.bonuscard_pending_codes).toBe(null);
 });
 
 test("validation clears pending discount codes after a Bonuscard business error", async () => {

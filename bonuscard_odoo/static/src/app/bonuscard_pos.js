@@ -687,11 +687,9 @@ patch(PosStore.prototype, {
                         : orderLines;
                 order.bonuscard_partner_id = partner.id;
                 order.bonuscard_needs_validation = false;
-                // Codes were applied on this ValidatePurchase transaction; do not
-                // resend them on later cart edits or Finalize.
-                if (pendingCodes?.length) {
-                    order.bonuscard_pending_codes = null;
-                }
+                // Keep purchase-time codes until Finalize (or cancel / business
+                // error). pay() re-validates, and Finalize must match the last
+                // Validate body — including the same codes.
                 this._setBonuscardAuditFields(order, {
                     state: "validated",
                     transactionIdentifier: order.bonuscard_transaction_id,
