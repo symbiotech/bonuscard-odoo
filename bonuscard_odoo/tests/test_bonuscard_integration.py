@@ -1,9 +1,11 @@
 import logging
 import os
+import re
 import uuid
 from pathlib import Path
 from unittest import SkipTest
 
+from odoo.exceptions import UserError
 from odoo.tests import TransactionCase, tagged
 
 _logger = logging.getLogger(__name__)
@@ -118,6 +120,95 @@ class TestBonuscardIntegration(TransactionCase):
             }
         )
 
+    def _create_integration_pos_config(self):
+        company = self.env.company
+        journal = self.env["account.journal"].search(
+            [("type", "=", "sale"), ("company_id", "=", company.id)],
+            limit=1,
+        )
+        if not journal:
+            journal = self.env["account.journal"].create(
+                {
+                    "name": "Bonuscard Integration POS Sales",
+                    "type": "sale",
+                    "code": "BCINT",
+                    "company_id": company.id,
+                }
+            )
+        payment_method = self.env["pos.payment.method"].search(
+            [("company_id", "in", [company.id, False])],
+            limit=1,
+        )
+        if not payment_method:
+            cash_journal = self.env["account.journal"].search(
+                [("type", "in", ["cash", "bank"]), ("company_id", "=", company.id)],
+                limit=1,
+            )
+            if not cash_journal:
+                cash_journal = self.env["account.journal"].create(
+                    {
+                        "name": "Bonuscard Integration POS Cash",
+                        "type": "cash",
+                        "code": "BCICSH",
+                        "company_id": company.id,
+                    }
+                )
+            payment_method = self.env["pos.payment.method"].create(
+                {
+                    "name": "Bonuscard Integration Cash",
+                    "journal_id": cash_journal.id,
+                }
+            )
+        return self.env["pos.config"].create(
+            {
+                "name": "Bonuscard Integration POS",
+                "journal_id": journal.id,
+                "payment_method_ids": [(6, 0, payment_method.ids)],
+            }
+        )
+
+    @staticmethod
+    def _normalize_digits(value):
+        return re.sub(r"\D", "", value or "")
+
+    @classmethod
+    def _pos_client_would_show_customer(cls, query, customer):
+        """Approximate Odoo POS getPartners() visibility for a Bonuscard customer."""
+        query = (query or "").strip()
+        if not query:
+            return True
+
+        recruitment_code = (customer.get("recruitmentCode") or "").strip()
+        if recruitment_code and recruitment_code.lower() == query.lower():
+            return True
+
+        number_string = re.sub(r"[+\s()-]", "", query)
+        is_search_word_number = bool(re.match(r"^[0-9]+$", number_string))
+        pattern_base = number_string if is_search_word_number else query
+        regex = re.compile(re.escape(pattern_base), re.IGNORECASE)
+
+        search_fields = [
+            customer.get("name") or "",
+            cls._normalize_digits(customer.get("phoneNumber")),
+            customer.get("email") or "",
+            recruitment_code,
+        ]
+        search_string = " ".join(field for field in search_fields if field)
+        return bool(regex.search(search_string))
+
+    @staticmethod
+    def _summarize_customer_for_log(customer, query):
+        return {
+            "id": customer.get("id"),
+            "recruitmentCode": customer.get("recruitmentCode"),
+            "phoneNumber": customer.get("phoneNumber"),
+            "email": customer.get("email"),
+            "name": customer.get("name"),
+            "pos_client_would_show": TestBonuscardIntegration._pos_client_would_show_customer(
+                query, customer
+            ),
+        }
+
     def _create_partner_with_recruitment_code(self, recruitment_code):
         partner = self.env["res.partner"].create(
             {"name": "Bonuscard Integration Customer"}
@@ -197,6 +288,84 @@ class TestBonuscardIntegration(TransactionCase):
         instance = self._create_integration_instance()
         instance.action_test_connection()
         self.assertEqual(instance.connection_status, "ok")
+
+    def test_search_customers_pos_partial_query_documents_sandbox_response(self):
+        """Document sandbox SearchCustomers + POS import behavior for a partial query.
+
+        Default query is ``0724`` (the POS customer-search scenario under investigation).
+        Override with ``BONUSCARD_TEST_POS_SEARCH_QUERY``.
+
+        The test always passes when credentials are valid; inspect the WARNING log lines
+        for the raw API payload summary and how Odoo would treat the result.
+        """
+        query = os.getenv("BONUSCARD_TEST_POS_SEARCH_QUERY", "0724").strip()
+        instance = self._create_integration_instance()
+        service = self.env["bonuscard.api.service"]
+        partner_model = self.env["res.partner"]
+
+        payload = service._request(
+            instance,
+            endpoint="SearchCustomers",
+            method="GET",
+            params={"query": query},
+        )
+        customers = payload.get("customers") or []
+        filtered = partner_model._filter_bonuscard_customers_for_pos_query(
+            customers, query
+        )
+
+        _logger.warning(
+            "Bonuscard POS search probe query=%r api_error=%s api_messages=%s "
+            "customer_count=%s customers=%s pos_filter_match_count=%s",
+            query,
+            payload.get("error"),
+            payload.get("messages"),
+            len(customers),
+            [
+                self._summarize_customer_for_log(customer, query)
+                for customer in customers
+            ],
+            len(filtered),
+        )
+
+        import_outcome = "not_attempted"
+        import_detail = None
+        if not customers:
+            import_outcome = "blocked_no_api_customers"
+        elif len(filtered) != 1:
+            import_outcome = "blocked_by_pos_filter"
+            import_detail = f"filter accepted {len(filtered)} customer(s); import requires exactly 1"
+        else:
+            pos_config = self._create_integration_pos_config()
+            try:
+                result = partner_model.import_partner_from_bonuscard_for_pos(
+                    pos_config.id, query
+                )
+            except UserError as exc:
+                import_outcome = "blocked_user_error"
+                import_detail = str(exc)
+            else:
+                imported = result.get("res.partner") or []
+                import_outcome = "succeeded"
+                import_detail = {
+                    "partner_ids": [partner["id"] for partner in imported],
+                    "pos_client_would_show": bool(
+                        imported
+                        and self._pos_client_would_show_customer(query, filtered[0])
+                    ),
+                }
+
+        _logger.warning(
+            "Bonuscard POS search probe query=%r import_outcome=%s import_detail=%s",
+            query,
+            import_outcome,
+            import_detail,
+        )
+
+        self.assertIsInstance(payload, dict)
+        self.assertIsInstance(customers, list)
+        if customers and not filtered:
+            self.assertEqual(import_outcome, "blocked_by_pos_filter")
 
     def test_register_customer_with_phone_number(self):
         """Test RegisterCustomer endpoint with a valid phone number."""

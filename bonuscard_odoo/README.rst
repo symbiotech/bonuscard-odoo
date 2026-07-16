@@ -146,9 +146,11 @@ badge in the partner list.
 Use **Check Bonuscard** on the partner form to force a fresh lookup.
 
 If the customer is not found in the local Odoo partner search, pressing Enter
-in the POS customer list also queries Bonuscard. When Bonuscard returns a
-single unambiguous match, the addon creates or links an Odoo partner from the
-Bonuscard customer data and adds it to the POS session.
+in the POS customer list also queries Bonuscard. Import only proceeds when the
+search query exactly matches the Bonuscard recruitment code, normalized phone
+number, or email on an API result; fuzzy single hits are rejected. When a
+match is accepted, the addon creates or links an Odoo partner from the Bonuscard
+customer data and adds it to the POS session.
 
 Bulk Prefetch (Reduce POS Lookups)
 ---------------------------------
