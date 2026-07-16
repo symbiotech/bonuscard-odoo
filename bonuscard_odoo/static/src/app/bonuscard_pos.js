@@ -544,7 +544,6 @@ patch(PosStore.prototype, {
                     );
                     this.notification.add(result.note || _t("Bonuscard lookup failed."), {
                         type: "danger",
-                        sticky: true,
                     });
                 }
             } catch (error) {
@@ -557,7 +556,6 @@ patch(PosStore.prototype, {
                 );
                 this.notification.add(_t("Bonuscard lookup failed."), {
                     type: "danger",
-                    sticky: true,
                 });
             }
         }
