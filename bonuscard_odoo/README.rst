@@ -122,10 +122,10 @@ Usage
 
 Step-by-step tutorials with screenshots (English and Swedish):
 
-* Cashiers: ``docs/tutorials/en/pos-cashier.md``, ``docs/tutorials/sv/pos-kassor.md``
-* Managers: ``docs/tutorials/en/pos-manager.md``, ``docs/tutorials/sv/pos-admin.md``
+* Cashiers: `POS cashier guide <https://github.com/symbiotech/bonuscard-odoo/blob/19.0/docs/tutorials/en/pos-cashier.md>`_ / `Kassa-guide <https://github.com/symbiotech/bonuscard-odoo/blob/19.0/docs/tutorials/sv/pos-kassor.md>`_
+* Managers: `Manager guide <https://github.com/symbiotech/bonuscard-odoo/blob/19.0/docs/tutorials/en/pos-manager.md>`_ / `Administratörsguide <https://github.com/symbiotech/bonuscard-odoo/blob/19.0/docs/tutorials/sv/pos-admin.md>`_
 
-See ``docs/tutorials/README.md`` for the full tutorial index.
+See `docs/tutorials/README.md <https://github.com/symbiotech/bonuscard-odoo/blob/19.0/docs/tutorials/README.md>`_ for the full tutorial index.
 
 Product Catalog in POS
 ----------------------
