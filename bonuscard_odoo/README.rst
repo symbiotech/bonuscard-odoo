@@ -126,9 +126,10 @@ Product Catalog in POS
 Only product variants marked **In Bonuscard Catalog** are included in
 ``ValidatePurchase``. Other lines are sold normally and ignored by Bonuscard.
 Products without a barcode or article number (internal reference /
-``default_code``) cannot be marked as in the catalog. The POS product info
-popup (long-press a product tile) shows the current Bonuscard catalog status
-for single-variant products.
+``default_code``) cannot be marked as in the catalog. On the POS product
+grid, catalog products show a small Bonuscard mark (pink ``B`` icon) on the
+tile. The POS product info popup (long-press a product tile) shows the
+current Bonuscard catalog status for single-variant products.
 
 Customer Lookup in POS
 ----------------------
