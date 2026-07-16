@@ -4,6 +4,8 @@ flowchart LR
         A[Select Customer in POS]
         R[Register with Bonuscard\npartner list menu]
         AD[Actions Bonuscard button\nactivate discount code]
+        PC[Product grid ProductCard\nBonuscard mark for in_catalog]
+        PI[Long-press product info\ncatalog status badge]
         B[Start Payment]
         C[Payment Validation]
         D[Payment Success]
@@ -110,3 +112,5 @@ flowchart LR
     T -->|auto-cancel open transaction before next product| I
     I -->|transactionIdentifier| N
     J -->|probe customer + credentials| T
+    U -->|in_catalog status loaded in POS| PC
+    U -->|catalog status for single-variant products| PI
