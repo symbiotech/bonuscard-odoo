@@ -11,10 +11,12 @@ import { BonuscardRegistrationService } from "../../src/app/bonuscard_registrati
 import { runAllTimers } from "@odoo/hoot-mock";
 import { mountWithCleanup } from "@web/../tests/web_test_helpers";
 import { ProductInfoPopup } from "@point_of_sale/app/components/popups/product_info_popup/product_info_popup";
+import { ProductCard } from "@point_of_sale/app/components/product_card/product_card";
 
 // Ensure the Bonuscard POS patches are loaded for this test suite.
 import "../../src/app/bonuscard_pos";
 import "../../src/app/bonuscard_product_info_popup";
+import "../../src/app/bonuscard_product_card";
 definePosModels();
 
 // Mock translations for tests
@@ -3160,6 +3162,42 @@ test("ProductInfoPopup hides Bonuscard catalog status for multi-variant products
     });
 
     expect(document.querySelector(".section-bonuscard")).toBe(null);
+});
+
+test("ProductCard shows Bonuscard mark for in-catalog products", async () => {
+    const store = await setupPosEnv();
+    const productTemplate = store.models["product.template"].get(5);
+    productTemplate.bonuscard_catalog_status = "in_catalog";
+
+    await mountWithCleanup(ProductCard, {
+        props: {
+            name: productTemplate.display_name,
+            product: productTemplate,
+            productId: productTemplate.id,
+            imageUrl: false,
+        },
+    });
+
+    const mark = document.querySelector(".bonuscard-catalog-mark");
+    expect(mark).not.toBe(null);
+    expect(mark?.getAttribute("title")).toBe("In Bonuscard Catalog");
+});
+
+test("ProductCard hides Bonuscard mark when product is not in catalog", async () => {
+    const store = await setupPosEnv();
+    const productTemplate = store.models["product.template"].get(5);
+    productTemplate.bonuscard_catalog_status = "not_in_catalog";
+
+    await mountWithCleanup(ProductCard, {
+        props: {
+            name: productTemplate.display_name,
+            product: productTemplate,
+            productId: productTemplate.id,
+            imageUrl: false,
+        },
+    });
+
+    expect(document.querySelector(".bonuscard-catalog-mark")).toBe(null);
 });
 
 test("validation keeps pending discount codes after success so later Validate matches Finalize", async () => {

@@ -142,6 +142,8 @@ This document explains how the Bonuscard POS integration works in the `bonuscard
   - Adds `bonuscard_catalog_probe_note` with the last probe message
   - Form editing on **Inventory > Products** (single-variant setups), **Product
     Variants**, and the POS **Edit Product** modal for Bonuscard users
+  - POS product grid shows a Bonuscard mark icon on tiles marked
+    **In Bonuscard Catalog**
   - POS product info popup (long-press on a product tile) displays catalog
     status for single-variant products
   - Used when Odoo **Product Variants** are enabled (variant list/form UI)

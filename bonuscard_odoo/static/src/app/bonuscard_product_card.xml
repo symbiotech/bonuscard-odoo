@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates id="template" xml:space="preserve">
+
+    <t t-name="bonuscard_odoo.ProductCardExtension" t-inherit="point_of_sale.ProductCard" t-inherit-mode="extension">
+        <xpath expr="//article" position="inside">
+            <img t-if="showBonuscardCatalogMark"
+                class="bonuscard-catalog-mark position-absolute top-0 start-0 m-1 rounded"
+                src="/bonuscard_odoo/static/src/img/bonuscard_mark.png"
+                t-att-alt="bonuscardCatalogMarkTitle"
+                t-att-title="bonuscardCatalogMarkTitle"
+                draggable="false"/>
+        </xpath>
+    </t>
+
+</templates>
