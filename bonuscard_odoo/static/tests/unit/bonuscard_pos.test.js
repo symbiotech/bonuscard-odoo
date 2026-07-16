@@ -3199,6 +3199,26 @@ test("ProductCard hides Bonuscard mark when product is not in catalog", async ()
 
     expect(document.querySelector(".bonuscard-catalog-mark")).toBe(null);
 });
+test("ProductCard hides Bonuscard mark for multi-variant products", async () => {
+    const store = await setupPosEnv();
+    const productTemplate = store.models["product.template"].get(5);
+    productTemplate.product_variant_ids = [
+        store.models["product.product"].get(5),
+        store.models["product.product"].get(6),
+    ];
+    productTemplate.bonuscard_catalog_status = false;
+
+    await mountWithCleanup(ProductCard, {
+        props: {
+            name: productTemplate.display_name,
+            product: productTemplate,
+            productId: productTemplate.id,
+            imageUrl: false,
+        },
+    });
+
+    expect(document.querySelector(".bonuscard-catalog-mark")).toBe(null);
+});
 
 test("validation keeps pending discount codes after success so later Validate matches Finalize", async () => {
     const store = await setupPosEnv();
