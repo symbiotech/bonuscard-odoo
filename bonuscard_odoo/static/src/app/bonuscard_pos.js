@@ -168,11 +168,11 @@ patch(PosStore.prototype, {
         return cancelResult;
     },
 
-    _clearBonuscardPurchaseState(order) {
+    _clearBonuscardPurchaseState(order, { clearPendingCodes = true } = {}) {
         if (!order) {
             return;
         }
-        this._clearBonuscardRuntimeTransactionState(order);
+        this._clearBonuscardRuntimeTransactionState(order, { clearPendingCodes });
         order.bonuscard_partner_id = false;
         order.bonuscard_needs_validation = true;
         order.clearBonuscardDiscounts?.();
@@ -180,14 +180,16 @@ patch(PosStore.prototype, {
         this._clearBonuscardAuditFields(order);
     },
 
-    _clearBonuscardRuntimeTransactionState(order) {
+    _clearBonuscardRuntimeTransactionState(order, { clearPendingCodes = true } = {}) {
         if (!order) {
             return;
         }
         order.bonuscard_transaction_id = null;
         order._bonuscardCandidateTxId = null;
         order.bonuscard_checkout_items = null;
-        order.bonuscard_pending_codes = null;
+        if (clearPendingCodes) {
+            order.bonuscard_pending_codes = null;
+        }
     },
 
     _getBonuscardPendingCodes(order) {
@@ -740,7 +742,11 @@ patch(PosStore.prototype, {
                         logMethod: "recoverLock",
                     });
                     if (cancelResult.success) {
-                        this._clearBonuscardPurchaseState(order);
+                        // Keep purchase-time codes across lock recovery so the
+                        // retry Validate can still send error-5 fallback codes.
+                        this._clearBonuscardPurchaseState(order, {
+                            clearPendingCodes: false,
+                        });
                         recovered = true;
                     }
                 }
@@ -759,8 +765,13 @@ patch(PosStore.prototype, {
             }
             // Drop purchase-time codes only when Bonuscard returned a business
             // error (errorCode present). Precondition / service-unavailable
-            // payloads have no errorCode — keep codes for retry.
-            if (pendingCodes?.length && result.errorCode != null) {
+            // payloads have no errorCode — keep codes for retry. Customer-lock
+            // errors are not code rejections; keep codes for a later attempt.
+            if (
+                pendingCodes?.length &&
+                result.errorCode != null &&
+                !this._isBonuscardCustomerLockError(result)
+            ) {
                 order.bonuscard_pending_codes = null;
             }
             const msg = result.messages?.[0] || _t("Bonuscard validation failed.");

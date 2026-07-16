@@ -2485,6 +2485,77 @@ test("validation recovers from customer lock by cancelling orphaned transactions
     expect(order.bonuscard_transaction_id).toBe("TXN-NEW");
 });
 
+test("lock recovery preserves pending discount codes for the retry Validate", async () => {
+    const store = await setupPosEnv();
+    const product = store.models["product.product"].get(5);
+    markProductBonuscardCatalog(product, "LOCK-CODES-123");
+
+    const partner = store.models["res.partner"].create({ name: "Bonuscard Customer" });
+    partner.bonuscard_recruitment_code = "ABC123";
+    partner.bonuscard_status = "linked";
+
+    const order = store.addNewOrder();
+    await store.addLineToOrder(
+        {
+            product_id: product,
+            product_tmpl_id: product.product_tmpl_id,
+            qty: 1,
+            price_unit: 10,
+        },
+        order
+    );
+    order.setPartner(partner);
+    order.bonuscard_transaction_id = "TXN-STALE";
+    order.bonuscard_partner_id = partner.id;
+    order.bonuscard_pending_codes = ["SOMMAR"];
+
+    let validateCallCount = 0;
+    let retryCodes = null;
+    const originalCall = store.data.call.bind(store.data);
+    patchWithCleanup(store.data, {
+        call: async function (model, method, args) {
+            if (model === "bonuscard.api.service" && method === "cancel_purchase_for_pos") {
+                return { error: false };
+            }
+            if (model === "bonuscard.api.service" && method === "validate_purchase_for_pos") {
+                validateCallCount++;
+                if (validateCallCount === 1) {
+                    return {
+                        error: true,
+                        errorCode: 2,
+                        messages: [
+                            "Customer is locked to an open transaction. Please try again or restart.",
+                        ],
+                    };
+                }
+                retryCodes = args[3];
+                return {
+                    transactionIdentifier: "TXN-NEW",
+                    checkoutItems: [
+                        {
+                            identifier: "ITEM1",
+                            ean: product.barcode,
+                            quantity: 1,
+                            pricePerItem: 10,
+                        },
+                    ],
+                    totalDiscount: 0,
+                    resultItems: [],
+                };
+            }
+            return originalCall(...arguments);
+        },
+    });
+
+    const ok = await store._validateBonuscardPurchaseForOrder(order);
+
+    expect(ok).toBe(true);
+    expect(validateCallCount).toBe(2);
+    expect(retryCodes).toEqual(["SOMMAR"]);
+    // Successful Validate that included codes clears the stash.
+    expect(order.bonuscard_pending_codes).toBe(null);
+});
+
 test("validation releases pending transaction when cart has no Bonuscard-eligible lines", async () => {
     const store = await setupPosEnv();
     const order = store.addNewOrder();
