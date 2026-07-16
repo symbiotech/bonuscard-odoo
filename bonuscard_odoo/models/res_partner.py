@@ -587,7 +587,7 @@ class ResPartner(models.Model):
 
     @api.model
     def _filter_bonuscard_customers_for_pos_query(self, customers, query):
-        """Pick unambiguous Bonuscard customers for a POS search/import query."""
+        """Pick Bonuscard customers that exactly match a POS search/import query."""
         query = (query or "").strip()
         if not query or not customers:
             return []
@@ -616,11 +616,7 @@ class ResPartner(models.Model):
             if "@" in query_lower and customer_email == query_lower:
                 exact_matches[customer_key] = customer
 
-        if exact_matches:
-            return list(exact_matches.values())
-        if len(customers) == 1:
-            return customers
-        return []
+        return list(exact_matches.values())
 
     @api.model
     def _prepare_partner_vals_from_bonuscard_customer(self, customer, *, company=None):
@@ -726,17 +722,23 @@ class ResPartner(models.Model):
             )
 
         customers = service._search_customers(instance, query)
-        if not customers:
-            raise UserError(self.env._('No Bonuscard customer matched "%s".', query))
-
         matches = self._filter_bonuscard_customers_for_pos_query(customers, query)
         if len(matches) != 1:
-            raise UserError(
-                self.env._(
-                    'Bonuscard returned multiple customers for "%s". Refine your search.',
-                    query,
+            if len(matches) > 1:
+                raise UserError(
+                    self.env._(
+                        'Bonuscard returned multiple customers for "%s". Refine your search.',
+                        query,
+                    )
                 )
-            )
+            if customers:
+                raise UserError(
+                    self.env._(
+                        'No Bonuscard customer exactly matched "%s". Refine your search.',
+                        query,
+                    )
+                )
+            raise UserError(self.env._('No Bonuscard customer matched "%s".', query))
 
         customer = matches[0]
         partner = self._find_or_create_partner_from_bonuscard_customer(

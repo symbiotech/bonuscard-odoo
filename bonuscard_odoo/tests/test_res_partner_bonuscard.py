@@ -589,17 +589,105 @@ class TestResPartnerBonuscard(TransactionCase):
         self.assertEqual(partner.bonuscard_recruitment_code, "LINK56")
         self.assertEqual(partner.bonuscard_status, "linked")
 
-    def test_import_partner_from_bonuscard_for_pos_rejects_ambiguous_matches(self):
+    def test_filter_bonuscard_customers_for_pos_query_rejects_fuzzy_single_match(self):
+        customers = [
+            {
+                "id": 724,
+                "name": "Lars Strid",
+                "phoneNumber": "+46703755100",
+                "recruitmentCode": "46FKX",
+            }
+        ]
+        matches = self.partner_model._filter_bonuscard_customers_for_pos_query(
+            customers, "0724"
+        )
+        self.assertEqual(matches, [])
+
+    def test_filter_bonuscard_customers_for_pos_query_accepts_exact_recruitment_code(
+        self,
+    ):
+        customer = {
+            "id": 55,
+            "name": "Imported Customer",
+            "phoneNumber": "+46701239999",
+            "recruitmentCode": "IMP55",
+        }
+        matches = self.partner_model._filter_bonuscard_customers_for_pos_query(
+            [customer], "IMP55"
+        )
+        self.assertEqual(matches, [customer])
+
+    def test_filter_bonuscard_customers_for_pos_query_accepts_exact_phone(self):
+        customer = {
+            "id": 56,
+            "name": "Existing Customer",
+            "phoneNumber": "+46707654321",
+            "recruitmentCode": "LINK56",
+        }
+        matches = self.partner_model._filter_bonuscard_customers_for_pos_query(
+            [customer], "+46707654321"
+        )
+        self.assertEqual(matches, [customer])
+
+    def test_import_partner_from_bonuscard_for_pos_rejects_fuzzy_single_api_match(
+        self,
+    ):
         with patch(
             "odoo.addons.bonuscard_odoo.models.bonuscard_api_service.BonuscardApiService._search_customers",
             return_value=[
-                {"id": 1, "name": "A", "recruitmentCode": "AAA1"},
-                {"id": 2, "name": "B", "recruitmentCode": "BBB2"},
+                {
+                    "id": 724,
+                    "name": "Lars Strid",
+                    "phoneNumber": "+46703755100",
+                    "recruitmentCode": "46FKX",
+                }
             ],
         ):
             with self.assertRaises(UserError) as exc:
                 self.partner_model.import_partner_from_bonuscard_for_pos(
-                    self.pos_config.id, "customer"
+                    self.pos_config.id, "0724"
+                )
+
+        self.assertIn("exactly", str(exc.exception).lower())
+        self.assertFalse(
+            self.partner_model.search([("bonuscard_recruitment_code", "=", "46FKX")])
+        )
+
+    def test_import_partner_from_bonuscard_for_pos_rejects_empty_api_response(self):
+        with patch(
+            "odoo.addons.bonuscard_odoo.models.bonuscard_api_service.BonuscardApiService._search_customers",
+            return_value=[],
+        ):
+            with self.assertRaises(UserError) as exc:
+                self.partner_model.import_partner_from_bonuscard_for_pos(
+                    self.pos_config.id, "0724"
+                )
+
+        message = str(exc.exception).lower()
+        self.assertIn("matched", message)
+        self.assertNotIn("exactly", message)
+
+    def test_import_partner_from_bonuscard_for_pos_rejects_ambiguous_matches(self):
+        with patch(
+            "odoo.addons.bonuscard_odoo.models.bonuscard_api_service.BonuscardApiService._search_customers",
+            return_value=[
+                {
+                    "id": 1,
+                    "name": "A",
+                    "recruitmentCode": "AAA1",
+                    "email": "shared@example.com",
+                },
+                {
+                    "id": 2,
+                    "name": "B",
+                    "recruitmentCode": "BBB2",
+                    "email": "shared@example.com",
+                },
+            ],
+        ):
+            with self.assertRaises(UserError) as exc:
+                self.partner_model.import_partner_from_bonuscard_for_pos(
+                    self.pos_config.id, "shared@example.com"
                 )
 
         self.assertIn("multiple", str(exc.exception).lower())
