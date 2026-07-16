@@ -1042,6 +1042,12 @@ msgid "No Bonuscard catalog products found in the order."
 msgstr "Inga Bonuscard-katalogprodukter hittades i ordern."
 
 #. module: bonuscard_odoo
+#. odoo-python
+#: code:bonuscard_odoo/models/res_partner.py:0
+msgid "No Bonuscard customer exactly matched \"%s\". Refine your search."
+msgstr "Ingen Bonuscard-kund matchade exakt \"%s\". Förfina din sökning."
+
+#. module: bonuscard_odoo
 #. odoo-javascript
 #: code:bonuscard_odoo/static/src/app/bonuscard_partner_import_patch.js:0
 msgid "No Bonuscard customer found."

@@ -722,19 +722,23 @@ class ResPartner(models.Model):
             )
 
         customers = service._search_customers(instance, query)
-        if not customers:
-            raise UserError(self.env._('No Bonuscard customer matched "%s".', query))
-
         matches = self._filter_bonuscard_customers_for_pos_query(customers, query)
-        if not matches:
-            raise UserError(self.env._('No Bonuscard customer matched "%s".', query))
-        if len(matches) > 1:
-            raise UserError(
-                self.env._(
-                    'Bonuscard returned multiple customers for "%s". Refine your search.',
-                    query,
+        if len(matches) != 1:
+            if len(matches) > 1:
+                raise UserError(
+                    self.env._(
+                        'Bonuscard returned multiple customers for "%s". Refine your search.',
+                        query,
+                    )
                 )
-            )
+            if customers:
+                raise UserError(
+                    self.env._(
+                        'No Bonuscard customer exactly matched "%s". Refine your search.',
+                        query,
+                    )
+                )
+            raise UserError(self.env._('No Bonuscard customer matched "%s".', query))
 
         customer = matches[0]
         partner = self._find_or_create_partner_from_bonuscard_customer(

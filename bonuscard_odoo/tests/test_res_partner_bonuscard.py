@@ -648,10 +648,24 @@ class TestResPartnerBonuscard(TransactionCase):
                     self.pos_config.id, "0724"
                 )
 
-        self.assertIn("matched", str(exc.exception).lower())
+        self.assertIn("exactly", str(exc.exception).lower())
         self.assertFalse(
             self.partner_model.search([("bonuscard_recruitment_code", "=", "46FKX")])
         )
+
+    def test_import_partner_from_bonuscard_for_pos_rejects_empty_api_response(self):
+        with patch(
+            "odoo.addons.bonuscard_odoo.models.bonuscard_api_service.BonuscardApiService._search_customers",
+            return_value=[],
+        ):
+            with self.assertRaises(UserError) as exc:
+                self.partner_model.import_partner_from_bonuscard_for_pos(
+                    self.pos_config.id, "0724"
+                )
+
+        message = str(exc.exception).lower()
+        self.assertIn("matched", message)
+        self.assertNotIn("exactly", message)
 
     def test_import_partner_from_bonuscard_for_pos_rejects_ambiguous_matches(self):
         with patch(
