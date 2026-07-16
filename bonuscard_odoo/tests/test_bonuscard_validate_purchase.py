@@ -852,6 +852,19 @@ class TestBonuscardValidatePurchase(TransactionCase):
         self.assertEqual(result.get("messages"), ["Rabattkod aktiverad!"])
         mock_activate.assert_called_once_with(self.instance, "WLKT6", "SOMMAR")
 
+    def test_activate_discount_code_for_pos_rejects_non_dict_payload(self):
+        partner = self._make_partner_with_code()
+
+        with patch(
+            "odoo.addons.bonuscard_odoo.models.bonuscard_api_service.BonuscardApiService._activate_discount_code",
+            return_value="unexpected",
+        ):
+            result = self.service.activate_discount_code_for_pos(partner.id, "SOMMAR")
+
+        self.assertTrue(result.get("error"))
+        self.assertTrue(result.get("messages"))
+        self.assertIn("activation failed", result.get("messages")[0].lower())
+
     def test_activate_discount_code_for_pos_trims_code(self):
         partner = self._make_partner_with_code()
 
