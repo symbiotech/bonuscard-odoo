@@ -1,0 +1,37 @@
+---
+description: After pushing to a PR, request Copilot review and fix valid comments until clear
+alwaysApply: true
+---
+
+# Copilot PR review loop
+
+When **you** push commits to a branch that has an open pull request, run this loop
+before considering the push done.
+
+## Loop
+
+1. **Request review** (works even if Copilot already reviewed):
+   ```bash
+   gh pr edit <PR> --add-reviewer @copilot
+   ```
+2. **Wait** for the new Copilot review — watch the `Running Copilot Code Review`
+   Actions run (typically a few minutes), then load the newest
+   `copilot-pull-request-reviewer[bot]` review and its inline comments.
+3. **Triage** each new comment:
+   - **Valid** → fix root cause in code (tests/docs/i18n as required by project rules).
+   - **Invalid / outdated / intentional** → do not change code; briefly note why
+     on the PR thread or in your status report.
+4. If you made fixes: commit (only if the user asked for commits, or the session
+   already includes commit authority), **push**, then go to step 1.
+5. **Stop** when the latest Copilot review has **no new actionable comments**,
+   or only comments you already correctly rejected with rationale.
+
+## Guards
+
+- Skip this loop if there is no open PR, or the user asked not to involve Copilot.
+- Do not start another request while a Copilot review run is still in progress.
+- Cap at **3** full request→fix→push cycles per push session unless the user
+  asks to continue; then report remaining comments and stop.
+- Prefer addressing comments in one batch per cycle (one push), not one commit
+  per comment.
+- Never dismiss security or correctness findings without a concrete reason.
