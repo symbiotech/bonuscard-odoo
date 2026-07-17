@@ -91,9 +91,8 @@ class ResPartner(models.Model):
     bonuscard_recruitment_code = fields.Char(copy=False, readonly=True)
     bonuscard_internal_id = fields.Integer(copy=False, readonly=True)
     bonuscard_pos_search = fields.Char(
-        related="bonuscard_recruitment_code",
         string="Bonuscard POS Search",
-        store=False,
+        compute="_compute_bonuscard_pos_search",
         search="_search_bonuscard_pos_search",
         readonly=True,
     )
@@ -112,23 +111,81 @@ class ResPartner(models.Model):
     bonuscard_last_synced_at = fields.Datetime(copy=False, readonly=True)
     bonuscard_last_lookup_note = fields.Text(copy=False, readonly=True)
 
+    @api.depends("bonuscard_recruitment_code", "bonuscard_internal_id")
+    def _compute_bonuscard_pos_search(self):
+        for partner in self:
+            parts = []
+            if partner.bonuscard_recruitment_code:
+                parts.append(partner.bonuscard_recruitment_code)
+            if partner.bonuscard_internal_id:
+                parts.append(str(partner.bonuscard_internal_id))
+            partner.bonuscard_pos_search = " ".join(parts) or False
+
     def _load_pos_data_fields(self, config):
         fields_list = super()._load_pos_data_fields(config)
         return fields_list + [
             "bonuscard_recruitment_code",
+            "bonuscard_internal_id",
             "bonuscard_status",
             "bonuscard_last_lookup_note",
         ]
 
     @api.model
     def _search_bonuscard_pos_search(self, operator, value):
-        """Search partners by Bonuscard recruitment code."""
-        value = value.strip() if isinstance(value, str) else value
+        """Search partners by Bonuscard recruitment code, internal id, or app barcode."""
+        # Odoo rewrites ``= False`` / ``!= False`` to ``in`` / ``not in`` [False].
+        unset_values = False
+        if value is False or value is None:
+            unset_values = True
+        elif not isinstance(value, (str, bytes)) and hasattr(value, "__iter__"):
+            values = list(value)
+            unset_values = bool(values) and all(
+                item is False or item is None for item in values
+            )
+
+        if unset_values:
+            if operator in ("=", "in"):
+                return [
+                    ("bonuscard_recruitment_code", "=", False),
+                    ("bonuscard_internal_id", "=", False),
+                ]
+            if operator in ("!=", "not in"):
+                return [
+                    "|",
+                    ("bonuscard_recruitment_code", "!=", False),
+                    ("bonuscard_internal_id", "!=", False),
+                ]
+            return [("id", "=", 0)]
+
+        value = str(value).strip()
         if not value:
+            # Empty POS search box should match nothing.
             return [("id", "=", 0)]
         if operator not in ("ilike", "like", "=", "!=", "not ilike"):
             operator = "ilike"
-        return [("bonuscard_recruitment_code", operator, value)]
+
+        domains = [("bonuscard_recruitment_code", operator, value)]
+        extracted_id = self._extract_bonuscard_id_from_app_barcode(value)
+        if extracted_id:
+            internal_id = int(extracted_id)
+        elif value.isdigit() and value == str(int(value)):
+            # Exact digit string only — reject leading-zero variants like "0724" → 724.
+            internal_id = int(value)
+        else:
+            internal_id = None
+
+        if internal_id is not None:
+            if operator in ("!=", "not ilike"):
+                # Negation of (code match OR id match) => NOT code AND NOT id.
+                domains.append(("bonuscard_internal_id", "!=", internal_id))
+            else:
+                domains.append(("bonuscard_internal_id", "=", internal_id))
+
+        if len(domains) == 1:
+            return domains
+        if operator in ("!=", "not ilike"):
+            return domains  # implicit AND
+        return ["|"] * (len(domains) - 1) + domains
 
     def _get_bonuscard_search_terms(self):
         self.ensure_one()
@@ -141,35 +198,165 @@ class ResPartner(models.Model):
                 terms.append(value)
         return terms
 
+    # Minimum significant digits for country-code / trunk-aware phone equality.
+    # Short fuzzy SearchCustomers hits (e.g. "0724") must not match via suffix.
+    _BONUSCARD_PHONE_MATCH_MIN_DIGITS = 7
+    # Bonuscard app member barcodes are EAN-13: prefix + zero-padded internal id + check.
+    _BONUSCARD_APP_BARCODE_PREFIX = "999000"
+    _BONUSCARD_APP_BARCODE_ID_WIDTH = 6
+
     def _normalize_phone(self, phone_number):
-        if not phone_number:
+        if phone_number is None or phone_number is False:
             return ""
+        if not isinstance(phone_number, str):
+            phone_number = str(phone_number)
         return re.sub(r"\D", "", phone_number)
+
+    @api.model
+    def _ean13_check_digit(self, first_12_digits):
+        """Return the EAN-13 check digit for the first 12 digit characters."""
+        if len(first_12_digits) != 12 or not first_12_digits.isdigit():
+            return ""
+        total = 0
+        for index, char in enumerate(first_12_digits):
+            digit = int(char)
+            total += digit * 3 if index % 2 else digit
+        return str((10 - (total % 10)) % 10)
+
+    @api.model
+    def _extract_bonuscard_id_from_app_barcode(self, value):
+        """Extract Bonuscard internal id from an app member EAN-13 barcode.
+
+        Format: ``999000`` + 6-digit zero-padded internal id + EAN-13 check digit.
+        Example: internal id ``976358`` → ``9990009763581``.
+        """
+        if value is None or value is False:
+            return ""
+        digits = self._normalize_phone(str(value))
+        prefix = self._BONUSCARD_APP_BARCODE_PREFIX
+        id_width = self._BONUSCARD_APP_BARCODE_ID_WIDTH
+        expected_len = len(prefix) + id_width + 1
+        if len(digits) != expected_len or not digits.startswith(prefix):
+            return ""
+        body, check = digits[:-1], digits[-1]
+        if self._ean13_check_digit(body) != check:
+            return ""
+        raw_id = digits[len(prefix) : len(prefix) + id_width]
+        member_id = int(raw_id)
+        if member_id <= 0:
+            return ""
+        return str(member_id)
+
+    @api.model
+    def _bonuscard_phone_search_terms(self, phone):
+        """Return phone strings useful for SQL candidate lookup before equivalence."""
+        phone = (phone or "").strip()
+        normalized = self._normalize_phone(phone)
+        terms = []
+        for term in (phone, normalized):
+            if term and term not in terms:
+                terms.append(term)
+        if not normalized:
+            return terms
+
+        significant = normalized.lstrip("0") or normalized
+        min_digits = self._BONUSCARD_PHONE_MATCH_MIN_DIGITS
+        if len(significant) < min_digits:
+            return terms
+
+        if significant not in terms:
+            terms.append(significant)
+        # National forms are often stored without the country prefix, with/without trunk 0.
+        national = significant[-9:] if len(significant) > 9 else significant
+        if len(national) >= min_digits:
+            if national not in terms:
+                terms.append(national)
+            trunk0 = "0" + national.lstrip("0")
+            if trunk0 not in terms:
+                terms.append(trunk0)
+        return terms
+
+    @api.model
+    def _phones_equivalent(self, phone_a, phone_b):
+        """Return True when two phones identify the same number.
+
+        Compares digit-only forms, then allows national vs E.164 variants:
+        trunk leading ``0`` (e.g. ``0703334601``) and missing country prefix
+        (e.g. ``703334601`` vs ``+46703334601``). Requires enough significant
+        digits so short fuzzy queries cannot match by suffix.
+        """
+        a = self._normalize_phone(phone_a)
+        b = self._normalize_phone(phone_b)
+        if not a or not b:
+            return False
+        if a == b:
+            return True
+        a_sig = a.lstrip("0") or a
+        b_sig = b.lstrip("0") or b
+        if a_sig == b_sig:
+            return True
+        min_digits = self._BONUSCARD_PHONE_MATCH_MIN_DIGITS
+        if len(a_sig) < min_digits or len(b_sig) < min_digits:
+            return False
+        return a_sig.endswith(b_sig) or b_sig.endswith(a_sig)
+
+    @api.model
+    def _bonuscard_customer_matches_pos_query(self, customer, query):
+        """Return True when a Bonuscard customer matches a POS search query."""
+        query = (query or "").strip()
+        if not query or not customer:
+            return False
+
+        query_lower = query.lower()
+        recruitment_code = (customer.get("recruitmentCode") or "").strip()
+        if recruitment_code and recruitment_code.lower() == query_lower:
+            return True
+
+        customer_id = customer.get("id")
+        if customer_id is not None and str(customer_id) == query:
+            return True
+        extracted_id = self._extract_bonuscard_id_from_app_barcode(query)
+        if (
+            extracted_id
+            and customer_id is not None
+            and str(customer_id) == extracted_id
+        ):
+            return True
+
+        if self._phones_equivalent(query, customer.get("phoneNumber")):
+            return True
+
+        customer_email = (customer.get("email") or "").strip().lower()
+        if "@" in query_lower and customer_email == query_lower:
+            return True
+        return False
 
     def _filter_exact_bonuscard_matches(self, customers):
         self.ensure_one()
-        partner_phone = self._normalize_phone(self.phone)
+        partner_phone = self.phone
         partner_email = (self.email or "").strip().lower()
         partner_name = (self.name or "").strip().lower()
+        partner_has_phone = bool(self._normalize_phone(partner_phone))
 
         exact_matches = {}
         for index, customer in enumerate(customers):
-            customer_phone = self._normalize_phone(customer.get("phoneNumber"))
+            customer_phone = customer.get("phoneNumber")
             customer_email = (customer.get("email") or "").strip().lower()
             customer_name = (customer.get("name") or "").strip().lower()
+            customer_has_phone = bool(self._normalize_phone(customer_phone))
             customer_key = (
                 customer.get("id") or customer.get("recruitmentCode") or index
             )
-            if customer_phone and partner_phone and partner_phone == customer_phone:
+            if self._phones_equivalent(partner_phone, customer_phone):
                 exact_matches[customer_key] = customer
                 continue
             if partner_email and customer_email and partner_email == customer_email:
                 exact_matches[customer_key] = customer
                 continue
             if (
-                not partner_phone
+                not partner_has_phone
                 and not partner_email
-                and not customer_phone
+                and not customer_has_phone
                 and not customer_email
                 and partner_name
                 and customer_name
@@ -206,9 +393,7 @@ class ResPartner(models.Model):
         # entity.  Keep both records in sync to avoid stale status on either record.
         commercial_partner = self.commercial_partner_id
         if commercial_partner and commercial_partner != self:
-            company_phone = self._normalize_phone(commercial_partner.phone)
-            self_phone = self._normalize_phone(self.phone)
-            if company_phone and self_phone and company_phone == self_phone:
+            if self._phones_equivalent(commercial_partner.phone, self.phone):
                 commercial_partner._write_bonuscard_status(
                     status, customer=customer, note=note
                 )
@@ -587,34 +772,26 @@ class ResPartner(models.Model):
 
     @api.model
     def _filter_bonuscard_customers_for_pos_query(self, customers, query):
-        """Pick Bonuscard customers that exactly match a POS search/import query."""
+        """Pick Bonuscard customers that match a POS search/import query.
+
+        Accepts recruitment code, internal id, app member barcode (EAN-13 embedding
+        the internal id), email, or phone. Phone matching is digit-based and allows
+        national / trunk-``0`` forms of the same E.164 number; short fuzzy API hits
+        (e.g. ``0724``) are still rejected.
+        """
         query = (query or "").strip()
         if not query or not customers:
             return []
 
         customers = self._dedupe_bonuscard_customers(customers)
-        query_lower = query.lower()
-        normalized_query_phone = self._normalize_phone(query)
         exact_matches = {}
         for index, customer in enumerate(customers):
+            if not self._bonuscard_customer_matches_pos_query(customer, query):
+                continue
             customer_key = (
                 customer.get("id") or customer.get("recruitmentCode") or index
             )
-            recruitment_code = (customer.get("recruitmentCode") or "").strip()
-            if recruitment_code and recruitment_code.lower() == query_lower:
-                exact_matches[customer_key] = customer
-                continue
-            customer_phone = self._normalize_phone(customer.get("phoneNumber"))
-            if (
-                normalized_query_phone
-                and customer_phone
-                and customer_phone == normalized_query_phone
-            ):
-                exact_matches[customer_key] = customer
-                continue
-            customer_email = (customer.get("email") or "").strip().lower()
-            if "@" in query_lower and customer_email == query_lower:
-                exact_matches[customer_key] = customer
+            exact_matches[customer_key] = customer
 
         return list(exact_matches.values())
 
@@ -674,16 +851,13 @@ class ResPartner(models.Model):
                 [("bonuscard_recruitment_code", "=", recruitment_code)], limit=1
             )
         if not partner and normalized_phone:
-            candidates = Partner.search(
-                [
-                    "|",
-                    ("phone", "ilike", phone),
-                    ("phone", "ilike", normalized_phone),
-                ],
-                limit=20,
-            )
+            phone_terms = self._bonuscard_phone_search_terms(phone)
+            phone_domain = [("phone", "ilike", term) for term in phone_terms]
+            if len(phone_domain) > 1:
+                phone_domain = ["|"] * (len(phone_domain) - 1) + phone_domain
+            candidates = Partner.search(phone_domain, limit=20)
             partner = candidates.filtered(
-                lambda record: self._normalize_phone(record.phone) == normalized_phone
+                lambda record: self._phones_equivalent(record.phone, phone)
             )[:1]
         if not partner and email:
             partner = Partner.search([("email", "=ilike", email)], limit=1)
@@ -722,6 +896,10 @@ class ResPartner(models.Model):
             )
 
         customers = service._search_customers(instance, query)
+        if not customers:
+            extracted_id = self._extract_bonuscard_id_from_app_barcode(query)
+            if extracted_id and extracted_id != query:
+                customers = service._search_customers(instance, extracted_id)
         matches = self._filter_bonuscard_customers_for_pos_query(customers, query)
         if len(matches) != 1:
             if len(matches) > 1:

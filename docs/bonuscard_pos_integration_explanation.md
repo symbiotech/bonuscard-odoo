@@ -10,8 +10,8 @@ This document explains how the Bonuscard POS integration works in the `bonuscard
 1. Customer selected in POS
    - `bonuscard_odoo/static/src/app/bonuscard_pos.js` extends `PosStore.setPartnerToCurrentOrder`
    - `bonuscard_odoo/static/src/app/bonuscard_partner_import_patch.js` extends the POS customer list so Enter falls back to `res.partner.import_partner_from_bonuscard_for_pos` when local search finds no match
-   - `bonuscard_odoo/static/src/app/bonuscard_partner_search_patch.js` extends POS customer search to include Bonuscard recruitment code alongside the standard Odoo fields (phone search is already provided by Odoo POS)
-   - POS import only links a Bonuscard customer when the query exactly matches recruitment code, normalized phone, or email; fuzzy single API hits are rejected
+   - `bonuscard_odoo/static/src/app/bonuscard_partner_search_patch.js` extends POS customer search to include Bonuscard recruitment code and internal id (including app barcode decode) alongside the standard Odoo fields (phone search is already provided by Odoo POS)
+   - POS import links a Bonuscard customer when the query matches recruitment code, internal id, app member barcode (`999000` + padded id + EAN check), phone (national / trunk-0 / E.164 equivalent), or email; short fuzzy single API hits (e.g. `0724`) are rejected
    - Calls `res.partner.get_bonuscard_status_for_pos` to resolve Bonuscard status **unless** the partner already has status `linked` or `not_found` (cached from a prior lookup or the bulk prefetch job)
    - The backend searches Bonuscard using customer phone, email, or name
    - The partner record is updated with `bonuscard_status` and `bonuscard_recruitment_code`
@@ -105,9 +105,9 @@ This document explains how the Bonuscard POS integration works in the `bonuscard
     - `bonuscard_last_lookup_note`
   - Implements search/match logic and status synchronization
   - When status is written for a contact, the same status is also written to its commercial partner if both share the same phone number
-  - `_filter_bonuscard_customers_for_pos_query` accepts only exact recruitment-code, normalized-phone, or email matches for POS import; fuzzy single API hits are rejected
+  - `_filter_bonuscard_customers_for_pos_query` accepts recruitment-code, internal-id, app-barcode, phone (national / trunk-0 / E.164 equivalent via `_phones_equivalent`), or email matches for POS import; short fuzzy single API hits are rejected
   - Adds `action_register_to_bonuscard`, `action_refresh_bonuscard_status`, and `action_clear_bonuscard_link`
-  - Adds `import_partner_from_bonuscard_for_pos` to create or link an Odoo partner from Bonuscard when POS search finds no local match; requires an exact recruitment-code, phone, or email match on the Bonuscard API result
+  - Adds `import_partner_from_bonuscard_for_pos` to create or link an Odoo partner from Bonuscard when POS search finds no local match; requires a recruitment-code, internal-id/app-barcode, phone, or email match on the Bonuscard API result (app barcodes also retry SearchCustomers with the extracted id)
   - Adds `action_bulk_prefetch_bonuscard_status` to prefetch linking in batches (used by the cron job and the connection form button)
 
 - `product.product` extension

@@ -16,8 +16,9 @@ Point of Sale. Purchase lifecycle: ValidatePurchase → FinalizePurchase / Cance
 
 - Connection config per company; Basic auth via `bonuscard.connector.instance._build_headers`.
 - HTTP/payload mapping in `BonuscardApiService`; keep transport separate from Odoo business logic.
-- Bonuscard status on contacts is mirrored to **commercial partner** when both share the same normalized phone.
-- Partner lookup: phone (digits-only), email, name — dedupe by Bonuscard `id` or `recruitmentCode`.
+- Bonuscard status on contacts is mirrored to **commercial partner** when both share an equivalent phone (national / trunk-0 / E.164).
+- Partner lookup: phone (digit + country-code aware), email, name — dedupe by Bonuscard `id` or `recruitmentCode`.
+- POS import matches recruitment code, internal id, app barcode, equivalent phone, or email; short fuzzy API hits (e.g. `0724`) are rejected.
 - Keep all Bonuscard logic in this addon. Configure a POS discount product for unmatched discounts.
 
 ## Secrets & Testing

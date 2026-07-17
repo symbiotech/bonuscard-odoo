@@ -22,7 +22,8 @@ Swedish version: [Kassa-guide](../sv/pos-kassor.md)
 Always attach a customer to the order before you expect Bonuscard discounts.
 
 1. Click **Customer** at the bottom of the order panel.
-2. Search by name, phone, email, or **Bonuscard recruitment code**.
+2. Search by name, phone, email, **Bonuscard recruitment code**, Bonuscard
+   member id, or the **barcode from the Bonuscard app**.
 
 ![Customer list with Bonuscard badges](../images/pos-cashier/04-customer-list.png)
 
@@ -36,9 +37,11 @@ Always attach a customer to the order before you expect Bonuscard discounts.
 
 ### Search tip
 
-Type a phone number (or recruitment code / email) in **Search Customers…**.
-If the customer is not in the local list, press **Enter** — the POS can look
-them up in Bonuscard and import an exact match.
+Type a phone number, recruitment code, member id, app barcode, or email in
+**Search Customers…**. If the customer is not in the local list, press
+**Enter** — the POS can look them up in Bonuscard and import an exact match
+(national phone numbers and app barcodes are supported; short/partial queries
+are rejected).
 
 ![Search customers by phone](../images/pos-cashier/09-customer-search-phone.png)
 
