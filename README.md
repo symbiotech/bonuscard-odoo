@@ -21,6 +21,7 @@ To avoid duplicate docs drift, this repository uses a split canonical model:
 - **POS integration flow narrative:** [docs/bonuscard_pos_integration_explanation.md](docs/bonuscard_pos_integration_explanation.md)
 - **POS integration architecture diagram:** [docs/bonuscard_pos_integration_diagram.mmd](docs/bonuscard_pos_integration_diagram.mmd)
 - **API reference notes:** [docs/bonuscard-api.md](docs/bonuscard-api.md)
+- **End-user tutorials (screenshots):** [docs/tutorials/README.md](docs/tutorials/README.md)
 - **Development workflow and contribution rules:** this file and [CONTRIBUTING.md](CONTRIBUTING.md)
 - **AI agent instructions (canonical):** [.github/copilot-instructions.md](.github/copilot-instructions.md) with Cursor rules in [`.cursor/rules/`](.cursor/rules/) and entry point [AGENTS.md](AGENTS.md)
 
@@ -45,6 +46,7 @@ Configuration and functional usage are documented in
 ## Functional References
 
 - [bonuscard_odoo/README.rst](bonuscard_odoo/README.rst)
+- [docs/tutorials/README.md](docs/tutorials/README.md) (cashier / admin how-tos with screenshots)
 - [docs/bonuscard_pos_integration_explanation.md](docs/bonuscard_pos_integration_explanation.md)
 - [docs/bonuscard_pos_integration_diagram.mmd](docs/bonuscard_pos_integration_diagram.mmd)
 

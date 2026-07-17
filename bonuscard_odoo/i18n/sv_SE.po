@@ -604,6 +604,12 @@ msgstr ""
 "stället."
 
 #. module: bonuscard_odoo
+#: model:ir.actions.act_url,name:bonuscard_odoo.action_bonuscard_docs_cashier
+#: model:ir.ui.menu,name:bonuscard_odoo.menu_bonuscard_odoo_docs_cashier
+msgid "Cashier Guide"
+msgstr "Kassa-guide"
+
+#. module: bonuscard_odoo
 #: model_terms:ir.ui.view,arch_db:bonuscard_odoo.bonuscard_odoo_instance_view_form
 msgid "Catalog Probe"
 msgstr "Katalogkontroll"
@@ -867,6 +873,11 @@ msgid "Display Name"
 msgstr "Visningsnamn"
 
 #. module: bonuscard_odoo
+#: model:ir.ui.menu,name:bonuscard_odoo.menu_bonuscard_odoo_documentation
+msgid "Documentation"
+msgstr "Dokumentation"
+
+#. module: bonuscard_odoo
 #: model:ir.model.fields,field_description:bonuscard_odoo.field_bonuscard_connector_instance__bulk_partner_prefetch_active
 msgid "Enable bulk partner prefetch"
 msgstr "Aktivera massförladdning av partners"
@@ -1028,6 +1039,12 @@ msgstr ""
 "nedan."
 
 #. module: bonuscard_odoo
+#: model:ir.actions.act_url,name:bonuscard_odoo.action_bonuscard_docs_manager
+#: model:ir.ui.menu,name:bonuscard_odoo.menu_bonuscard_odoo_docs_manager
+msgid "Manager Guide"
+msgstr "Administratörsguide"
+
+#. module: bonuscard_odoo
 #: model:ir.actions.server,name:bonuscard_odoo.action_bonuscard_mark_products_in_catalog
 #: model:ir.actions.server,name:bonuscard_odoo.action_bonuscard_mark_templates_in_catalog
 msgid "Mark as Bonuscard Catalog"
@@ -1061,6 +1078,12 @@ msgstr "Maximalt antal partners som bearbetas per körning."
 #: code:bonuscard_odoo/models/bonuscard_api_service.py:0
 msgid "Missing Bonuscard transaction identifier."
 msgstr "Saknar Bonuscard-transaktionsidentifierare."
+
+#. module: bonuscard_odoo
+#: model:ir.actions.act_url,name:bonuscard_odoo.action_bonuscard_docs_readme
+#: model:ir.ui.menu,name:bonuscard_odoo.menu_bonuscard_odoo_docs_readme
+msgid "Module README"
+msgstr "Modul-README"
 
 #. module: bonuscard_odoo
 #. odoo-javascript
@@ -1466,6 +1489,12 @@ msgid ""
 msgstr ""
 "Dessa produkter kan inte uppdateras från produktlistan eftersom de inte har "
 "exakt en variant: %s"
+
+#. module: bonuscard_odoo
+#: model:ir.actions.act_url,name:bonuscard_odoo.action_bonuscard_docs_tutorials
+#: model:ir.ui.menu,name:bonuscard_odoo.menu_bonuscard_odoo_docs_tutorials
+msgid "Tutorials"
+msgstr "Handledningar"
 
 #. module: bonuscard_odoo
 #. odoo-python

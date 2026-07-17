@@ -120,6 +120,13 @@ Configuration
 Usage
 =====
 
+Step-by-step tutorials with screenshots (English and Swedish):
+
+* Cashiers: `POS cashier guide <https://github.com/symbiotech/bonuscard-odoo/blob/19.0/docs/tutorials/en/pos-cashier.md>`_ / `Kassa-guide <https://github.com/symbiotech/bonuscard-odoo/blob/19.0/docs/tutorials/sv/pos-kassor.md>`_
+* Managers: `Manager guide <https://github.com/symbiotech/bonuscard-odoo/blob/19.0/docs/tutorials/en/pos-manager.md>`_ / `Administratörsguide <https://github.com/symbiotech/bonuscard-odoo/blob/19.0/docs/tutorials/sv/pos-admin.md>`_
+
+See `docs/tutorials/README.md <https://github.com/symbiotech/bonuscard-odoo/blob/19.0/docs/tutorials/README.md>`_ for the full tutorial index.
+
 Product Catalog in POS
 ----------------------
 
@@ -279,6 +286,14 @@ Run only the manual integration suite with::
   --test-tags bonuscard_integration
 
 Use runtime or local secret configuration. Never commit real credentials.
+
+Documentation
+=============
+
+Step-by-step cashier and manager guides (English and Swedish) live under
+``docs/tutorials/`` in the repository. In Odoo, open
+**Bonuscard > Documentation** to open the same guides on GitHub (new browser
+tab). The Apps module page also links to them.
 
 Bug Tracker
 ===========
