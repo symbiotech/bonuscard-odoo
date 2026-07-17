@@ -589,6 +589,39 @@ class TestResPartnerBonuscard(TransactionCase):
         self.assertEqual(partner.bonuscard_recruitment_code, "LINK56")
         self.assertEqual(partner.bonuscard_status, "linked")
 
+    def test_import_partner_from_bonuscard_for_pos_links_national_phone_partner(self):
+        partner = self.partner_model.create(
+            {
+                "name": "National Phone Existing",
+                "phone": "0707654321",
+                "customer_rank": 1,
+            }
+        )
+
+        with patch(
+            "odoo.addons.bonuscard_odoo.models.bonuscard_api_service.BonuscardApiService._search_customers",
+            return_value=[
+                {
+                    "id": 58,
+                    "name": "National Phone Existing",
+                    "phoneNumber": "+46707654321",
+                    "recruitmentCode": "NAT58",
+                }
+            ],
+        ):
+            result = self.partner_model.import_partner_from_bonuscard_for_pos(
+                self.pos_config.id, "+46707654321"
+            )
+
+        self.assertEqual(result["res.partner"][0]["id"], partner.id)
+        self.assertEqual(partner.bonuscard_recruitment_code, "NAT58")
+        self.assertEqual(
+            self.partner_model.search_count(
+                [("bonuscard_recruitment_code", "=", "NAT58")]
+            ),
+            1,
+        )
+
     def test_filter_bonuscard_customers_for_pos_query_rejects_fuzzy_single_match(self):
         customers = [
             {
@@ -664,6 +697,10 @@ class TestResPartnerBonuscard(TransactionCase):
         )
         self.assertEqual(
             self.partner_model._extract_bonuscard_id_from_app_barcode("976358"),
+            "",
+        )
+        self.assertEqual(
+            self.partner_model._extract_bonuscard_id_from_app_barcode("9990000000005"),
             "",
         )
 

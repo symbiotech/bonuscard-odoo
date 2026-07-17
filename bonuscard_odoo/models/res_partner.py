@@ -242,7 +242,39 @@ class ResPartner(models.Model):
         if self._ean13_check_digit(body) != check:
             return ""
         raw_id = digits[len(prefix) : len(prefix) + id_width]
-        return str(int(raw_id))
+        member_id = int(raw_id)
+        if member_id <= 0:
+            return ""
+        return str(member_id)
+
+    @api.model
+    def _bonuscard_phone_search_terms(self, phone):
+        """Return phone strings useful for SQL candidate lookup before equivalence."""
+        phone = (phone or "").strip()
+        normalized = self._normalize_phone(phone)
+        terms = []
+        for term in (phone, normalized):
+            if term and term not in terms:
+                terms.append(term)
+        if not normalized:
+            return terms
+
+        significant = normalized.lstrip("0") or normalized
+        min_digits = self._BONUSCARD_PHONE_MATCH_MIN_DIGITS
+        if len(significant) < min_digits:
+            return terms
+
+        if significant not in terms:
+            terms.append(significant)
+        # National forms are often stored without the country prefix, with/without trunk 0.
+        national = significant[-9:] if len(significant) > 9 else significant
+        if len(national) >= min_digits:
+            if national not in terms:
+                terms.append(national)
+            trunk0 = "0" + national.lstrip("0")
+            if trunk0 not in terms:
+                terms.append(trunk0)
+        return terms
 
     @api.model
     def _phones_equivalent(self, phone_a, phone_b):
@@ -819,14 +851,11 @@ class ResPartner(models.Model):
                 [("bonuscard_recruitment_code", "=", recruitment_code)], limit=1
             )
         if not partner and normalized_phone:
-            candidates = Partner.search(
-                [
-                    "|",
-                    ("phone", "ilike", phone),
-                    ("phone", "ilike", normalized_phone),
-                ],
-                limit=20,
-            )
+            phone_terms = self._bonuscard_phone_search_terms(phone)
+            phone_domain = [("phone", "ilike", term) for term in phone_terms]
+            if len(phone_domain) > 1:
+                phone_domain = ["|"] * (len(phone_domain) - 1) + phone_domain
+            candidates = Partner.search(phone_domain, limit=20)
             partner = candidates.filtered(
                 lambda record: self._phones_equivalent(record.phone, phone)
             )[:1]

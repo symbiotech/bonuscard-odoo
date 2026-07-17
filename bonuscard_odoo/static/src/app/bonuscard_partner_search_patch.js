@@ -35,7 +35,11 @@ function extractBonuscardIdFromAppBarcode(value) {
         BONUSCARD_APP_BARCODE_PREFIX.length,
         BONUSCARD_APP_BARCODE_PREFIX.length + BONUSCARD_APP_BARCODE_ID_WIDTH
     );
-    return String(Number(rawId));
+    const memberId = Number(rawId);
+    if (!memberId) {
+        return "";
+    }
+    return String(memberId);
 }
 
 patch(ResPartner.prototype, {
