@@ -65,7 +65,7 @@ class BonuscardConnectorInstance(models.Model):
         ],
         string="API Culture",
         required=True,
-        default="sv-SE",
+        default="en-GB",
         help="Fallback language for Bonuscard API messages (errors and "
         "confirmations) when the current user's language is not supported. "
         "When the user language maps to English, Swedish, Finnish, Norwegian, "

@@ -31,7 +31,7 @@ class TestBonuscardInstance(TransactionCase):
             }
         )
         self.assertEqual(record.connection_status, "unknown")
-        self.assertEqual(record.api_culture, "sv-SE")
+        self.assertEqual(record.api_culture, "en-GB")
 
     def test_build_basic_auth_header(self):
         record = self.instance_model.create(
