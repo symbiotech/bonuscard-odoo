@@ -1,4 +1,5 @@
 from . import (
+    test_bonuscard_docs,
     test_bonuscard_instance,
     test_bonuscard_integration,
     test_bonuscard_js,

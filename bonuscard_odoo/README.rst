@@ -295,7 +295,9 @@ Documentation
 Step-by-step cashier and manager guides (English and Swedish) live under
 ``docs/tutorials/`` in the repository. In Odoo, open
 **Bonuscard > Documentation** to open the same guides on GitHub (new browser
-tab). The Apps module page also links to them.
+tab). When the user language is Swedish, Cashier Guide and Manager Guide open
+the Swedish pages (``docs/tutorials/sv/``); otherwise the English pages are
+used. The Apps module page also links to them.
 
 Bug Tracker
 ===========

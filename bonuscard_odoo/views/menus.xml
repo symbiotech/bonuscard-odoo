@@ -18,7 +18,8 @@
         groups="bonuscard_odoo.bonuscard_odoo_group_user"
     />
 
-    <!-- Documentation: opens guides on GitHub (19.0 branch) -->
+    <!-- Documentation: opens guides on GitHub (19.0 branch).
+         URL is rewritten at load time for Swedish UI (see bonuscard.docs). -->
     <record id="action_bonuscard_docs_tutorials" model="ir.actions.act_url">
         <field name="name">Tutorials</field>
         <field
