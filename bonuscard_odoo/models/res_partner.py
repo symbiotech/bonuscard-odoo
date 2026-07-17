@@ -132,7 +132,9 @@ class ResPartner(models.Model):
     @api.model
     def _search_bonuscard_pos_search(self, operator, value):
         """Search partners by Bonuscard recruitment code, internal id, or app barcode."""
-        value = value.strip() if isinstance(value, str) else value
+        if value is False or value is None:
+            return [("id", "=", 0)]
+        value = str(value).strip()
         if not value:
             return [("id", "=", 0)]
         if operator not in ("ilike", "like", "=", "!=", "not ilike"):
@@ -141,12 +143,23 @@ class ResPartner(models.Model):
         domains = [("bonuscard_recruitment_code", operator, value)]
         extracted_id = self._extract_bonuscard_id_from_app_barcode(value)
         if extracted_id:
-            domains.append(("bonuscard_internal_id", "=", int(extracted_id)))
-        elif isinstance(value, str) and value.isdigit():
-            domains.append(("bonuscard_internal_id", "=", int(value)))
+            internal_id = int(extracted_id)
+        elif value.isdigit():
+            internal_id = int(value)
+        else:
+            internal_id = None
+
+        if internal_id is not None:
+            if operator in ("!=", "not ilike"):
+                # Negation of (code match OR id match) => NOT code AND NOT id.
+                domains.append(("bonuscard_internal_id", "!=", internal_id))
+            else:
+                domains.append(("bonuscard_internal_id", "=", internal_id))
 
         if len(domains) == 1:
             return domains
+        if operator in ("!=", "not ilike"):
+            return domains  # implicit AND
         return ["|"] * (len(domains) - 1) + domains
 
     def _get_bonuscard_search_terms(self):
@@ -168,8 +181,10 @@ class ResPartner(models.Model):
     _BONUSCARD_APP_BARCODE_ID_WIDTH = 6
 
     def _normalize_phone(self, phone_number):
-        if not phone_number:
+        if phone_number is None or phone_number is False:
             return ""
+        if not isinstance(phone_number, str):
+            phone_number = str(phone_number)
         return re.sub(r"\D", "", phone_number)
 
     @api.model
@@ -190,7 +205,9 @@ class ResPartner(models.Model):
         Format: ``999000`` + 6-digit zero-padded internal id + EAN-13 check digit.
         Example: internal id ``976358`` → ``9990009763581``.
         """
-        digits = self._normalize_phone(value)
+        if value is None or value is False:
+            return ""
+        digits = self._normalize_phone(str(value))
         prefix = self._BONUSCARD_APP_BARCODE_PREFIX
         id_width = self._BONUSCARD_APP_BARCODE_ID_WIDTH
         expected_len = len(prefix) + id_width + 1
@@ -201,18 +218,6 @@ class ResPartner(models.Model):
             return ""
         raw_id = digits[len(prefix) : len(prefix) + id_width]
         return str(int(raw_id))
-
-    @api.model
-    def _bonuscard_pos_search_queries(self, query):
-        """Return SearchCustomers query variants for a POS search string."""
-        query = (query or "").strip()
-        if not query:
-            return []
-        queries = [query]
-        extracted_id = self._extract_bonuscard_id_from_app_barcode(query)
-        if extracted_id and extracted_id not in queries:
-            queries.append(extracted_id)
-        return queries
 
     @api.model
     def _phones_equivalent(self, phone_a, phone_b):
@@ -836,10 +841,11 @@ class ResPartner(models.Model):
                 )
             )
 
-        customers = []
-        for search_query in self._bonuscard_pos_search_queries(query):
-            customers.extend(service._search_customers(instance, search_query))
-        customers = self._dedupe_bonuscard_customers(customers)
+        customers = service._search_customers(instance, query)
+        if not customers:
+            extracted_id = self._extract_bonuscard_id_from_app_barcode(query)
+            if extracted_id and extracted_id != query:
+                customers = service._search_customers(instance, extracted_id)
         matches = self._filter_bonuscard_customers_for_pos_query(customers, query)
         if len(matches) != 1:
             if len(matches) > 1:

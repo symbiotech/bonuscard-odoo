@@ -39,8 +39,9 @@ Always attach a customer to the order before you expect Bonuscard discounts.
 
 Type a phone number, recruitment code, member id, app barcode, or email in
 **Search Customers…**. If the customer is not in the local list, press
-**Enter** — the POS can look them up in Bonuscard and import a match
-(national phone numbers and app barcodes are supported).
+**Enter** — the POS can look them up in Bonuscard and import an exact match
+(national phone numbers and app barcodes are supported; short/partial queries
+are rejected).
 
 ![Search customers by phone](../images/pos-cashier/09-customer-search-phone.png)
 

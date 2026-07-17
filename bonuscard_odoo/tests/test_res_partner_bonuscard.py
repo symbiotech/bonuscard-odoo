@@ -714,9 +714,11 @@ class TestResPartnerBonuscard(TransactionCase):
             "phoneNumber": "+46701112233",
             "recruitmentCode": "BC976",
         }
+        search_queries = []
 
         def _search(_instance, query):
-            if query in ("9990009763581", "976358"):
+            search_queries.append(query)
+            if query == "9990009763581":
                 return [customer]
             return []
 
@@ -732,6 +734,7 @@ class TestResPartnerBonuscard(TransactionCase):
         self.assertEqual(partner.bonuscard_internal_id, 976358)
         self.assertEqual(partner.bonuscard_recruitment_code, "BC976")
         self.assertEqual(partner.bonuscard_status, "linked")
+        self.assertEqual(search_queries, ["9990009763581"])
 
     def test_import_partner_from_bonuscard_for_pos_searches_extracted_id_when_barcode_empty(
         self,
@@ -742,8 +745,10 @@ class TestResPartnerBonuscard(TransactionCase):
             "phoneNumber": "+46701112233",
             "recruitmentCode": "BC976",
         }
+        search_queries = []
 
         def _search(_instance, query):
+            search_queries.append(query)
             if query == "976358":
                 return [customer]
             return []
@@ -758,6 +763,7 @@ class TestResPartnerBonuscard(TransactionCase):
 
         partner = self.partner_model.browse(result["res.partner"][0]["id"])
         self.assertEqual(partner.bonuscard_internal_id, 976358)
+        self.assertEqual(search_queries, ["9990009763581", "976358"])
 
     def test_bonuscard_pos_search_by_internal_id_and_app_barcode(self):
         partner = self.partner_model.create(
@@ -779,6 +785,27 @@ class TestResPartnerBonuscard(TransactionCase):
         )
         self.assertIn(partner, by_id)
         self.assertIn(partner, by_barcode)
+
+        # Integer queries must not raise; POS uses ilike, so assert domain shape.
+        self.assertEqual(
+            self.partner_model._search_bonuscard_pos_search("ilike", 976358),
+            [
+                "|",
+                ("bonuscard_recruitment_code", "ilike", "976358"),
+                ("bonuscard_internal_id", "=", 976358),
+            ],
+        )
+        self.assertEqual(
+            self.partner_model._search_bonuscard_pos_search("not ilike", "976358"),
+            [
+                ("bonuscard_recruitment_code", "not ilike", "976358"),
+                ("bonuscard_internal_id", "!=", 976358),
+            ],
+        )
+        excluded = self.partner_model.search(
+            [("bonuscard_pos_search", "not ilike", "976358")]
+        )
+        self.assertNotIn(partner, excluded)
 
     def test_import_partner_from_bonuscard_for_pos_accepts_national_phone(self):
         with patch(

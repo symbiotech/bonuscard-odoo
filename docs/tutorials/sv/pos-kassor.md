@@ -39,8 +39,8 @@ Koppla alltid en kund till ordern innan du förväntar dig Bonuscard-rabatter.
 
 Skriv ett telefonnummer, värvningskod, medlems-id, appstreckkod eller e-post i
 **Sök kunder…**. Om kunden inte finns lokalt, tryck **Enter** — kassan kan
-söka i Bonuscard och importera en träff (nationella telefonnummer och
-appstreckkoder stöds).
+söka i Bonuscard och importera en exakt träff (nationella telefonnummer och
+appstreckkoder stöds; korta/partiella sökningar nekas).
 
 ![Sök kund på telefonnummer](../images/pos-cashier/09-customer-search-phone.png)
 
