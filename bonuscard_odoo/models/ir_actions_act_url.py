@@ -14,6 +14,7 @@ class IrActionsActUrl(models.Model):
 
     def _get_action_dict(self):
         """Rewrite Bonuscard doc URLs to match the current UI language."""
+        self.ensure_one()
         result = super()._get_action_dict()
         xmlid = self.get_external_id().get(self.id)
         guide = _BONUSCARD_DOC_ACTIONS.get(xmlid)
