@@ -802,6 +802,25 @@ class TestResPartnerBonuscard(TransactionCase):
                 ("bonuscard_internal_id", "!=", 976358),
             ],
         )
+        # Leading-zero numeric queries must not coerce to a different internal id.
+        self.assertEqual(
+            self.partner_model._search_bonuscard_pos_search("ilike", "0724"),
+            [("bonuscard_recruitment_code", "ilike", "0724")],
+        )
+        fuzzy_partner = self.partner_model.create(
+            {
+                "name": "Fuzzy Id Customer",
+                "phone": "+46703755100",
+            }
+        )
+        fuzzy_partner._write_bonuscard_status(
+            "linked",
+            customer={"id": 724, "recruitmentCode": "46FKX"},
+        )
+        self.assertNotIn(
+            fuzzy_partner,
+            self.partner_model.search([("bonuscard_pos_search", "ilike", "0724")]),
+        )
         excluded = self.partner_model.search(
             [("bonuscard_pos_search", "not ilike", "976358")]
         )

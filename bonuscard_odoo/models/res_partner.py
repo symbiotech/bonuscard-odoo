@@ -144,7 +144,8 @@ class ResPartner(models.Model):
         extracted_id = self._extract_bonuscard_id_from_app_barcode(value)
         if extracted_id:
             internal_id = int(extracted_id)
-        elif value.isdigit():
+        elif value.isdigit() and value == str(int(value)):
+            # Exact digit string only — reject leading-zero variants like "0724" → 724.
             internal_id = int(value)
         else:
             internal_id = None
