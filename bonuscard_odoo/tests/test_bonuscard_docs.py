@@ -59,3 +59,32 @@ class TestBonuscardDocs(TransactionCase):
             payload["url"],
             f"{GITHUB_DOCS_BASE}/docs/tutorials/en/pos-manager.md",
         )
+
+    def test_docs_lang_key_from_user_lang_without_context_lang(self):
+        """Reproduce web-client path: no context lang, Swedish user preference."""
+        user = self.env.ref("base.user_admin")
+        user.lang = "sv_SE"
+        docs = self.env["bonuscard.docs"].with_user(user).with_context(lang=None)
+        self.assertIsNone(docs.env.context.get("lang"))
+        self.assertEqual(docs._docs_lang_key(), "sv")
+        self.assertEqual(
+            docs._docs_url("cashier"),
+            f"{GITHUB_DOCS_BASE}/docs/tutorials/sv/pos-kassor.md",
+        )
+
+    def test_act_url_read_rewritten_for_swedish_user_without_context_lang(self):
+        """Web client loads ir.actions.act_url via read(), not _get_action_dict()."""
+        user = self.env.ref("base.user_admin")
+        user.lang = "sv_SE"
+        action = self.env.ref("bonuscard_odoo.action_bonuscard_docs_cashier")
+        payload = (
+            action.with_user(user)
+            .with_context(lang=None)
+            .read(["url", "type", "target"])[0]
+        )
+        self.assertEqual(
+            payload["url"],
+            f"{GITHUB_DOCS_BASE}/docs/tutorials/sv/pos-kassor.md",
+        )
+        self.assertEqual(payload["type"], "ir.actions.act_url")
+        self.assertEqual(payload["target"], "new")

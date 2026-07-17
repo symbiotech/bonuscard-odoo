@@ -32,10 +32,11 @@ class BonuscardDocs(models.AbstractModel):
     def _docs_lang_key(self):
         """Return ``sv`` for Swedish UI languages, otherwise ``en``.
 
-        Reads ``lang`` from the environment context (same source as the UI)
-        so tests can pass ``sv_SE`` without installing the language pack.
+        In the web client, ``context['lang']`` may be absent on some action
+        loads; fall back to the signed-in user's language preference.
         """
-        lang = (self.env.context.get("lang") or "en_US").replace("-", "_")
+        lang = self.env.context.get("lang") or self.env.user.lang
+        lang = (lang or "en_US").replace("-", "_")
         if lang.lower().startswith("sv"):
             return "sv"
         return "en"
