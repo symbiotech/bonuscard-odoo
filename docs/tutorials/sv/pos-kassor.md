@@ -22,7 +22,8 @@ English version: [POS cashier guide](../en/pos-cashier.md)
 Koppla alltid en kund till ordern innan du förväntar dig Bonuscard-rabatter.
 
 1. Klicka på **Kund** längst ner i orderpanelen.
-2. Sök på namn, telefon, e-post eller **Bonuscard-värvningskod**.
+2. Sök på namn, telefon, e-post, **Bonuscard-värvningskod**, Bonuscard-medlems-id
+   eller **streckkod från Bonuscard-appen**.
 
 ![Kundlista med Bonuscard-märken](../images/pos-cashier/04-customer-list.png)
 
@@ -36,9 +37,10 @@ Koppla alltid en kund till ordern innan du förväntar dig Bonuscard-rabatter.
 
 ### Söktips
 
-Skriv ett telefonnummer (eller värvningskod / e-post) i **Sök kunder…**.
-Om kunden inte finns lokalt, tryck **Enter** — kassan kan söka i Bonuscard
-och importera en exakt träff.
+Skriv ett telefonnummer, värvningskod, medlems-id, appstreckkod eller e-post i
+**Sök kunder…**. Om kunden inte finns lokalt, tryck **Enter** — kassan kan
+söka i Bonuscard och importera en träff (nationella telefonnummer och
+appstreckkoder stöds).
 
 ![Sök kund på telefonnummer](../images/pos-cashier/09-customer-search-phone.png)
 

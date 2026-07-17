@@ -15,7 +15,7 @@
 
 - Primary Odoo surface: Point of Sale.
 - Authentication: Basic auth via `bonuscard.connector.instance._build_headers`.
-- **Implemented**: SearchCustomers lookup from POS partner selection; POS customer import on Enter when local search is empty (recruitment code, phone including national/trunk-0 vs E.164, or email; short fuzzy hits rejected); Bonuscard status fields on `res.partner`; smart button and manual check/reset on partner form; OWL badges in POS partner list; ValidatePurchase / FinalizePurchase / CancelPurchase lifecycle with automatic discount application; RegisterCustomer from partner form and POS partner list; product catalog gating and manager catalog probe; bulk partner prefetch (cron + manual); Bonuscard audit fields on `pos.order`.
+- **Implemented**: SearchCustomers lookup from POS partner selection; POS customer import on Enter when local search is empty (recruitment code, internal id, app member barcode, phone including national/trunk-0 vs E.164, or email; short fuzzy hits rejected); Bonuscard status fields on `res.partner`; smart button and manual check/reset on partner form; OWL badges in POS partner list; ValidatePurchase / FinalizePurchase / CancelPurchase lifecycle with automatic discount application; RegisterCustomer from partner form and POS partner list; product catalog gating and manager catalog probe; bulk partner prefetch (cron + manual); Bonuscard audit fields on `pos.order`.
 
 ## Immediate Planning Constraints
 
@@ -34,7 +34,7 @@
 - `BonuscardApiService.search_customers(instance, query)` wraps the `SearchCustomers` endpoint using URL query params.
 - When Bonuscard status is written on a contact, the same status is mirrored on its **commercial partner** (`partner.commercial_partner_id`) when both records share an equivalent phone number (Bonuscard's unique customer key; national / trunk-0 / E.164 forms count as the same).
 - Partner lookup uses phone (digit normalize plus country-code / trunk-aware equivalence), email, and name as search terms in priority order. Exact deduplication is keyed on Bonuscard customer `id` or `recruitmentCode` to avoid counting the same record twice.
-- POS customer import (`import_partner_from_bonuscard_for_pos`) accepts a Bonuscard `SearchCustomers` result when the cashier's query matches recruitment code, phone (same equivalence as above), or email. A short fuzzy API hit (for example `0724` matching internal id `724`) is rejected.
+- POS customer import (`import_partner_from_bonuscard_for_pos`) accepts a Bonuscard `SearchCustomers` result when the cashier's query matches recruitment code, internal id, app member barcode (`999000` + padded id + EAN check digit), phone (same equivalence as above), or email. App barcode queries also retry SearchCustomers with the extracted id. A short fuzzy API hit (for example `0724` matching internal id `724`) is rejected.
 
 ## POS Flow Rules
 

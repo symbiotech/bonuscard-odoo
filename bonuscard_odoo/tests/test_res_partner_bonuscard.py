@@ -649,6 +649,137 @@ class TestResPartnerBonuscard(TransactionCase):
             self.partner_model._phones_equivalent("703334601", "+46703334601")
         )
 
+    def test_extract_bonuscard_id_from_app_barcode(self):
+        self.assertEqual(
+            self.partner_model._extract_bonuscard_id_from_app_barcode("9990009763581"),
+            "976358",
+        )
+        self.assertEqual(
+            self.partner_model._extract_bonuscard_id_from_app_barcode("9990000007240"),
+            "724",
+        )
+        self.assertEqual(
+            self.partner_model._extract_bonuscard_id_from_app_barcode("9990009763582"),
+            "",
+        )
+        self.assertEqual(
+            self.partner_model._extract_bonuscard_id_from_app_barcode("976358"),
+            "",
+        )
+
+    def test_filter_bonuscard_customers_for_pos_query_accepts_internal_id(self):
+        customer = {
+            "id": 976358,
+            "name": "Barcode Customer",
+            "phoneNumber": "+46701112233",
+            "recruitmentCode": "BC976",
+        }
+        matches = self.partner_model._filter_bonuscard_customers_for_pos_query(
+            [customer], "976358"
+        )
+        self.assertEqual(matches, [customer])
+
+    def test_filter_bonuscard_customers_for_pos_query_accepts_app_barcode(self):
+        customer = {
+            "id": 976358,
+            "name": "Barcode Customer",
+            "phoneNumber": "+46701112233",
+            "recruitmentCode": "BC976",
+        }
+        matches = self.partner_model._filter_bonuscard_customers_for_pos_query(
+            [customer], "9990009763581"
+        )
+        self.assertEqual(matches, [customer])
+
+    def test_filter_bonuscard_customers_for_pos_query_rejects_partial_internal_id(
+        self,
+    ):
+        customers = [
+            {
+                "id": 724,
+                "name": "Lars Strid",
+                "phoneNumber": "+46703755100",
+                "recruitmentCode": "46FKX",
+            }
+        ]
+        matches = self.partner_model._filter_bonuscard_customers_for_pos_query(
+            customers, "0724"
+        )
+        self.assertEqual(matches, [])
+
+    def test_import_partner_from_bonuscard_for_pos_accepts_app_barcode(self):
+        customer = {
+            "id": 976358,
+            "name": "Barcode Customer",
+            "phoneNumber": "+46701112233",
+            "recruitmentCode": "BC976",
+        }
+
+        def _search(_instance, query):
+            if query in ("9990009763581", "976358"):
+                return [customer]
+            return []
+
+        with patch(
+            "odoo.addons.bonuscard_odoo.models.bonuscard_api_service.BonuscardApiService._search_customers",
+            side_effect=_search,
+        ):
+            result = self.partner_model.import_partner_from_bonuscard_for_pos(
+                self.pos_config.id, "9990009763581"
+            )
+
+        partner = self.partner_model.browse(result["res.partner"][0]["id"])
+        self.assertEqual(partner.bonuscard_internal_id, 976358)
+        self.assertEqual(partner.bonuscard_recruitment_code, "BC976")
+        self.assertEqual(partner.bonuscard_status, "linked")
+
+    def test_import_partner_from_bonuscard_for_pos_searches_extracted_id_when_barcode_empty(
+        self,
+    ):
+        customer = {
+            "id": 976358,
+            "name": "Barcode Customer",
+            "phoneNumber": "+46701112233",
+            "recruitmentCode": "BC976",
+        }
+
+        def _search(_instance, query):
+            if query == "976358":
+                return [customer]
+            return []
+
+        with patch(
+            "odoo.addons.bonuscard_odoo.models.bonuscard_api_service.BonuscardApiService._search_customers",
+            side_effect=_search,
+        ):
+            result = self.partner_model.import_partner_from_bonuscard_for_pos(
+                self.pos_config.id, "9990009763581"
+            )
+
+        partner = self.partner_model.browse(result["res.partner"][0]["id"])
+        self.assertEqual(partner.bonuscard_internal_id, 976358)
+
+    def test_bonuscard_pos_search_by_internal_id_and_app_barcode(self):
+        partner = self.partner_model.create(
+            {
+                "name": "Barcode Linked Customer",
+                "phone": "+46701112233",
+            }
+        )
+        partner._write_bonuscard_status(
+            "linked",
+            customer={
+                "id": 976358,
+                "recruitmentCode": "BC976",
+            },
+        )
+        by_id = self.partner_model.search([("bonuscard_pos_search", "ilike", "976358")])
+        by_barcode = self.partner_model.search(
+            [("bonuscard_pos_search", "ilike", "9990009763581")]
+        )
+        self.assertIn(partner, by_id)
+        self.assertIn(partner, by_barcode)
+
     def test_import_partner_from_bonuscard_for_pos_accepts_national_phone(self):
         with patch(
             "odoo.addons.bonuscard_odoo.models.bonuscard_api_service.BonuscardApiService._search_customers",
