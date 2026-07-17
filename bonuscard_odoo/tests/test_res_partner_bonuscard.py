@@ -964,3 +964,27 @@ class TestResPartnerBonuscard(TransactionCase):
 
         results = self.partner_model.search([("bonuscard_pos_search", "ilike", "   ")])
         self.assertFalse(results)
+
+    def test_bonuscard_pos_search_false_filters_by_identifier_presence(self):
+        linked = self.partner_model.create(
+            {
+                "name": "Linked Search Customer",
+                "phone": "+46701234567",
+            }
+        )
+        linked._write_bonuscard_status(
+            "linked",
+            customer={"recruitmentCode": "WLKT6", "id": 42},
+        )
+        unlinked = self.partner_model.create({"name": "Unlinked Search Customer"})
+
+        without_identifiers = self.partner_model.search(
+            [("bonuscard_pos_search", "=", False)]
+        )
+        with_identifiers = self.partner_model.search(
+            [("bonuscard_pos_search", "!=", False)]
+        )
+        self.assertIn(unlinked, without_identifiers)
+        self.assertNotIn(linked, without_identifiers)
+        self.assertIn(linked, with_identifiers)
+        self.assertNotIn(unlinked, with_identifiers)

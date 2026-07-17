@@ -24,7 +24,7 @@ Features
 * Security groups (Bonuscard User, Bonuscard Manager) and ACLs; admin is assigned Manager by default
 * Customer lookup by phone, email, and name when a customer is selected in POS
 * POS import of Bonuscard customers when local partner search finds no match (recruitment code, internal id, app member barcode, phone including national/trunk-0 vs E.164, or email; short fuzzy API hits are rejected)
-* POS customer search by Bonuscard recruitment code
+* POS customer search by Bonuscard recruitment code, internal id, and app member barcode
 * Partner status fields and sync controls on ``res.partner``
 * POS badge for Bonuscard status on the partner-selection screen
 * Smart button for one-click Bonuscard status checks from the partner form

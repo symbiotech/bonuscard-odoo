@@ -111,6 +111,7 @@ class ResPartner(models.Model):
     bonuscard_last_synced_at = fields.Datetime(copy=False, readonly=True)
     bonuscard_last_lookup_note = fields.Text(copy=False, readonly=True)
 
+    @api.depends("bonuscard_recruitment_code", "bonuscard_internal_id")
     def _compute_bonuscard_pos_search(self):
         for partner in self:
             parts = []
@@ -132,10 +133,33 @@ class ResPartner(models.Model):
     @api.model
     def _search_bonuscard_pos_search(self, operator, value):
         """Search partners by Bonuscard recruitment code, internal id, or app barcode."""
+        # Odoo rewrites ``= False`` / ``!= False`` to ``in`` / ``not in`` [False].
+        unset_values = False
         if value is False or value is None:
+            unset_values = True
+        elif not isinstance(value, (str, bytes)) and hasattr(value, "__iter__"):
+            values = list(value)
+            unset_values = bool(values) and all(
+                item is False or item is None for item in values
+            )
+
+        if unset_values:
+            if operator in ("=", "in"):
+                return [
+                    ("bonuscard_recruitment_code", "=", False),
+                    ("bonuscard_internal_id", "=", False),
+                ]
+            if operator in ("!=", "not in"):
+                return [
+                    "|",
+                    ("bonuscard_recruitment_code", "!=", False),
+                    ("bonuscard_internal_id", "!=", False),
+                ]
             return [("id", "=", 0)]
+
         value = str(value).strip()
         if not value:
+            # Empty POS search box should match nothing.
             return [("id", "=", 0)]
         if operator not in ("ilike", "like", "=", "!=", "not ilike"):
             operator = "ilike"
