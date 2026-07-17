@@ -41,12 +41,64 @@ class TestBonuscardInstance(TransactionCase):
                 "api_username": "demo-user",
                 "api_password": "demo-pass",
                 "is_current": True,
+                "api_culture": "en-GB",
             }
         )
 
-        headers = record._build_headers()
+        with patch(
+            "odoo.addons.bonuscard_odoo.models.bonuscard_instance.BonuscardConnectorInstance._resolve_bc_culture",
+            return_value="en-GB",
+        ):
+            headers = record._build_headers()
         self.assertEqual(headers["Authorization"], "Basic ZGVtby11c2VyOmRlbW8tcGFzcw==")
         self.assertEqual(headers["BC-Culture"], "en-GB")
+
+    def test_map_odoo_lang_to_bc_culture(self):
+        map_lang = self.instance_model._map_odoo_lang_to_bc_culture
+        self.assertEqual(map_lang("sv_SE"), "sv-SE")
+        self.assertEqual(map_lang("sv-SE"), "sv-SE")
+        self.assertEqual(map_lang("fi_FI"), "fi-FI")
+        self.assertEqual(map_lang("nb_NO"), "nb-NO")
+        self.assertEqual(map_lang("da_DK"), "da-DK")
+        self.assertEqual(map_lang("en_US"), "en-GB")
+        self.assertIsNone(map_lang("de_DE"))
+        self.assertIsNone(map_lang(False))
+
+    def test_resolve_bc_culture_prefers_supported_user_lang(self):
+        record = self.instance_model.create(
+            {
+                "name": "Culture From Lang",
+                "api_base_url": "https://web.bonuscard.com/api/",
+                "api_username": "demo-user",
+                "api_password": "demo-pass",
+                "is_current": True,
+                "api_culture": "en-GB",
+            }
+        )
+
+        with patch(
+            "odoo.addons.bonuscard_odoo.models.bonuscard_instance.BonuscardConnectorInstance._map_odoo_lang_to_bc_culture",
+            return_value="sv-SE",
+        ):
+            self.assertEqual(record._resolve_bc_culture(), "sv-SE")
+
+    def test_resolve_bc_culture_falls_back_to_api_culture(self):
+        record = self.instance_model.create(
+            {
+                "name": "Culture Fallback",
+                "api_base_url": "https://web.bonuscard.com/api/",
+                "api_username": "demo-user",
+                "api_password": "demo-pass",
+                "is_current": True,
+                "api_culture": "sv-SE",
+            }
+        )
+
+        with patch(
+            "odoo.addons.bonuscard_odoo.models.bonuscard_instance.BonuscardConnectorInstance._map_odoo_lang_to_bc_culture",
+            return_value=None,
+        ):
+            self.assertEqual(record._resolve_bc_culture(), "sv-SE")
 
     def test_reject_invalid_base_url(self):
         with self.assertRaises(ValidationError):

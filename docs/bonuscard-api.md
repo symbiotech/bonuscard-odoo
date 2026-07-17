@@ -8,6 +8,8 @@ Captured: 2026-03-12
 - REST API with JSON, secured with SSL + Basic Authentication
 - Account must be activated by a Bonuscard admin before use
 - Header `BC-Culture` controls response language (default `en-GB`)
+- In this Odoo addon, `BC-Culture` follows the current user's language when it
+  maps to a supported culture; otherwise the connection **API Culture** is used
 - Test environment base URL: `https://test.bonuscard.com/`
 
 ### Supported languages (`BC-Culture` header)

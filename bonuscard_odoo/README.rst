@@ -47,7 +47,9 @@ Configuration
 =============
 
 1. Go to **Bonuscard > Connections**.
-2. Create a connection record with API URL, username, password, and culture.
+2. Create a connection record with API URL, username, password, and culture
+   (culture is the fallback for Bonuscard message language; supported user
+   languages are preferred automatically via ``BC-Culture``).
 3. Optionally set the test API base URL to ``https://test.bonuscard.com/api/``.
 4. Click **Test Connection** (calls ``SearchCustomers`` with a probe query to verify URL and credentials).
 5. In **Point of Sale > Configuration > Settings**, configure a **Discount Product**.

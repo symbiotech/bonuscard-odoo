@@ -8,6 +8,26 @@ from odoo.exceptions import ValidationError
 _logger = logging.getLogger(__name__)
 _CTX_SKIP_CURRENT_ENFORCEMENT = "bonuscard_skip_current_enforcement"
 
+# Bonuscard ``BC-Culture`` values keyed by Odoo lang codes / language prefixes.
+_ODOO_LANG_TO_BC_CULTURE = {
+    "sv_SE": "sv-SE",
+    "fi_FI": "fi-FI",
+    "nb_NO": "nb-NO",
+    "nn_NO": "nb-NO",
+    "da_DK": "da-DK",
+    "en_GB": "en-GB",
+    "en_US": "en-GB",
+    "en_AU": "en-GB",
+}
+_ODOO_LANG_PREFIX_TO_BC_CULTURE = {
+    "sv": "sv-SE",
+    "fi": "fi-FI",
+    "nb": "nb-NO",
+    "nn": "nb-NO",
+    "da": "da-DK",
+    "en": "en-GB",
+}
+
 
 class BonuscardConnectorInstance(models.Model):
     _name = "bonuscard.connector.instance"
@@ -46,6 +66,10 @@ class BonuscardConnectorInstance(models.Model):
         string="API Culture",
         required=True,
         default="en-GB",
+        help="Fallback language for Bonuscard API messages (errors and "
+        "confirmations) when the current user's language is not supported. "
+        "When the user language maps to English, Swedish, Finnish, Norwegian, "
+        "or Danish, that language is sent as BC-Culture instead.",
     )
     request_timeout = fields.Integer(string="Request Timeout (s)", default=20)
 
@@ -226,6 +250,32 @@ class BonuscardConnectorInstance(models.Model):
                     self.env._("Bulk prefetch batch size must be at least 1.")
                 )
 
+    @api.model
+    def _map_odoo_lang_to_bc_culture(self, lang):
+        """Map an Odoo lang code to a Bonuscard ``BC-Culture`` value.
+
+        Returns ``None`` when the language is missing or not supported by
+        Bonuscard so callers can fall back to ``api_culture``.
+        """
+        if not lang:
+            return None
+        normalized = str(lang).strip().replace("-", "_")
+        if "@" in normalized:
+            normalized = normalized.split("@", 1)[0]
+        if normalized in _ODOO_LANG_TO_BC_CULTURE:
+            return _ODOO_LANG_TO_BC_CULTURE[normalized]
+        prefix = normalized.split("_", 1)[0].lower()
+        return _ODOO_LANG_PREFIX_TO_BC_CULTURE.get(prefix)
+
+    def _resolve_bc_culture(self):
+        """Culture sent as ``BC-Culture``: user lang when supported, else config."""
+        self.ensure_one()
+        return (
+            self._map_odoo_lang_to_bc_culture(self.env.lang)
+            or self.api_culture
+            or "en-GB"
+        )
+
     def _build_headers(self):
         self.ensure_one()
         credentials = f"{self.api_username}:{self.api_password}".encode()
@@ -233,7 +283,7 @@ class BonuscardConnectorInstance(models.Model):
         return {
             "Accept": "application/json",
             "Authorization": f"Basic {authorization}",
-            "BC-Culture": self.api_culture,
+            "BC-Culture": self._resolve_bc_culture(),
         }
 
     def _build_url(self, endpoint):

@@ -936,6 +936,19 @@ msgid "Failed"
 msgstr "Misslyckades"
 
 #. module: bonuscard_odoo
+#: model:ir.model.fields,help:bonuscard_odoo.field_bonuscard_connector_instance__api_culture
+msgid ""
+"Fallback language for Bonuscard API messages (errors and confirmations) when"
+" the current user's language is not supported. When the user language maps "
+"to English, Swedish, Finnish, Norwegian, or Danish, that language is sent as"
+" BC-Culture instead."
+msgstr ""
+"Reservspråk för Bonuscard API-meddelanden (fel och bekräftelser) när "
+"användarens språk inte stöds. När användarspråket mappar till engelska, "
+"svenska, finska, norska eller danska skickas det språket som BC-Culture i "
+"stället."
+
+#. module: bonuscard_odoo
 #: model:ir.model.fields.selection,name:bonuscard_odoo.selection__pos_order__bonuscard_state__finalized
 msgid "Finalized"
 msgstr "Slutförd"

@@ -54,7 +54,9 @@
 - Bonuscard responses can report errors in the payload even when an HTTP response is returned successfully.
 - Handle both HTTP-level failures and API-level business errors.
 - Use JSON for request and response handling.
-- When language-sensitive responses matter, support the `BC-Culture` header.
+- When language-sensitive responses matter, send the `BC-Culture` header.
+  Prefer the current user's Odoo language when it maps to a supported Bonuscard
+  culture; otherwise use the connection `api_culture` fallback.
 
 ## Test Account Usage
 
