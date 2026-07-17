@@ -1,7 +1,6 @@
 """Language-aware GitHub documentation URLs for Bonuscard menus."""
 
 from odoo import models
-from odoo.exceptions import UserError
 
 GITHUB_DOCS_BASE = "https://github.com/symbiotech/bonuscard-odoo/blob/19.0"
 
@@ -33,18 +32,10 @@ class BonuscardDocs(models.AbstractModel):
     def _docs_lang_key(self):
         """Return ``sv`` for Swedish UI languages, otherwise ``en``.
 
-        In the web client, the active UI language may be available as either
-        ``context['lang']`` or via ``env.lang`` depending on call path.
+        In the web client, ``context['lang']`` may be absent on some action
+        loads; fall back to the signed-in user's language preference.
         """
-        lang = self.env.context.get("lang")
-        if not lang:
-            # `env.lang` can raise when the language isn't installed; keep a
-            # safe fallback for unit tests.
-            try:
-                lang = self.env.lang
-            except UserError:
-                lang = None
-
+        lang = self.env.context.get("lang") or self.env.user.lang
         lang = (lang or "en_US").replace("-", "_")
         if lang.lower().startswith("sv"):
             return "sv"
