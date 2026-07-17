@@ -23,7 +23,7 @@ Features
 * Test Connection server action from the form view
 * Security groups (Bonuscard User, Bonuscard Manager) and ACLs; admin is assigned Manager by default
 * Customer lookup by phone, email, and name when a customer is selected in POS
-* POS import of Bonuscard customers when local partner search finds no match (exact recruitment code, normalized phone, or email only; fuzzy API hits are rejected)
+* POS import of Bonuscard customers when local partner search finds no match (recruitment code, phone including national/trunk-0 vs E.164, or email; short fuzzy API hits are rejected)
 * POS customer search by Bonuscard recruitment code
 * Partner status fields and sync controls on ``res.partner``
 * POS badge for Bonuscard status on the partner-selection screen
@@ -158,9 +158,12 @@ Use **Check Bonuscard** on the partner form to force a fresh lookup.
 
 If the customer is not found in the local Odoo partner search, pressing Enter
 in the POS customer list also queries Bonuscard. Import only proceeds when the
-search query exactly matches the Bonuscard recruitment code, normalized phone
-number, or email on an API result; fuzzy single hits are rejected. When a
-match is accepted, the addon creates or links an Odoo partner from the Bonuscard
+search query matches the Bonuscard recruitment code, phone, or email on an API
+result. Phone matching compares digits and treats national numbers (with or
+without a leading trunk ``0``) as the same as the E.164 form returned by
+Bonuscard (e.g. ``703334601`` / ``0703334601`` vs ``+46703334601``); short
+fuzzy single hits such as ``0724`` are still rejected. When a match is
+accepted, the addon creates or links an Odoo partner from the Bonuscard
 customer data and adds it to the POS session.
 
 Bulk Prefetch (Reduce POS Lookups)

@@ -141,35 +141,65 @@ class ResPartner(models.Model):
                 terms.append(value)
         return terms
 
+    # Minimum significant digits for country-code / trunk-aware phone equality.
+    # Short fuzzy SearchCustomers hits (e.g. "0724") must not match via suffix.
+    _BONUSCARD_PHONE_MATCH_MIN_DIGITS = 7
+
     def _normalize_phone(self, phone_number):
         if not phone_number:
             return ""
         return re.sub(r"\D", "", phone_number)
 
+    @api.model
+    def _phones_equivalent(self, phone_a, phone_b):
+        """Return True when two phones identify the same number.
+
+        Compares digit-only forms, then allows national vs E.164 variants:
+        trunk leading ``0`` (e.g. ``0703334601``) and missing country prefix
+        (e.g. ``703334601`` vs ``+46703334601``). Requires enough significant
+        digits so short fuzzy queries cannot match by suffix.
+        """
+        a = self._normalize_phone(phone_a)
+        b = self._normalize_phone(phone_b)
+        if not a or not b:
+            return False
+        if a == b:
+            return True
+        a_sig = a.lstrip("0") or a
+        b_sig = b.lstrip("0") or b
+        if a_sig == b_sig:
+            return True
+        min_digits = self._BONUSCARD_PHONE_MATCH_MIN_DIGITS
+        if len(a_sig) < min_digits or len(b_sig) < min_digits:
+            return False
+        return a_sig.endswith(b_sig) or b_sig.endswith(a_sig)
+
     def _filter_exact_bonuscard_matches(self, customers):
         self.ensure_one()
-        partner_phone = self._normalize_phone(self.phone)
+        partner_phone = self.phone
         partner_email = (self.email or "").strip().lower()
         partner_name = (self.name or "").strip().lower()
+        partner_has_phone = bool(self._normalize_phone(partner_phone))
 
         exact_matches = {}
         for index, customer in enumerate(customers):
-            customer_phone = self._normalize_phone(customer.get("phoneNumber"))
+            customer_phone = customer.get("phoneNumber")
             customer_email = (customer.get("email") or "").strip().lower()
             customer_name = (customer.get("name") or "").strip().lower()
+            customer_has_phone = bool(self._normalize_phone(customer_phone))
             customer_key = (
                 customer.get("id") or customer.get("recruitmentCode") or index
             )
-            if customer_phone and partner_phone and partner_phone == customer_phone:
+            if self._phones_equivalent(partner_phone, customer_phone):
                 exact_matches[customer_key] = customer
                 continue
             if partner_email and customer_email and partner_email == customer_email:
                 exact_matches[customer_key] = customer
                 continue
             if (
-                not partner_phone
+                not partner_has_phone
                 and not partner_email
-                and not customer_phone
+                and not customer_has_phone
                 and not customer_email
                 and partner_name
                 and customer_name
@@ -206,9 +236,7 @@ class ResPartner(models.Model):
         # entity.  Keep both records in sync to avoid stale status on either record.
         commercial_partner = self.commercial_partner_id
         if commercial_partner and commercial_partner != self:
-            company_phone = self._normalize_phone(commercial_partner.phone)
-            self_phone = self._normalize_phone(self.phone)
-            if company_phone and self_phone and company_phone == self_phone:
+            if self._phones_equivalent(commercial_partner.phone, self.phone):
                 commercial_partner._write_bonuscard_status(
                     status, customer=customer, note=note
                 )
@@ -587,14 +615,18 @@ class ResPartner(models.Model):
 
     @api.model
     def _filter_bonuscard_customers_for_pos_query(self, customers, query):
-        """Pick Bonuscard customers that exactly match a POS search/import query."""
+        """Pick Bonuscard customers that match a POS search/import query.
+
+        Accepts recruitment code, email, or phone. Phone matching is digit-based
+        and allows national / trunk-``0`` forms of the same E.164 number; short
+        fuzzy API hits (e.g. ``0724``) are still rejected.
+        """
         query = (query or "").strip()
         if not query or not customers:
             return []
 
         customers = self._dedupe_bonuscard_customers(customers)
         query_lower = query.lower()
-        normalized_query_phone = self._normalize_phone(query)
         exact_matches = {}
         for index, customer in enumerate(customers):
             customer_key = (
@@ -604,12 +636,7 @@ class ResPartner(models.Model):
             if recruitment_code and recruitment_code.lower() == query_lower:
                 exact_matches[customer_key] = customer
                 continue
-            customer_phone = self._normalize_phone(customer.get("phoneNumber"))
-            if (
-                normalized_query_phone
-                and customer_phone
-                and customer_phone == normalized_query_phone
-            ):
+            if self._phones_equivalent(query, customer.get("phoneNumber")):
                 exact_matches[customer_key] = customer
                 continue
             customer_email = (customer.get("email") or "").strip().lower()
@@ -683,7 +710,7 @@ class ResPartner(models.Model):
                 limit=20,
             )
             partner = candidates.filtered(
-                lambda record: self._normalize_phone(record.phone) == normalized_phone
+                lambda record: self._phones_equivalent(record.phone, phone)
             )[:1]
         if not partner and email:
             partner = Partner.search([("email", "=ilike", email)], limit=1)

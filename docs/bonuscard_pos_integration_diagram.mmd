@@ -48,7 +48,7 @@ flowchart LR
     A -->|setPartnerToCurrentOrder| F
     PL -->|local Odoo search empty| IMP
     IMP -->|SearchCustomers query| K
-    K -->|exact recruitment code, phone, or email match| IMP
+    K -->|recruitment code, phone (national/E.164), or email match| IMP
     IMP -->|create/link partner + load in POS| PL
     PL -->|select imported partner| A
     F -->|search terms phone email name| K
