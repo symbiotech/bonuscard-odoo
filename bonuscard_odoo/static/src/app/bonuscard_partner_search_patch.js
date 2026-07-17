@@ -59,7 +59,7 @@ patch(ResPartner.prototype, {
         if (super.exactMatch(searchWord)) {
             return true;
         }
-        const needle = (searchWord || "").toLowerCase();
+        const needle = String(searchWord || "").trim().toLowerCase();
         if (
             this.bonuscard_recruitment_code &&
             this.bonuscard_recruitment_code.toLowerCase() === needle
