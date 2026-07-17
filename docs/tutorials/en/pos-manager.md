@@ -28,7 +28,7 @@ On the connection form, set at least:
 |-------|---------|
 | **API Base URL** | Bonuscard API root (production or test). |
 | **API Username** / **API Password** | Basic-auth credentials. |
-| **API Culture** | Language/culture sent to the API. |
+| **API Culture** | Fallback language for Bonuscard messages when the user's Odoo language is not supported (English, Swedish, Finnish, Norwegian, Danish). Supported cashier languages are sent as `BC-Culture` automatically. |
 | **Use for Bonuscard API** | Mark the connection your company should use. |
 | **Active** | Connection is available for use. |
 

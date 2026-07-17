@@ -28,7 +28,7 @@ På anslutningsformuläret anger du minst:
 |------|--------|
 | **API-basadress** | Bonuscard API-rot (produktion eller test). |
 | **API-användarnamn** / **API-lösenord** | Basic-auth-uppgifter. |
-| **API-kultur** | Språk/kultur som skickas till API:t. |
+| **API-kultur** | Reservspråk för Bonuscard-meddelanden när användarens Odoo-språk inte stöds (engelska, svenska, finska, norska, danska). Stödda kassörsspråk skickas automatiskt som `BC-Culture`. |
 | **Använd för Bonuscard API** | Markera anslutningen som bolaget ska använda. |
 | **Aktiv** | Anslutningen är tillgänglig. |
 
