@@ -281,8 +281,8 @@ class ResPartner(models.Model):
         """Return True when two phones identify the same number.
 
         Compares digit-only forms, then allows national vs E.164 variants:
-        trunk leading ``0`` (e.g. ``0703334601``) and missing country prefix
-        (e.g. ``703334601`` vs ``+46703334601``). Requires enough significant
+        trunk leading ``0`` (e.g. ``0777733331``) and missing country prefix
+        (e.g. ``777733331`` vs ``+46777733331``). Requires enough significant
         digits so short fuzzy queries cannot match by suffix.
         """
         a = self._normalize_phone(phone_a)

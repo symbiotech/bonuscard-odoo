@@ -164,8 +164,8 @@ form ``999000`` + zero-padded internal id + check digit (e.g. ``9990009763581``
 for id ``976358``); when SearchCustomers does not accept the barcode directly,
 the addon retries with the extracted id. Phone matching compares digits and
 treats national numbers (with or without a leading trunk ``0``) as the same as
-the E.164 form returned by Bonuscard (e.g. ``703334601`` / ``0703334601`` vs
-``+46703334601``); short fuzzy single hits such as ``0724`` are still rejected.
+the E.164 form returned by Bonuscard (e.g. ``777733331`` / ``0777733331`` vs
+``+46777733331``); short fuzzy single hits such as ``0724`` are still rejected.
 When a match is accepted, the addon creates or links an Odoo partner from the
 Bonuscard customer data and adds it to the POS session.
 

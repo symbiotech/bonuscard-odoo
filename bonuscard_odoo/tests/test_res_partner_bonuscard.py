@@ -666,10 +666,10 @@ class TestResPartnerBonuscard(TransactionCase):
         customer = {
             "id": 57,
             "name": "National Phone Customer",
-            "phoneNumber": "+46703334601",
+            "phoneNumber": "+46777733331",
             "recruitmentCode": "NAT57",
         }
-        for query in ("703334601", "0703334601", "46703334601"):
+        for query in ("777733331", "0777733331", "46777733331"):
             with self.subTest(query=query):
                 matches = self.partner_model._filter_bonuscard_customers_for_pos_query(
                     [customer], query
@@ -679,7 +679,7 @@ class TestResPartnerBonuscard(TransactionCase):
     def test_phones_equivalent_rejects_short_suffix(self):
         self.assertFalse(self.partner_model._phones_equivalent("0724", "+46703755100"))
         self.assertTrue(
-            self.partner_model._phones_equivalent("703334601", "+46703334601")
+            self.partner_model._phones_equivalent("777733331", "+46777733331")
         )
 
     def test_extract_bonuscard_id_from_app_barcode(self):
@@ -870,18 +870,18 @@ class TestResPartnerBonuscard(TransactionCase):
                 {
                     "id": 57,
                     "name": "National Phone Customer",
-                    "phoneNumber": "+46703334601",
+                    "phoneNumber": "+46777733331",
                     "recruitmentCode": "NAT57",
                 }
             ],
         ):
             result = self.partner_model.import_partner_from_bonuscard_for_pos(
-                self.pos_config.id, "703334601"
+                self.pos_config.id, "777733331"
             )
 
         partner = self.partner_model.browse(result["res.partner"][0]["id"])
         self.assertEqual(partner.bonuscard_recruitment_code, "NAT57")
-        self.assertEqual(partner.phone, "+46703334601")
+        self.assertEqual(partner.phone, "+46777733331")
         self.assertEqual(partner.bonuscard_status, "linked")
 
     def test_import_partner_from_bonuscard_for_pos_rejects_fuzzy_single_api_match(
