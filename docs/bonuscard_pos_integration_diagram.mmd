@@ -79,6 +79,7 @@ flowchart LR
     G -->|transactionIdentifier + discounts POS applies discounts| B
 
     C -->|preSyncAllOrders before sync| H
+    C -->|Customer Account SO finalizeSaleOrderFromPos companion| H
     H -->|transactionIdentifier + checkoutItems + remaining pending codes| M
     M -->|commit purchase| H
     H -->|finalize success persist audit on pos.order| C
@@ -87,6 +88,7 @@ flowchart LR
     C -->|no checkoutItems cancel pending transaction| I
     I -->|release success persist audit on pos.order| C
     I -->|release failed sticky warning| C
+
 
     E -->|cancel pending transaction| I
     I -->|transactionIdentifier| N

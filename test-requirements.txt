@@ -1,0 +1,4 @@
+# OCA pos_order_to_sale_order is not on OCA/pos 19.0 yet (OCA/pos#1587).
+# Pin the symbiotech migration/UX branch until upstream merges, then retarget
+# to odoo-addon-pos_order_to_sale_order from the OCA wheelhouse / OCA/pos 19.0.
+odoo-addon-pos_order_to_sale_order @ git+https://github.com/symbiotech/pos.git@19.0-imp-pos_order_to_sale_order-ux#subdirectory=pos_order_to_sale_order

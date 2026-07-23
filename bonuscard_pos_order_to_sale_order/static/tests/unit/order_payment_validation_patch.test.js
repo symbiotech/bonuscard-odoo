@@ -2,7 +2,7 @@
 
 import { describe, expect, test } from "@odoo/hoot";
 import OrderPaymentValidation from "@point_of_sale/app/utils/order_payment_validation";
-import { patch } from "@web/core/utils/patch";
+import { patchWithCleanup } from "@web/../tests/web_test_helpers";
 import { applyBonuscardSaleOrderBridgePatch } from "@bonuscard_pos_order_to_sale_order/js/order_payment_validation_patch";
 
 /**
@@ -10,7 +10,7 @@ import { applyBonuscardSaleOrderBridgePatch } from "@bonuscard_pos_order_to_sale
  * deterministic without loading the full POS / OCA stack.
  */
 function applyMockFinalizeSaleOrderFromPos(behavior) {
-    patch(OrderPaymentValidation.prototype, {
+    patchWithCleanup(OrderPaymentValidation.prototype, {
         async finalizeSaleOrderFromPos() {
             return behavior(this);
         },
@@ -39,7 +39,7 @@ describe("bonuscard_pos_order_to_sale_order OrderPaymentValidation", () => {
             validation.order.uiState.saleOrderConverted = true;
             return true;
         });
-        applyBonuscardSaleOrderBridgePatch();
+        applyBonuscardSaleOrderBridgePatch(patchWithCleanup);
 
         const order = { uiState: {} };
         const audited = [];
@@ -58,7 +58,7 @@ describe("bonuscard_pos_order_to_sale_order OrderPaymentValidation", () => {
 
     test("does not call Bonuscard audit when already converted", async () => {
         applyMockFinalizeSaleOrderFromPos(() => true);
-        applyBonuscardSaleOrderBridgePatch();
+        applyBonuscardSaleOrderBridgePatch(patchWithCleanup);
 
         const order = { uiState: { saleOrderConverted: true } };
         let auditCalls = 0;
@@ -76,7 +76,7 @@ describe("bonuscard_pos_order_to_sale_order OrderPaymentValidation", () => {
 
     test("does not call Bonuscard audit when sale-order conversion fails", async () => {
         applyMockFinalizeSaleOrderFromPos(() => false);
-        applyBonuscardSaleOrderBridgePatch();
+        applyBonuscardSaleOrderBridgePatch(patchWithCleanup);
 
         const order = { uiState: {} };
         let auditCalls = 0;

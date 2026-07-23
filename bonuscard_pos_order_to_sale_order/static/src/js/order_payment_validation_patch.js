@@ -10,13 +10,16 @@ import { patch } from "@web/core/utils/patch";
  * helper Bonuscard uses for normal paid POS orders.
  *
  * Always builds a fresh patch object so tests can re-apply outermost without
- * breaking the ``super`` prototype chain.
+ * breaking the ``super`` prototype chain. Tests may pass ``patchWithCleanup``
+ * as ``patchFn`` so patches do not leak across the suite.
+ *
+ * @param {typeof patch} [patchFn=patch]
  */
-export function applyBonuscardSaleOrderBridgePatch() {
+export function applyBonuscardSaleOrderBridgePatch(patchFn = patch) {
     if (!OrderPaymentValidation?.prototype) {
         return;
     }
-    patch(OrderPaymentValidation.prototype, {
+    patchFn(OrderPaymentValidation.prototype, {
         async finalizeSaleOrderFromPos() {
             const order = this.order;
             const wasConverted = Boolean(order?.uiState?.saleOrderConverted);

@@ -1,3 +1,0 @@
-# External repositories required for optional companion modules / CI.
-# Format: <project> <git_url> [branch]
-pos https://github.com/OCA/pos.git 19.0
