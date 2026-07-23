@@ -32,6 +32,7 @@ Features
 * Activate discount codes from the POS Actions menu (``ActivateDiscountCode``), with purchase-time fallback when a code cannot be pre-registered
 * Automatic discount application in POS after validation
 * Bonuscard audit fields stored on POS orders (validated/finalized/skipped/failed), even when discount is 0
+* Companion module ``bonuscard_pos_order_to_sale_order`` finalizes Bonuscard when ``pos_order_to_sale_order`` creates a sale order (Customer Account on validate or Actions → Create Sale Order; auto-install)
 * Product catalog status on ``product.product`` to control which lines are sent to Bonuscard
 * Bulk list actions to mark products as in or not in the Bonuscard catalog
 * Scheduled + manual bulk prefetch of Bonuscard customer links (phone → email → optional name fallback) to reduce POS lookup requests
@@ -234,6 +235,10 @@ The POS integration supports:
 * ``ValidatePurchase`` before payment and after order changes
 * ``FinalizePurchase`` during ``preSyncAllOrders``, immediately before the
   paid order is synced to the backend (retried once on failure)
+* When ``pos_order_to_sale_order`` creates a sale order without a ``pos.order``
+  sync (Customer Account on validate, or Actions → Create Sale Order), companion
+  module ``bonuscard_pos_order_to_sale_order`` finalizes via the same
+  post-payment helper (auto-installed when both parents are present)
 * ``CancelPurchase`` when the order is aborted, the customer is changed, the
   order is deleted, or the POS session is closed
 

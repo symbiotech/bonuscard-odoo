@@ -1,6 +1,6 @@
 ---
 description: Keep docs in sync when behavior or roadmap changes
-globs: "docs/**,README.md,bonuscard_odoo/README.rst,bonuscard_odoo/static/description/index.html,.github/copilot-instructions.md"
+globs: "docs/**,README.md,bonuscard_odoo/README.rst,bonuscard_pos_order_to_sale_order/README.rst,bonuscard_odoo/static/description/index.html,.github/copilot-instructions.md"
 alwaysApply: false
 ---
 
@@ -11,6 +11,7 @@ When code changes affect observable behavior, update docs in the **same change**
 | Doc | Update when… |
 |---|---|
 | `bonuscard_odoo/README.rst` | Feature added, changed, or completed |
+| `bonuscard_pos_order_to_sale_order/README.rst` | Bridge behavior or install conditions change |
 | `README.md` | Roadmap status or dev/CI instructions change |
 | `bonuscard_odoo/static/description/index.html` | User-visible features change |
 | `docs/bonuscard_pos_integration_explanation.md` | POS patch added/renamed/removed; API service or partner method changes |

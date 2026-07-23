@@ -1,0 +1,4 @@
+# OCA pos_order_to_sale_order is not on OCA/pos 19.0 yet (OCA/pos#1587).
+# Pin immutable SHA from symbiotech/pos branch 19.0-imp-pos_order_to_sale_order-ux
+# until upstream merges, then retarget to the OCA wheelhouse / OCA/pos 19.0.
+odoo-addon-pos_order_to_sale_order @ git+https://github.com/symbiotech/pos.git@1c01a432c134802fa206dcc6506843c8844ac3c1#subdirectory=pos_order_to_sale_order

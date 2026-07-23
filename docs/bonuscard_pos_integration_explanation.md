@@ -68,6 +68,7 @@ This document explains how the Bonuscard POS integration works in the `bonuscard
    - If finalization fails after payment, the POS attempts cancel as a fallback before showing a sticky warning
    - If the cancel fallback succeeds, the transaction fields are cleared and the backend audit state is stored as `failed`
    - If finalization and the cancel fallback both fail, the transaction fields are kept and a sticky warning is shown so the loyalty lock can be recovered manually
+   - **Customer Account / Actions → sale order** (`pos_order_to_sale_order`): no `pos.order` is synced, so `preSyncAllOrders` never runs. The companion module `bonuscard_pos_order_to_sale_order` (auto-installed when both parents are present) calls `_applyBonuscardAuditAfterPayment` after a *new* `finalizeSaleOrderFromPos` conversion (Customer Account on validate) and after Actions → Create Sale Order (before `removeOrder`, so a pending Validate is Finalized/released instead of Cancelled on delete).
 
 6. Cancel or rollback flows
    - `PosStore.onClickBackButton()` (only when on the Payment Screen), `onDeleteOrder()`, `closePos()`, `addNewOrder()`, and `setOrder()` cancel pending Bonuscard transactions on the order being left behind

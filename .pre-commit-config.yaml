@@ -31,7 +31,11 @@ repos:
       - id: eslint
         name: eslint JavaScript lint
         args:
-          ["--debug", "--format", "stylish", "bonuscard_odoo/static/src/app"]
+          - --debug
+          - --format
+          - stylish
+          - bonuscard_odoo/static/src/app
+          - bonuscard_pos_order_to_sale_order/static
   - repo: https://github.com/OCA/pylint-odoo
     rev: v10.0.2
     hooks:

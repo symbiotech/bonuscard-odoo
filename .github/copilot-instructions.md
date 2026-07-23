@@ -186,6 +186,7 @@ When any code change affects observable behavior, update the relevant docs in th
 | Doc | What it covers | Update when… |
 |---|---|---|
 | `bonuscard_odoo/README.rst` | Features list, configuration, usage (canonical addon docs) | A feature is added, changed, or completed |
+| `bonuscard_pos_order_to_sale_order/README.rst` | Companion: Finalize when POS creates a sale order | Bridge behavior or install conditions change |
 | `README.md` | Repo setup, roadmap, development workflow | Roadmap status changes or dev/CI instructions change |
 | `bonuscard_odoo/static/description/index.html` | Odoo Apps listing highlights | User-visible features change |
 | `docs/bonuscard_pos_integration_explanation.md` | Step-by-step POS flow, patched methods, backend components, tracked state | Any POS patch is added/renamed/removed; any `bonuscard.api.service` or `res.partner` method changes |
