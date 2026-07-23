@@ -4,6 +4,7 @@ flowchart LR
         A[Select Customer in POS]
         R[Register with Bonuscard\npartner list menu]
         AD[Actions Bonuscard button\nactivate discount code]
+        CO[Actions Create Sale Order]
         PC[Product grid ProductCard\nBonuscard mark for in_catalog]
         PI[Long-press product info\ncatalog status badge]
         B[Start Payment]
@@ -80,6 +81,7 @@ flowchart LR
 
     C -->|preSyncAllOrders before sync| H
     C -->|Customer Account SO finalizeSaleOrderFromPos companion| H
+    CO -->|Create Sale Order companion before removeOrder| H
     H -->|transactionIdentifier + checkoutItems + remaining pending codes| M
     M -->|commit purchase| H
     H -->|finalize success persist audit on pos.order| C

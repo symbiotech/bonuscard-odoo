@@ -18,7 +18,7 @@ For addon behavior, configuration, and usage, use
 To avoid duplicate docs drift, this repository uses a split canonical model:
 
 - **Addon behavior and usage (canonical):** [bonuscard_odoo/README.rst](bonuscard_odoo/README.rst)
-- **Customer Account → sale order bridge:** [bonuscard_pos_order_to_sale_order/README.rst](bonuscard_pos_order_to_sale_order/README.rst)
+- **POS → sale order bridge:** [bonuscard_pos_order_to_sale_order/README.rst](bonuscard_pos_order_to_sale_order/README.rst)
 - **POS integration flow narrative:** [docs/bonuscard_pos_integration_explanation.md](docs/bonuscard_pos_integration_explanation.md)
 - **POS integration architecture diagram:** [docs/bonuscard_pos_integration_diagram.mmd](docs/bonuscard_pos_integration_diagram.mmd)
 - **API reference notes:** [docs/bonuscard-api.md](docs/bonuscard-api.md)
@@ -64,7 +64,7 @@ Configuration and functional usage are documented in
 | Bulk partner prefetch (cron + manual) | Done |
 | Bonuscard audit fields on POS orders | Done |
 | ActivateDiscountCode | Done |
-| Companion: Finalize on Customer Account → sale order | Done |
+| Companion: Finalize on POS → sale order | Done |
 | Sales report import | Planned |
 
 ## Development Setup

@@ -17,7 +17,7 @@ conflicts, prefer the copilot instructions file.
 | Doc | Purpose |
 |---|---|
 | [`bonuscard_odoo/README.rst`](bonuscard_odoo/README.rst) | Addon features, configuration, usage (canonical) |
-| [`bonuscard_pos_order_to_sale_order/README.rst`](bonuscard_pos_order_to_sale_order/README.rst) | Companion: Finalize when Customer Account creates a sale order |
+| [`bonuscard_pos_order_to_sale_order/README.rst`](bonuscard_pos_order_to_sale_order/README.rst) | Companion: Finalize when POS creates a sale order |
 | [`docs/bonuscard_pos_integration_explanation.md`](docs/bonuscard_pos_integration_explanation.md) | POS hooks, backend methods, tracked state |
 | [`docs/bonuscard_pos_integration_diagram.mmd`](docs/bonuscard_pos_integration_diagram.mmd) | Architecture flowchart |
 | [`docs/bonuscard-api.md`](docs/bonuscard-api.md) | API reference notes |
