@@ -32,7 +32,7 @@ When it activates
 =================
 
 * POS config has sale-order creation enabled (Customer Account on validate
-  and/or Actions → Create Order).
+  and/or Actions → Create Sale Order).
 * Order has a Bonuscard partner / pending ValidatePurchase state as usual.
 
 Cash, card, and mixed payments that sync a ``pos.order`` are unchanged (still

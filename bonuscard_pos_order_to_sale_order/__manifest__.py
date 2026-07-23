@@ -20,6 +20,7 @@
             "bonuscard_pos_order_to_sale_order/static/src/js/create_sale_order_ui_patch.js",
             "bonuscard_pos_order_to_sale_order/static/tests/unit/order_payment_validation_patch.test.js",
             "bonuscard_pos_order_to_sale_order/static/tests/unit/create_sale_order_from_pos_patch.test.js",
+            "bonuscard_pos_order_to_sale_order/static/tests/unit/create_sale_order_ui_patch.test.js",
         ],
     },
     "installable": True,

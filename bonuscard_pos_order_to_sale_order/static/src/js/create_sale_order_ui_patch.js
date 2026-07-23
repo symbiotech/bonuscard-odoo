@@ -11,20 +11,22 @@ import { patch } from "@web/core/utils/patch";
  * Bonuscard audit wrapper so Finalize/release runs before removeOrder.
  *
  * @param {typeof patch} [patchFn=patch]
+ * @param {Object} [deps] Injectable for unit tests.
  */
-export function applyBonuscardCreateSaleOrderUiPatches(patchFn = patch) {
+export function applyBonuscardCreateSaleOrderUiPatches(patchFn = patch, deps = {}) {
+    const createWithAudit =
+        deps.createSaleOrderFromPosWithBonuscardAudit ||
+        createSaleOrderFromPosWithBonuscardAudit;
+    const getDefaultState =
+        deps.getDefaultCreateSaleOrderState || getDefaultCreateSaleOrderState;
+
     if (CreateOrderButton?.prototype) {
         patchFn(CreateOrderButton.prototype, {
             async onClick(ev) {
-                const orderState = getDefaultCreateSaleOrderState(this.pos.config);
+                const orderState = getDefaultState(this.pos.config);
                 if (orderState) {
                     ev.stopPropagation();
-                    await createSaleOrderFromPosWithBonuscardAudit(
-                        this.pos,
-                        this.orm,
-                        this.ui,
-                        orderState
-                    );
+                    await createWithAudit(this.pos, this.orm, this.ui, orderState);
                     this.props.close?.();
                     return;
                 }
@@ -36,12 +38,7 @@ export function applyBonuscardCreateSaleOrderUiPatches(patchFn = patch) {
     if (CreateOrderPopup?.prototype) {
         patchFn(CreateOrderPopup.prototype, {
             async _actionCreateSaleOrder(orderState) {
-                await createSaleOrderFromPosWithBonuscardAudit(
-                    this.pos,
-                    this.orm,
-                    this.ui,
-                    orderState
-                );
+                await createWithAudit(this.pos, this.orm, this.ui, orderState);
                 return this.props.close();
             },
         });
