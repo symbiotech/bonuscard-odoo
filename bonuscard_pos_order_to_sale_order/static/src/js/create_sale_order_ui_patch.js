@@ -39,7 +39,7 @@ export function applyBonuscardCreateSaleOrderUiPatches(patchFn = patch, deps = {
         patchFn(CreateOrderPopup.prototype, {
             async _actionCreateSaleOrder(orderState) {
                 await createWithAudit(this.pos, this.orm, this.ui, orderState);
-                return this.props.close();
+                return this.props.close?.();
             },
         });
     }

@@ -25,7 +25,9 @@ export function applyBonuscardSaleOrderBridgePatch(patchFn = patch) {
             const wasConverted = Boolean(order?.uiState?.saleOrderConverted);
             const result = await super.finalizeSaleOrderFromPos(...arguments);
             if (order?.uiState?.saleOrderConverted && !wasConverted) {
-                await this.pos._applyBonuscardAuditAfterPayment(order);
+                if (typeof this.pos._applyBonuscardAuditAfterPayment === "function") {
+                    await this.pos._applyBonuscardAuditAfterPayment(order);
+                }
             }
             return result;
         },
